@@ -167,9 +167,9 @@ export JAVA_HOME='/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home' #
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 # NOTE: Nvim Setup
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+  [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 
 # NOTE: Yarn Setup
 export PATH=$PATH:$(yarn global bin)
@@ -178,6 +178,9 @@ export PATH=$PATH:$(yarn global bin)
 export PNPM_HOME=$HOME/Library/pnpm
 export PATH="$PATH:$PNPM_HOME"
 # pnpm endexport 
+
+# NOTE: npm setup fix (https://stackoverflow.com/a/55274930/14923262)
+export PATH=~/.npm-global/bin:$PATH
 
 # NOTE: thefuck setup
 eval $(thefuck --alias fk)
