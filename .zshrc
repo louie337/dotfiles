@@ -221,3 +221,6 @@ if [ -f "$HOME/.secrets" ]; then
   source "$HOME/.secrets"
 fi
 
+# NOTE: GVM Setup
+[[ -s "/Users/louie/.gvm/scripts/gvm" ]] && source "/Users/louie/.gvm/scripts/gvm"
+
