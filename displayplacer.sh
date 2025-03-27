@@ -4,6 +4,7 @@
 DISPLAY_ARRANGEMENT_1="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:8AD6921A-059F-4684-A2E5-486F4A579B8F res:1920x1200 hz:60 color_depth:8 enabled:true scaling:off origin:(823,-1200) degree:0\""
 DISPLAY_ARRANGEMENT_2="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:8AD6921A-059F-4684-A2E5-486F4A579B8F res:1920x1200 hz:60 color_depth:8 enabled:true scaling:off origin:(-113,-1200) degree:0\""
 DISPLAY_ARRANGEMENT_3="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:29FFC71B-3134-460E-87C0-3E508B0B7F39 res:2560x1440 hz:30 color_depth:8 enabled:true scaling:on origin:(-2560,-645) degree:0\""
+DISPLAY_ARRANGEMENT_3="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:29FFC71B-3134-460E-87C0-3E508B0B7F39 res:2560x1440 hz:30 color_depth:8 enabled:true scaling:on origin:(-2560,-121) degree:0\""
 
 DISPLAY_ARRANGEMENT_2="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1800x1169 hz:120 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:F942DB80-D7EF-4419-80AD-EF6CAF28F036 res:1920x1200 hz:120 color_depth:8 enabled:true scaling:off origin:(-64,-1200) degree:0\""
 
@@ -75,6 +76,10 @@ case $ARRANGEMENT_ID in
     3)
         eval "$DISPLAY_ARRANGEMENT_3"
         echo "Office setup without stand"
+        ;;
+    3)
+        eval "$DISPLAY_ARRANGEMENT_4"
+        echo "Office setup with stand"
         ;;
     *)
         echo "Error: Invalid arrangement ID. Please use 1 or 2."
