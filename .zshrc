@@ -213,14 +213,13 @@ eval "$(zoxide init zsh)"
 # NOTE: Go Setup
 export PATH="$PATH:$(go env GOPATH)/bin"
 
-# NOTE: GPG
-export GPG_TTY=$(tty)
-
-# NOTE: Secrets
-if [ -f "$HOME/.secrets" ]; then
-  source "$HOME/.secrets"
-fi
-
 # NOTE: GVM Setup
 [[ -s "/Users/louie/.gvm/scripts/gvm" ]] && source "/Users/louie/.gvm/scripts/gvm"
 
+# NOTE: GPG Setup
+export GPG_TTY=$(tty)
+
+# NOTE: Secrets Setup
+if [ -f "$HOME/.secrets" ]; then
+  source "$HOME/.secrets"
+fi
