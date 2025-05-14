@@ -4,9 +4,8 @@
 DISPLAY_ARRANGEMENT_1="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:8AD6921A-059F-4684-A2E5-486F4A579B8F res:1920x1200 hz:60 color_depth:8 enabled:true scaling:off origin:(823,-1200) degree:0\""
 DISPLAY_ARRANGEMENT_2="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:8AD6921A-059F-4684-A2E5-486F4A579B8F res:1920x1200 hz:60 color_depth:8 enabled:true scaling:off origin:(-113,-1200) degree:0\""
 DISPLAY_ARRANGEMENT_3="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:29FFC71B-3134-460E-87C0-3E508B0B7F39 res:2560x1440 hz:30 color_depth:8 enabled:true scaling:on origin:(-2560,-645) degree:0\""
-DISPLAY_ARRANGEMENT_3="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:29FFC71B-3134-460E-87C0-3E508B0B7F39 res:2560x1440 hz:30 color_depth:8 enabled:true scaling:on origin:(-2560,-121) degree:0\""
-
-DISPLAY_ARRANGEMENT_2="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1800x1169 hz:120 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:F942DB80-D7EF-4419-80AD-EF6CAF28F036 res:1920x1200 hz:120 color_depth:8 enabled:true scaling:off origin:(-64,-1200) degree:0\""
+DISPLAY_ARRANGEMENT_4="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:29FFC71B-3134-460E-87C0-3E508B0B7F39 res:2560x1440 hz:30 color_depth:8 enabled:true scaling:on origin:(-2560,-121) degree:0\""
+DISPLAY_ARRANGEMENT_5="displayplacer \"id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1710x1112 hz:60 color_depth:8 enabled:true scaling:on origin:(0,0) degree:0\" \"id:8AD6921A-059F-4684-A2E5-486F4A579B8F res:1920x1200 hz:60 color_depth:8 enabled:true scaling:off origin:(1710,515) degree:0\""
 
 # ASCII art for arrangements
 ARRANGEMENT_1_ART="
@@ -17,11 +16,17 @@ ARRANGEMENT_1_ART="
      └───┘
 "
 ARRANGEMENT_2_ART="
-[2]     ┌──────┐
-        │  S1  │
-        └──────┘
-         │ M │   
-         └───┘
+[2] ┌───────┐
+    │  S1   │
+    └───────┘
+     │  M  │   
+     └─────┘
+"
+ARRANGEMENT_5_ART="
+[5] ┌─────┐
+    │  M  │──────┐
+    └─────┘  S1  │
+           ──────┘
 "
 
 # Function to show usage
@@ -34,6 +39,7 @@ show_usage() {
     echo -e "\nAvailable arrangements:"
     echo "$ARRANGEMENT_1_ART"
     echo "$ARRANGEMENT_2_ART"
+    echo "$ARRANGEMENT_5_ART"
     exit 1
 }
 
@@ -77,12 +83,16 @@ case $ARRANGEMENT_ID in
         eval "$DISPLAY_ARRANGEMENT_3"
         echo "Office setup without stand"
         ;;
-    3)
+    4)
         eval "$DISPLAY_ARRANGEMENT_4"
         echo "Office setup with stand"
         ;;
+    5)
+        eval "$DISPLAY_ARRANGEMENT_5"
+        echo "Casual setup with stand"
+        ;;
     *)
-        echo "Error: Invalid arrangement ID. Please use 1 or 2."
+        echo "Error: Invalid arrangement ID"
         show_usage
         ;;
 esac
