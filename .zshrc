@@ -128,7 +128,8 @@ HISTSEARCH="history-beginning-search"
 export HOMEBREW_NO_AUTO_UPDATE=1
 
 # NOTE: Personal aliases
-alias vim="nvim --listen /tmp/nvim-server.pipe" # NOTE: Suggested by lazygit.nvim
+# alias vim="nvim --listen /tmp/nvim-server.pipe" # NOTE: Suggested by lazygit.nvim
+alias vim="nvim"
 alias vnvim='nvim $HOME/.config/nvim' # NOTE: Suggested by lazygit.nvim
 alias vzsh="nvim $HOME/.zshrc"
 alias szsh="source $HOME/.zshrc"
