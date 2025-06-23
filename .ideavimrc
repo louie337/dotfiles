@@ -19,8 +19,6 @@ set ignorecase = true
 set smartcase = true 
 set smartindent = true 
 set spell = true
-set splitbelow = false 
-set splitright = true
 " set scrolloff = 5
 set tabstop = 2
 set shiftwidth = 2 
@@ -34,7 +32,8 @@ nmap gI :action GotoImplementation<CR>
 nmap gr :action GotoDeclaration<CR>
 nmap gm :action GotoSuperMethod<cr>
 nmap gs :action GotoSymbol<cr>
-nmap gd :action GotoTypeDeclaration<CR>
+nmap gd :action GotoDeclaration<CR>
+nmap gD :action GotoTypeDeclaration<CR>
 nmap cf :action CopyAbsolutePath<CR>
 nmap cr :action CopyFileName<CR>
 nmap <leader>ds :action FileStructurePopup<CR>
