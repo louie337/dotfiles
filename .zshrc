@@ -220,6 +220,9 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 # NOTE: GPG Setup
 export GPG_TTY=$(tty)
 
+# NOTE: direnv Setup
+eval "$(direnv hook zsh)"
+
 # NOTE: Secrets Setup
 if [ -f "$HOME/.secrets" ]; then
   source "$HOME/.secrets"
