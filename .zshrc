@@ -227,3 +227,5 @@ eval "$(direnv hook zsh)"
 if [ -f "$HOME/.secrets" ]; then
   source "$HOME/.secrets"
 fi
+
+alias claude="/Users/louie/.claude/local/claude"
