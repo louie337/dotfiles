@@ -2,17 +2,17 @@ let g:highlightedyank_highlight_duration = "100"
 
 set number
 set relativenumber
-set confirm = true
-set cursorline = false
-set ignorecase = true
-set smartcase = true 
-set smartindent = true 
-set spell = true
-set scrolloff = 5
-set tabstop = 2
-set shiftwidth = 2 
-set termguicolors = true 
-set hlsearch = true
+set confirm
+set nocursorline
+set ignorecase
+set smartcase
+set smartindent
+set spell
+set scrolloff=5
+set tabstop=2
+set shiftwidth=2 
+set termguicolors
+set hlsearch
 
 " Keymaps
 map <leader>nl :nohl<CR>
