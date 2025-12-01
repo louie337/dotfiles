@@ -148,7 +148,7 @@ alias pnpx="pnpm dlx"
 # NOTE: VIM paths
 export GIT_EDITOR=vim
 export VISUAL=vim
-export EDITOR=vim
+export EDITOR=nvim
 
 # NOTE: Android Studio Setup
 export ANDROID_HOME=$HOME/Library/Android/sdk
@@ -215,5 +215,19 @@ if [ -f "$HOME/.secrets" ]; then
   source "$HOME/.secrets"
 fi
 
+# NOTE: Claude Code Setup
+alias claude="~/.claude/local/claude"
 
-alias claude="$HOME/.claude/local/claude"
+# NOTE: Claude Code Setup
+alias oc="opencode"
+
+# NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
+[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
+
+# NOTE: Go setup
+export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:~/go/bin
+export GOPATH=$HOME/go
+
+# NOTE: UV Setup
+export PATH=$PATH:/Users/louie/.local/bin
