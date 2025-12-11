@@ -165,7 +165,13 @@ export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
 export JAVA_HOME='/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home' # Update at 2023
 
 # NOTE: Docker Setup
-export DOCKER_DEFAULT_PLATFORM=linux/amd64
+# export DOCKER_DEFAULT_PLATFORM=linux/amd64
+alias docker-compose='docker compose'
+# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+fpath=(/Users/louie/.docker/completions $fpath)
+autoload -Uz compinit
+compinit
+# End of Docker CLI completions
 
 # NOTE: Nvim Setup
   export NVM_DIR="$HOME/.nvm"
@@ -228,4 +234,11 @@ if [ -f "$HOME/.secrets" ]; then
   source "$HOME/.secrets"
 fi
 
+# NOTE: Claude Code
 alias claude="/Users/louie/.claude/local/claude"
+
+# Claude Code Templates - Global Agents
+export PATH="/Users/louie/.claude-code-templates/bin:$PATH"
+
+# NOTE: OpenCode
+alias oc="opencode"

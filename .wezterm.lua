@@ -62,7 +62,7 @@ local solidLayer = {
 
 local imageLayer = {
 	source = {
-		File = "/Users/louie/wallpaper.png",
+		File = "/Users/louie/wallpaper.jpg",
 	},
 	repeat_x = "NoRepeat",
 	opacity = 0.1,
@@ -107,6 +107,7 @@ config.keys = {
 		mods = "CTRL",
 		action = wezterm.action.EmitEvent("cycle-background"),
 	},
+	{ key = "Enter", mods = "SHIFT", action = wezterm.action({ SendString = "\x1b\r" }) },
 }
 
 return config
