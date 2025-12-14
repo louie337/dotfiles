@@ -74,9 +74,9 @@ local dummyLayer = { source = { Color = "black" }, opacity = 0 }
 local background_modes = {
 	{ softLayer },
 	{ transparentLayer, dummyLayer },
-	{ solidLayer,       dummyLayer, dummyLayer },
-	{ softLayer,        imageLayer, dummyLayer, dummyLayer },
-	{ solidLayer,       imageLayer, dummyLayer, dummyLayer, dummyLayer },
+	{ solidLayer, dummyLayer, dummyLayer },
+	{ softLayer, imageLayer, dummyLayer, dummyLayer },
+	{ solidLayer, imageLayer, dummyLayer, dummyLayer, dummyLayer },
 	-- image_background_config,
 }
 
@@ -106,6 +106,11 @@ config.keys = {
 		key = "B",
 		mods = "CTRL",
 		action = wezterm.action.EmitEvent("cycle-background"),
+	},
+	{
+		key = "Enter",
+		mods = "SHIFT",
+		action = wezterm.action({ SendString = "\x1b\r" }),
 	},
 }
 
