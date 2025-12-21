@@ -146,8 +146,8 @@ alias vtmuxpwl="cd $HOME/.tmux/plugins/tmux-powerline"
 alias pnpx="pnpm dlx"
 
 # NOTE: VIM paths
-export GIT_EDITOR=vim
-export VISUAL=vim
+export GIT_EDITOR=nvim
+export VISUAL=nvim
 export EDITOR=nvim
 
 # NOTE: Android Studio Setup
