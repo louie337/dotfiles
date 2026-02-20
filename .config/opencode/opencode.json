@@ -15,5 +15,8 @@
 		"compaction": {
 			"model": "github-copilot/gpt-5-mini"
 		}
-	}
+	},
+	"plugin": [
+		"@mohak34/opencode-notifier@latest"
+	]
 }
