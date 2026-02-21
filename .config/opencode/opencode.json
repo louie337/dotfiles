@@ -10,5 +10,10 @@
 			],
 			"enabled": true,
 		}
+	},
+	"agent": {
+		"compaction": {
+			"model": "github-copilot/gpt-5-mini"
+		}
 	}
 }
