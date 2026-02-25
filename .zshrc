@@ -1,3 +1,10 @@
+# OPENSPEC:START
+# OpenSpec shell completions configuration
+fpath=("/Users/louie/.oh-my-zsh/custom/completions" $fpath)
+autoload -Uz compinit
+compinit
+# OPENSPEC:END
+
 # NOTE: Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # NOTE: Initialization code that may require console input (password prompts, [y/n]
 # NOTE: confirmations, etc.) must go above this block; everything else may go below.
