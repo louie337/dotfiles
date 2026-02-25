@@ -4,6 +4,7 @@ gui:
   scrollHeight: 24 # how many lines you scroll by
 os:
   edit: 'nvim {{filename}}'
+  editAtLine: 'nvim +{{line}} {{filename}}' # This line wasn't neceesary in Datax's laptop for unknown reason
 git:
     overrideGpg: true
     nerdFontsVersion: "3"
