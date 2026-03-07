@@ -12,9 +12,26 @@
 		}
 	},
 	"agent": {
+		"build": {
+			"model": "github-copilot/claude-sonnet-4.6"
+		},
+		"plan": {
+			"model": "github-copilot/claude-sonnet-4.6"
+		},
+		"code-explainer": {
+			"description": "Explain code",
+			"mode": "primary",
+			"model": "github-copilot/gpt-5.1-codex-mini",
+			"prompt": "You are a code explainer. Focus on explaining the code clearly, like presenting in a lecture theatre",
+			"tools": {
+				"read": true,
+				"write": false,
+				"edit": false
+			}
+		},
 		"compaction": {
 			"model": "github-copilot/gpt-5-mini"
-		}
+		},
 	},
 	"plugin": [
 		"@mohak34/opencode-notifier@latest"
