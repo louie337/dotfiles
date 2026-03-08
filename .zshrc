@@ -239,3 +239,10 @@ export GOPATH=$HOME/go
 
 # NOTE: UV Setup
 export PATH=$PATH:/Users/louie/.local/bin
+
+# bun completions
+[ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
