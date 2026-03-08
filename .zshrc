@@ -242,3 +242,16 @@ export PATH="/Users/louie/.claude-code-templates/bin:$PATH"
 
 # NOTE: OpenCode
 alias oc="opencode"
+
+# NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
+[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
+
+# NOTE: UV Setup
+export PATH=$PATH:/Users/louie/.local/bin
+
+# bun completions
+[ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
