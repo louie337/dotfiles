@@ -1,17 +1,16 @@
 import { tool } from "@opencode-ai/plugin"
-import { execSync } from "child_process"
 import path from "path"
 
 /**
- * Run a shell command synchronously and return trimmed stdout.
+ * Run a shell command via Bun's native shell API.
  * Throws on non-zero exit with stderr included in the message.
  */
-function run(cmd: string, cwd: string): string {
+async function run(cmd: string, cwd: string): Promise<string> {
   try {
-    return execSync(cmd, { cwd, encoding: "utf8" }).trim()
+    return (await Bun.$`sh -c ${cmd}`.cwd(cwd).text()).trim()
   } catch (err: unknown) {
-    const e = err as { stderr?: Buffer; stdout?: Buffer; message?: string }
-    const detail = (e.stderr?.toString() ?? e.stdout?.toString() ?? e.message ?? "unknown error").trim()
+    const e = err as { stderr?: Buffer; message?: string }
+    const detail = (e.stderr?.toString() ?? e.message ?? "unknown error").trim()
     throw new Error(`Command failed: ${cmd}\n${detail}`)
   }
 }
@@ -44,16 +43,16 @@ export const worktree_create = tool({
     const worktreePath = path.resolve(worktreeRoot, "..", "worktrees", name)
 
     // Ensure parent directory exists
-    run(`mkdir -p ${path.dirname(worktreePath)}`, worktreeRoot)
+    await run(`mkdir -p ${path.dirname(worktreePath)}`, worktreeRoot)
 
     // Check if branch already exists
-    const branchExists = run(`git branch --list ${branch}`, worktreeRoot)
+    const branchExists = await run(`git branch --list ${branch}`, worktreeRoot)
 
     let result: string
     if (branchExists) {
-      result = run(`git worktree add "${worktreePath}" ${branch}`, worktreeRoot)
+      result = await run(`git worktree add "${worktreePath}" ${branch}`, worktreeRoot)
     } else {
-      result = run(`git worktree add -b ${branch} "${worktreePath}"`, worktreeRoot)
+      result = await run(`git worktree add -b ${branch} "${worktreePath}"`, worktreeRoot)
     }
 
     return [
@@ -113,7 +112,7 @@ export const worktree_cleanup = tool({
     const worktreePath = path.resolve(worktreeRoot, "..", "worktrees", name)
 
     // Verify the branch is fully merged into main before proceeding
-    const mergeCheck = run(`git branch --merged main --list ${branch}`, worktreeRoot)
+    const mergeCheck = await run(`git branch --merged main --list ${branch}`, worktreeRoot)
 
     if (!mergeCheck) {
       return [
@@ -127,10 +126,10 @@ export const worktree_cleanup = tool({
     }
 
     // Remove worktree directory
-    const removeResult = run(`git worktree remove --force "${worktreePath}"`, worktreeRoot)
+    const removeResult = await run(`git worktree remove --force "${worktreePath}"`, worktreeRoot)
 
     // Delete the branch
-    const branchResult = run(`git branch -d ${branch}`, worktreeRoot)
+    const branchResult = await run(`git branch -d ${branch}`, worktreeRoot)
 
     return [
       `Worktree cleaned up successfully.`,
