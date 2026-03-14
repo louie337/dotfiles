@@ -1,0 +1,2 @@
+[commit.generation]
+command = "opencode run -m github-copilot/gpt-5.1-codex-mini"
