@@ -29,7 +29,6 @@
 		},
 	},
 	"plugin": [
-		"@mohak34/opencode-notifier@latest",
-		"@tarquinen/opencode-dcp@latest"
+		"@mohak34/opencode-notifier@latest"
 	]
 }
