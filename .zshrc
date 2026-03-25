@@ -144,6 +144,7 @@ alias vtmux="nvim $HOME/.tmux.conf"
 alias stmux="tmux source $HOME/.tmux.conf"
 alias vtmuxpwl="cd $HOME/.tmux/plugins/tmux-powerline"
 alias pnpx="pnpm dlx"
+alias t8r="tmuxinator"
 
 # NOTE: VIM paths
 export GIT_EDITOR=nvim
