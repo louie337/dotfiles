@@ -4,7 +4,7 @@ description: >
   step by step, asks targeted clarifying questions before acting, and
   never moves on without confirming ambiguous requirements.
 mode: primary
-model: github-copilot/gpt-5.1-codex-mini
+model: github-copilot/gpt-5.4-mini
 permission:
   edit: allow
   external_directory: ask
