@@ -1,0 +1,1456 @@
+{
+  "agents": [
+    {
+      "agent": "Build",
+      "clients": "opencode",
+      "cost": 594.9085419600018,
+      "messageCount": 15212,
+      "tokens": {
+        "cacheRead": 896027390,
+        "cacheWrite": 5335814,
+        "input": 68119066,
+        "output": 6026959,
+        "total": 975544013
+      }
+    },
+    {
+      "agent": "Plan",
+      "clients": "opencode",
+      "cost": 265.22837504999904,
+      "messageCount": 4350,
+      "tokens": {
+        "cacheRead": 171937965,
+        "cacheWrite": 4643978,
+        "input": 53066556,
+        "output": 2117650,
+        "total": 231773259
+      }
+    },
+    {
+      "agent": "Explore",
+      "clients": "opencode",
+      "cost": 68.38863604999985,
+      "messageCount": 1918,
+      "tokens": {
+        "cacheRead": 56440893,
+        "cacheWrite": 235579,
+        "input": 11075160,
+        "output": 1152536,
+        "total": 68908904
+      }
+    },
+    {
+      "agent": "Compaction",
+      "clients": "opencode",
+      "cost": 48.7929429,
+      "messageCount": 296,
+      "tokens": {
+        "cacheRead": 199296,
+        "cacheWrite": 2438886,
+        "input": 22523779,
+        "output": 854119,
+        "total": 26016080
+      }
+    },
+    {
+      "agent": "Golang Developer",
+      "clients": "opencode",
+      "cost": 4.194665600000001,
+      "messageCount": 100,
+      "tokens": {
+        "cacheRead": 3899174,
+        "cacheWrite": 0,
+        "input": 465942,
+        "output": 80369,
+        "total": 4445485
+      }
+    },
+    {
+      "agent": "Patch",
+      "clients": "opencode",
+      "cost": 3.3977653499999976,
+      "messageCount": 434,
+      "tokens": {
+        "cacheRead": 22790144,
+        "cacheWrite": 0,
+        "input": 1721089,
+        "output": 159568,
+        "total": 24791999
+      }
+    },
+    {
+      "agent": "Teach",
+      "clients": "opencode",
+      "cost": 3.0608042999999996,
+      "messageCount": 406,
+      "tokens": {
+        "cacheRead": 10446976,
+        "cacheWrite": 0,
+        "input": 3192350,
+        "output": 159426,
+        "total": 13923804
+      }
+    },
+    {
+      "agent": "General",
+      "clients": "opencode",
+      "cost": 1.1276489,
+      "messageCount": 10,
+      "tokens": {
+        "cacheRead": 237847,
+        "cacheWrite": 87812,
+        "input": 102259,
+        "output": 9076,
+        "total": 436994
+      }
+    },
+    {
+      "agent": "Conflict Aware Developer",
+      "clients": "opencode",
+      "cost": 0.8992064999999998,
+      "messageCount": 35,
+      "tokens": {
+        "cacheRead": 1150335,
+        "cacheWrite": 0,
+        "input": 98902,
+        "output": 17160,
+        "total": 1266397
+      }
+    },
+    {
+      "agent": "Docker Developer",
+      "clients": "opencode",
+      "cost": 0.45504750000000005,
+      "messageCount": 13,
+      "tokens": {
+        "cacheRead": 205255,
+        "cacheWrite": 0,
+        "input": 50432,
+        "output": 16145,
+        "total": 271832
+      }
+    },
+    {
+      "agent": "Code Explainer",
+      "clients": "opencode",
+      "cost": 0.26192584999999996,
+      "messageCount": 61,
+      "tokens": {
+        "cacheRead": 1653504,
+        "cacheWrite": 0,
+        "input": 418929,
+        "output": 36488,
+        "total": 2130361
+      }
+    }
+  ],
+  "daily": [
+    {
+      "cost": 5.961199749999999,
+      "date": "2026-04-30",
+      "messageCount": 94,
+      "tokens": {
+        "cacheRead": 4562328,
+        "cacheWrite": 433699,
+        "input": 129,
+        "output": 45894,
+        "total": 5042050
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 3.0970436,
+      "date": "2026-04-29",
+      "messageCount": 76,
+      "tokens": {
+        "cacheRead": 2410811,
+        "cacheWrite": 300322,
+        "input": 109,
+        "output": 33903,
+        "total": 2745145
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.069891,
+      "date": "2026-04-28",
+      "messageCount": 52,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 18520,
+        "input": 457688,
+        "output": 6179,
+        "total": 485639
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 33.00559585,
+      "date": "2026-04-27",
+      "messageCount": 576,
+      "tokens": {
+        "cacheRead": 35657808,
+        "cacheWrite": 4741903,
+        "input": 824620,
+        "output": 214136,
+        "total": 41458295
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 1.6487013000000006,
+      "date": "2026-04-24",
+      "messageCount": 200,
+      "tokens": {
+        "cacheRead": 7883264,
+        "cacheWrite": 0,
+        "input": 685106,
+        "output": 36122,
+        "total": 8689176
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 13.813709900000013,
+      "date": "2026-04-23",
+      "messageCount": 389,
+      "tokens": {
+        "cacheRead": 26298074,
+        "cacheWrite": 1047268,
+        "input": 402414,
+        "output": 145274,
+        "total": 27895170
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 4.053517350000001,
+      "date": "2026-04-22",
+      "messageCount": 139,
+      "tokens": {
+        "cacheRead": 5737663,
+        "cacheWrite": 611337,
+        "input": 332652,
+        "output": 34656,
+        "total": 6730132
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.7846392000000001,
+      "date": "2026-04-21",
+      "messageCount": 10,
+      "tokens": {
+        "cacheRead": 725934,
+        "cacheWrite": 0,
+        "input": 142438,
+        "output": 9303,
+        "total": 877675
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 2.37298425,
+      "date": "2026-04-20",
+      "messageCount": 38,
+      "tokens": {
+        "cacheRead": 1001790,
+        "cacheWrite": 457543,
+        "input": 52,
+        "output": 23767,
+        "total": 1483152
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 5.4360834,
+      "date": "2026-04-17",
+      "messageCount": 88,
+      "tokens": {
+        "cacheRead": 4554248,
+        "cacheWrite": 0,
+        "input": 1017978,
+        "output": 98926,
+        "total": 5671152
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 6.278617099999998,
+      "date": "2026-04-16",
+      "messageCount": 136,
+      "tokens": {
+        "cacheRead": 5976082,
+        "cacheWrite": 0,
+        "input": 1017861,
+        "output": 141843,
+        "total": 7136302
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 12.814876350000002,
+      "date": "2026-04-15",
+      "messageCount": 236,
+      "tokens": {
+        "cacheRead": 10022572,
+        "cacheWrite": 0,
+        "input": 2824065,
+        "output": 142920,
+        "total": 12990598
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 10.322714149999998,
+      "date": "2026-04-14",
+      "messageCount": 215,
+      "tokens": {
+        "cacheRead": 13356887,
+        "cacheWrite": 0,
+        "input": 1865081,
+        "output": 128986,
+        "total": 15373822
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.3777174,
+      "date": "2026-04-13",
+      "messageCount": 27,
+      "tokens": {
+        "cacheRead": 571392,
+        "cacheWrite": 0,
+        "input": 270954,
+        "output": 18899,
+        "total": 871601
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 10.129874250000004,
+      "date": "2026-04-10",
+      "messageCount": 269,
+      "tokens": {
+        "cacheRead": 11592028,
+        "cacheWrite": 0,
+        "input": 2427378,
+        "output": 103718,
+        "total": 14129528
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 4.716774100000001,
+      "date": "2026-04-09",
+      "messageCount": 80,
+      "tokens": {
+        "cacheRead": 2810993,
+        "cacheWrite": 0,
+        "input": 1213741,
+        "output": 37294,
+        "total": 4062028
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 13.285436099999998,
+      "date": "2026-04-08",
+      "messageCount": 318,
+      "tokens": {
+        "cacheRead": 16012155,
+        "cacheWrite": 0,
+        "input": 3394598,
+        "output": 159053,
+        "total": 19586504
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.13238385,
+      "date": "2026-04-07",
+      "messageCount": 12,
+      "tokens": {
+        "cacheRead": 224768,
+        "cacheWrite": 0,
+        "input": 48597,
+        "output": 10351,
+        "total": 290938
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 12.845717600000004,
+      "date": "2026-04-02",
+      "messageCount": 376,
+      "tokens": {
+        "cacheRead": 23811532,
+        "cacheWrite": 0,
+        "input": 2069763,
+        "output": 135696,
+        "total": 26028036
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 17.112837599999995,
+      "date": "2026-04-01",
+      "messageCount": 391,
+      "tokens": {
+        "cacheRead": 21910393,
+        "cacheWrite": 0,
+        "input": 3271782,
+        "output": 121074,
+        "total": 25304913
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 2.0642276999999996,
+      "date": "2026-03-31",
+      "messageCount": 31,
+      "tokens": {
+        "cacheRead": 693929,
+        "cacheWrite": 0,
+        "input": 548138,
+        "output": 14109,
+        "total": 1256176
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 39.60540125000003,
+      "date": "2026-03-30",
+      "messageCount": 858,
+      "tokens": {
+        "cacheRead": 50254473,
+        "cacheWrite": 0,
+        "input": 7138466,
+        "output": 452236,
+        "total": 57846903
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 6.986358350000002,
+      "date": "2026-03-27",
+      "messageCount": 154,
+      "tokens": {
+        "cacheRead": 4664433,
+        "cacheWrite": 0,
+        "input": 1655740,
+        "output": 83576,
+        "total": 6405349
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 12.721002599999988,
+      "date": "2026-03-26",
+      "messageCount": 310,
+      "tokens": {
+        "cacheRead": 16502687,
+        "cacheWrite": 0,
+        "input": 2238997,
+        "output": 134290,
+        "total": 18875974
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 3.3586907999999998,
+      "date": "2026-03-25",
+      "messageCount": 143,
+      "tokens": {
+        "cacheRead": 4230475,
+        "cacheWrite": 0,
+        "input": 1070274,
+        "output": 55968,
+        "total": 5372257
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 5.65334745,
+      "date": "2026-03-23",
+      "messageCount": 165,
+      "tokens": {
+        "cacheRead": 9105818,
+        "cacheWrite": 0,
+        "input": 1073314,
+        "output": 62315,
+        "total": 10243175
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.027328099999999998,
+      "date": "2026-03-20",
+      "messageCount": 8,
+      "tokens": {
+        "cacheRead": 89344,
+        "cacheWrite": 0,
+        "input": 58218,
+        "output": 3926,
+        "total": 152832
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 11.306841149999997,
+      "date": "2026-03-19",
+      "messageCount": 205,
+      "tokens": {
+        "cacheRead": 8730265,
+        "cacheWrite": 0,
+        "input": 2622897,
+        "output": 149015,
+        "total": 11502369
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 3.380903400000001,
+      "date": "2026-03-18",
+      "messageCount": 71,
+      "tokens": {
+        "cacheRead": 2336899,
+        "cacheWrite": 0,
+        "input": 956731,
+        "output": 28390,
+        "total": 3322788
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 14.78050055,
+      "date": "2026-03-17",
+      "messageCount": 296,
+      "tokens": {
+        "cacheRead": 11685681,
+        "cacheWrite": 0,
+        "input": 3509809,
+        "output": 116071,
+        "total": 15311561
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 18.152875299999998,
+      "date": "2026-03-16",
+      "messageCount": 424,
+      "tokens": {
+        "cacheRead": 13565988,
+        "cacheWrite": 0,
+        "input": 4314999,
+        "output": 290920,
+        "total": 18172867
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.266619,
+      "date": "2026-03-15",
+      "messageCount": 1,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 86768,
+        "output": 421,
+        "total": 87189
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 12.314856150000002,
+      "date": "2026-03-13",
+      "messageCount": 144,
+      "tokens": {
+        "cacheRead": 4822777,
+        "cacheWrite": 0,
+        "input": 3547295,
+        "output": 69953,
+        "total": 8442265
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 21.5394962,
+      "date": "2026-03-12",
+      "messageCount": 490,
+      "tokens": {
+        "cacheRead": 20046947,
+        "cacheWrite": 0,
+        "input": 4908725,
+        "output": 186792,
+        "total": 25150400
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 10.075008150000011,
+      "date": "2026-03-11",
+      "messageCount": 253,
+      "tokens": {
+        "cacheRead": 9867937,
+        "cacheWrite": 0,
+        "input": 2394920,
+        "output": 98506,
+        "total": 12361747
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 15.143391550000002,
+      "date": "2026-03-10",
+      "messageCount": 385,
+      "tokens": {
+        "cacheRead": 15927437,
+        "cacheWrite": 0,
+        "input": 3117639,
+        "output": 146868,
+        "total": 19195912
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 9.812141699999998,
+      "date": "2026-03-09",
+      "messageCount": 293,
+      "tokens": {
+        "cacheRead": 11023545,
+        "cacheWrite": 0,
+        "input": 2989019,
+        "output": 147375,
+        "total": 14206595
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 22.45762329999999,
+      "date": "2026-03-06",
+      "messageCount": 605,
+      "tokens": {
+        "cacheRead": 27398845,
+        "cacheWrite": 0,
+        "input": 5141065,
+        "output": 266143,
+        "total": 32814117
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 10.511677300000004,
+      "date": "2026-03-05",
+      "messageCount": 321,
+      "tokens": {
+        "cacheRead": 13115969,
+        "cacheWrite": 0,
+        "input": 2461117,
+        "output": 114425,
+        "total": 15704887
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 17.650039349999997,
+      "date": "2026-03-04",
+      "messageCount": 413,
+      "tokens": {
+        "cacheRead": 18760302,
+        "cacheWrite": 0,
+        "input": 3505203,
+        "output": 177040,
+        "total": 22442545
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 5.34956925,
+      "date": "2026-02-26",
+      "messageCount": 129,
+      "tokens": {
+        "cacheRead": 5670905,
+        "cacheWrite": 0,
+        "input": 1071204,
+        "output": 43140,
+        "total": 6785249
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 7.818586999999998,
+      "date": "2026-02-25",
+      "messageCount": 205,
+      "tokens": {
+        "cacheRead": 11793945,
+        "cacheWrite": 0,
+        "input": 1311627,
+        "output": 67418,
+        "total": 13172990
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 18.194351899999997,
+      "date": "2026-02-24",
+      "messageCount": 417,
+      "tokens": {
+        "cacheRead": 17470223,
+        "cacheWrite": 0,
+        "input": 3737774,
+        "output": 239471,
+        "total": 21447468
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 1.5858837000000001,
+      "date": "2026-02-23",
+      "messageCount": 49,
+      "tokens": {
+        "cacheRead": 1104139,
+        "cacheWrite": 0,
+        "input": 274574,
+        "output": 28728,
+        "total": 1407441
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 7.73694515,
+      "date": "2026-02-20",
+      "messageCount": 194,
+      "tokens": {
+        "cacheRead": 7162708,
+        "cacheWrite": 0,
+        "input": 1572630,
+        "output": 106846,
+        "total": 8842184
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 9.3026755,
+      "date": "2026-02-19",
+      "messageCount": 215,
+      "tokens": {
+        "cacheRead": 9775157,
+        "cacheWrite": 0,
+        "input": 1982063,
+        "output": 95695,
+        "total": 11852915
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 3.25803625,
+      "date": "2026-02-17",
+      "messageCount": 59,
+      "tokens": {
+        "cacheRead": 2934895,
+        "cacheWrite": 0,
+        "input": 658527,
+        "output": 51953,
+        "total": 3645375
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 18.63918690000001,
+      "date": "2026-02-16",
+      "messageCount": 498,
+      "tokens": {
+        "cacheRead": 27347328,
+        "cacheWrite": 0,
+        "input": 2883676,
+        "output": 234253,
+        "total": 30465257
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 19.038634999999992,
+      "date": "2026-02-13",
+      "messageCount": 428,
+      "tokens": {
+        "cacheRead": 24547265,
+        "cacheWrite": 0,
+        "input": 3390885,
+        "output": 212787,
+        "total": 28150937
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 20.94420735000001,
+      "date": "2026-02-12",
+      "messageCount": 503,
+      "tokens": {
+        "cacheRead": 28455007,
+        "cacheWrite": 0,
+        "input": 3546032,
+        "output": 181014,
+        "total": 32182053
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 4.91121795,
+      "date": "2026-02-11",
+      "messageCount": 85,
+      "tokens": {
+        "cacheRead": 3648319,
+        "cacheWrite": 0,
+        "input": 1184783,
+        "output": 38676,
+        "total": 4871778
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 5.133301800000003,
+      "date": "2026-02-10",
+      "messageCount": 82,
+      "tokens": {
+        "cacheRead": 2720276,
+        "cacheWrite": 0,
+        "input": 1139493,
+        "output": 59916,
+        "total": 3919685
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 1.9856523,
+      "date": "2026-02-09",
+      "messageCount": 39,
+      "tokens": {
+        "cacheRead": 1013281,
+        "cacheWrite": 0,
+        "input": 432266,
+        "output": 25658,
+        "total": 1471205
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.37777079999999996,
+      "date": "2026-02-07",
+      "messageCount": 19,
+      "tokens": {
+        "cacheRead": 405526,
+        "cacheWrite": 0,
+        "input": 65596,
+        "output": 3955,
+        "total": 475077
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 5.137946099999997,
+      "date": "2026-02-06",
+      "messageCount": 75,
+      "tokens": {
+        "cacheRead": 2824892,
+        "cacheWrite": 0,
+        "input": 1360945,
+        "output": 30173,
+        "total": 4216010
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 4.05104125,
+      "date": "2026-02-05",
+      "messageCount": 75,
+      "tokens": {
+        "cacheRead": 4090025,
+        "cacheWrite": 0,
+        "input": 784943,
+        "output": 49120,
+        "total": 4924088
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 23.90860814999998,
+      "date": "2026-02-04",
+      "messageCount": 522,
+      "tokens": {
+        "cacheRead": 30473733,
+        "cacheWrite": 0,
+        "input": 4099957,
+        "output": 247390,
+        "total": 34821080
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 42.83429459999995,
+      "date": "2026-02-03",
+      "messageCount": 954,
+      "tokens": {
+        "cacheRead": 60974582,
+        "cacheWrite": 0,
+        "input": 5720965,
+        "output": 491935,
+        "total": 67187482
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 18.9739422,
+      "date": "2026-02-02",
+      "messageCount": 442,
+      "tokens": {
+        "cacheRead": 24180814,
+        "cacheWrite": 0,
+        "input": 2981416,
+        "output": 185030,
+        "total": 27347260
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 7.743339599999997,
+      "date": "2026-02-01",
+      "messageCount": 132,
+      "tokens": {
+        "cacheRead": 9209182,
+        "cacheWrite": 0,
+        "input": 1350025,
+        "output": 62034,
+        "total": 10621241
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 2.2302621000000005,
+      "date": "2026-01-31",
+      "messageCount": 70,
+      "tokens": {
+        "cacheRead": 3296647,
+        "cacheWrite": 0,
+        "input": 286171,
+        "output": 25517,
+        "total": 3608335
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 20.626377900000005,
+      "date": "2026-01-30",
+      "messageCount": 473,
+      "tokens": {
+        "cacheRead": 27481733,
+        "cacheWrite": 0,
+        "input": 2964321,
+        "output": 232593,
+        "total": 30678647
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 7.167867600000003,
+      "date": "2026-01-29",
+      "messageCount": 127,
+      "tokens": {
+        "cacheRead": 3128347,
+        "cacheWrite": 1244698,
+        "input": 257,
+        "output": 104065,
+        "total": 4477367
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 26.529820349999994,
+      "date": "2026-01-28",
+      "messageCount": 474,
+      "tokens": {
+        "cacheRead": 26068647,
+        "cacheWrite": 3886779,
+        "input": 71395,
+        "output": 261308,
+        "total": 30288129
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 36.68706360000003,
+      "date": "2026-01-27",
+      "messageCount": 885,
+      "tokens": {
+        "cacheRead": 53261172,
+        "cacheWrite": 0,
+        "input": 4520729,
+        "output": 476435,
+        "total": 58258336
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 37.25673760000004,
+      "date": "2026-01-26",
+      "messageCount": 919,
+      "tokens": {
+        "cacheRead": 55301758,
+        "cacheWrite": 0,
+        "input": 4247785,
+        "output": 448163,
+        "total": 59997706
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 2.8999753,
+      "date": "2026-01-23",
+      "messageCount": 29,
+      "tokens": {
+        "cacheRead": 1287403,
+        "cacheWrite": 0,
+        "input": 519546,
+        "output": 11781,
+        "total": 1818730
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 23.155642950000022,
+      "date": "2026-01-22",
+      "messageCount": 285,
+      "tokens": {
+        "cacheRead": 16530165,
+        "cacheWrite": 0,
+        "input": 2395591,
+        "output": 132822,
+        "total": 19058741
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.8862564999999999,
+      "date": "2026-01-21",
+      "messageCount": 10,
+      "tokens": {
+        "cacheRead": 358473,
+        "cacheWrite": 0,
+        "input": 125294,
+        "output": 3222,
+        "total": 486989
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 6.030436100000002,
+      "date": "2026-01-20",
+      "messageCount": 101,
+      "tokens": {
+        "cacheRead": 5843839,
+        "cacheWrite": 0,
+        "input": 458828,
+        "output": 35634,
+        "total": 6338301
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 1.3230975,
+      "date": "2026-01-19",
+      "messageCount": 54,
+      "tokens": {
+        "cacheRead": 1155715,
+        "cacheWrite": 0,
+        "input": 203051,
+        "output": 24482,
+        "total": 1383248
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 29.202352700000084,
+      "date": "2026-01-16",
+      "messageCount": 966,
+      "tokens": {
+        "cacheRead": 45718571,
+        "cacheWrite": 0,
+        "input": 2179774,
+        "output": 133179,
+        "total": 48031524
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 12.3462618,
+      "date": "2026-01-15",
+      "messageCount": 304,
+      "tokens": {
+        "cacheRead": 13180576,
+        "cacheWrite": 0,
+        "input": 2139063,
+        "output": 131660,
+        "total": 15451299
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 14.057480400000001,
+      "date": "2026-01-14",
+      "messageCount": 298,
+      "tokens": {
+        "cacheRead": 15696078,
+        "cacheWrite": 0,
+        "input": 2179524,
+        "output": 187339,
+        "total": 18062941
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 20.994792260000004,
+      "date": "2026-01-13",
+      "messageCount": 354,
+      "tokens": {
+        "cacheRead": 16332453,
+        "cacheWrite": 0,
+        "input": 5597067,
+        "output": 188031,
+        "total": 22119682
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 33.24658829999999,
+      "date": "2026-01-12",
+      "messageCount": 729,
+      "tokens": {
+        "cacheRead": 43250491,
+        "cacheWrite": 0,
+        "input": 4782707,
+        "output": 394888,
+        "total": 48428086
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 3.7603188000000007,
+      "date": "2026-01-10",
+      "messageCount": 106,
+      "tokens": {
+        "cacheRead": 5108896,
+        "cacheWrite": 0,
+        "input": 540850,
+        "output": 40340,
+        "total": 5690086
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 23.208233099999976,
+      "date": "2026-01-09",
+      "messageCount": 694,
+      "tokens": {
+        "cacheRead": 36308347,
+        "cacheWrite": 0,
+        "input": 2555548,
+        "output": 309939,
+        "total": 39173834
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 6.326403299999998,
+      "date": "2026-01-08",
+      "messageCount": 174,
+      "tokens": {
+        "cacheRead": 7770911,
+        "cacheWrite": 0,
+        "input": 996905,
+        "output": 66961,
+        "total": 8834777
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 10.133567999999997,
+      "date": "2026-01-07",
+      "messageCount": 137,
+      "tokens": {
+        "cacheRead": 6048100,
+        "cacheWrite": 0,
+        "input": 2272531,
+        "output": 100103,
+        "total": 8420734
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 17.55597150000001,
+      "date": "2026-01-06",
+      "messageCount": 353,
+      "tokens": {
+        "cacheRead": 23593135,
+        "cacheWrite": 0,
+        "input": 2742197,
+        "output": 150096,
+        "total": 26485428
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.48299669999999995,
+      "date": "2026-01-05",
+      "messageCount": 11,
+      "tokens": {
+        "cacheRead": 364779,
+        "cacheWrite": 0,
+        "input": 110716,
+        "output": 2761,
+        "total": 478256
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.36934140000000004,
+      "date": "2026-01-03",
+      "messageCount": 9,
+      "tokens": {
+        "cacheRead": 337258,
+        "cacheWrite": 0,
+        "input": 75263,
+        "output": 2825,
+        "total": 415346
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 30.761700600000022,
+      "date": "2026-01-02",
+      "messageCount": 852,
+      "tokens": {
+        "cacheRead": 43254462,
+        "cacheWrite": 0,
+        "input": 3617564,
+        "output": 462178,
+        "total": 47334204
+      },
+      "turnCount": 0
+    },
+    {
+      "cost": 0.48217740000000003,
+      "date": "2026-01-01",
+      "messageCount": 7,
+      "tokens": {
+        "cacheRead": 564148,
+        "cacheWrite": 0,
+        "input": 96066,
+        "output": 1649,
+        "total": 661863
+      },
+      "turnCount": 0
+    }
+  ],
+  "models": [
+    {
+      "client": "opencode",
+      "cost": 507.827240849998,
+      "model": "claude-sonnet-4-5",
+      "provider": "github-copilot",
+      "sessionCount": 178,
+      "tokens": {
+        "cacheRead": 652841767,
+        "cacheWrite": 5131477,
+        "input": 69623659,
+        "output": 5590713,
+        "total": 733187616
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 404.8287448500001,
+      "model": "claude-sonnet-4-6",
+      "provider": "github-copilot",
+      "sessionCount": 310,
+      "tokens": {
+        "cacheRead": 424104952,
+        "cacheWrite": 7089751,
+        "input": 65131951,
+        "output": 3707656,
+        "total": 500034310
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 51.7075805,
+      "model": "claude-opus-4-5",
+      "provider": "github-copilot",
+      "sessionCount": 22,
+      "tokens": {
+        "cacheRead": 39299111,
+        "cacheWrite": 0,
+        "input": 5016860,
+        "output": 278949,
+        "total": 44594920
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 7.540134749999998,
+      "model": "claude-opus-4-7",
+      "provider": "github-copilot",
+      "sessionCount": 6,
+      "tokens": {
+        "cacheRead": 5436837,
+        "cacheWrite": 520841,
+        "input": 167,
+        "output": 62625,
+        "total": 6020470
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 5.364342,
+      "model": "gpt-5.4",
+      "provider": "github-copilot",
+      "sessionCount": 5,
+      "tokens": {
+        "cacheRead": 4698368,
+        "cacheWrite": 0,
+        "input": 1158970,
+        "output": 61965,
+        "total": 5943493
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 5.012087849999996,
+      "model": "gpt-5.4-mini",
+      "provider": "github-copilot",
+      "sessionCount": 24,
+      "tokens": {
+        "cacheRead": 22880768,
+        "cacheWrite": 0,
+        "input": 2405203,
+        "output": 167306,
+        "total": 25617555
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 4.302916400000002,
+      "model": "gpt-5-mini",
+      "provider": "github-copilot",
+      "sessionCount": 75,
+      "tokens": {
+        "cacheRead": 199296,
+        "cacheWrite": 0,
+        "input": 12839736,
+        "output": 544000,
+        "total": 13583032
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 2.202201,
+      "model": "gpt-5.5",
+      "provider": "github-copilot",
+      "sessionCount": 2,
+      "tokens": {
+        "cacheRead": 1503232,
+        "cacheWrite": 0,
+        "input": 178409,
+        "output": 5448,
+        "total": 1700259
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 1.6536787499999999,
+      "model": "gpt-5.1-codex-mini",
+      "provider": "github-copilot",
+      "sessionCount": 45,
+      "tokens": {
+        "cacheRead": 12192000,
+        "cacheWrite": 0,
+        "input": 2992451,
+        "output": 193247,
+        "total": 15484834
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 0.26059676,
+      "model": "grok-code",
+      "provider": "opencode",
+      "sessionCount": 3,
+      "tokens": {
+        "cacheRead": 1832448,
+        "cacheWrite": 0,
+        "input": 1019959,
+        "output": 11173,
+        "total": 2865711
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 0.016036250000000002,
+      "model": "gpt-5.1",
+      "provider": "github-copilot",
+      "sessionCount": 1,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 9413,
+        "output": 264,
+        "total": 9840
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 0.0,
+      "model": "claude-opus-41",
+      "provider": "github-copilot",
+      "sessionCount": 1,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0,
+        "output": 0,
+        "total": 0
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 0.0,
+      "model": "gemma4:latest",
+      "provider": "ollama, Ollama",
+      "sessionCount": 19,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 457686,
+        "output": 6150,
+        "total": 467088
+      }
+    },
+    {
+      "client": "opencode",
+      "cost": 0.0,
+      "model": "gpt-4.1",
+      "provider": "github-copilot",
+      "sessionCount": 1,
+      "tokens": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0,
+        "output": 0,
+        "total": 0
+      }
+    }
+  ],
+  "totals": {
+    "cost": 990.7155599599979,
+    "tokens": 1349509128
+  }
+}
