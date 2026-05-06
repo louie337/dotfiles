@@ -23,10 +23,10 @@
 	},
 	"agent": {
 		"build": {
-			"model": "github-copilot/claude-sonnet-4.6"
+			"model": "openai/gpt-5.5"
 		},
 		"plan": {
-			"model": "github-copilot/claude-sonnet-4.6",
+			"model": "openai/gpt-5.5",
 			"color": "#FF6B6B",
 			"permission": {
 				"eidt": "deny"
@@ -38,11 +38,19 @@
 		"patch": {
 			"color": "#FFD966"
 		},
-		"compaction": {
-			"model": "github-copilot/gpt-5-mini"
+		"compaction": {},
+	},
+	"provider": {
+		"openai": {
+			"name": "Datax OpenAI",
+			"options": {
+				"baseURL": "https://sg.datax.io/v1",
+				"apiKey": "{env:DATAX_OPENAI_API_KEY}"
+			},
 		},
 	},
 	"plugin": [
 		"@mohak34/opencode-notifier@latest"
-	]
+	],
+	"small_model": "opencode/big-pickle",
 }

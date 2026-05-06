@@ -1,0 +1,18 @@
+model_provider = "datax-codex-lb"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "low"
+
+[model_providers.datax-codex-lb]
+name = "OpenAI"  # required — enables remote /responses/compact
+apps = false
+base_url = "https://sg.datax.io/backend-api/codex"
+wire_api = "responses"
+env_key = "DATAX_OPENAI_API_KEY"
+supports_websockets = true
+requires_openai_auth = true # required for codex app
+
+[projects."/Users/louie/Documents/emsd/tv-meels-sss/main"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
