@@ -254,3 +254,6 @@ if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)
 # opencode
 export PATH=/Users/louie/.opencode/bin:$PATH
 export PATH=$PATH:$HOME/.maestro/bin
+
+# GVM
+[[ -s "/Users/louie/.gvm/scripts/gvm" ]] && source "/Users/louie/.gvm/scripts/gvm"
