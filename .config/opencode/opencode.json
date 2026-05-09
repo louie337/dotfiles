@@ -31,10 +31,10 @@
 	},
 	"agent": {
 		"build": {
-			"model": "github-copilot/claude-sonnet-4.6"
+			"model": "github-copilot/gpt-5.5"
 		},
 		"plan": {
-			"model": "github-copilot/claude-sonnet-4.6",
+			"model": "github-copilot/gpt-5.5",
 			"color": "#FF6B6B"
 		},
 		"teach": {
