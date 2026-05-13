@@ -47,6 +47,15 @@
 				"baseURL": "https://sg.datax.io/v1",
 				"apiKey": "{env:DATAX_OPENAI_API_KEY}"
 			},
+			"models": {
+				"gpt-5.5": {
+					"limit": {
+						"context": 400000,
+						"input": 272000,
+						"output": 128000
+					}
+				}
+			}
 		},
 	},
 	"plugin": [
