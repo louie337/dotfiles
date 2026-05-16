@@ -9,6 +9,33 @@
       "skillFolderHash": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
       "installedAt": "2026-03-14T03:11:26.039Z",
       "updatedAt": "2026-05-09T14:18:30.329Z"
+    },
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/juliusbrussee/caveman.git",
+      "skillPath": "caveman/SKILL.md",
+      "skillFolderHash": "f524c391d466fe35e0bdbe9707854fcb2be52b26",
+      "installedAt": "2026-05-09T15:10:18.854Z",
+      "updatedAt": "2026-05-09T15:10:18.854Z"
+    },
+    "golang-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/jeffallan/claude-skills.git",
+      "skillPath": "skills/golang-pro/SKILL.md",
+      "skillFolderHash": "e347d9842958ce46d5f0644ef6009304d648a964",
+      "installedAt": "2026-05-09T15:14:28.633Z",
+      "updatedAt": "2026-05-09T15:14:28.633Z"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/agent-skills.git",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "skillFolderHash": "8b4c6a51914e2111ab6f4f00cb81778652aa241d",
+      "installedAt": "2026-05-09T15:17:40.339Z",
+      "updatedAt": "2026-05-09T15:17:40.339Z"
     }
   },
   "dismissed": {
