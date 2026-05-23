@@ -129,6 +129,3 @@ vim.keymap.set("n", "<leader>lv", "<CMD>:Lazy<CR>", { desc = "[L]azy [V]im" })
 
 -- Mason
 vim.keymap.set("n", "<leader>pm", "<CMD>Mason<CR>", { desc = "[M]ason" })
-
--- Alpha
-vim.keymap.set("n", "<leader>pa", "<CMD>Alpha<CR>", { desc = "[A]lpha" })

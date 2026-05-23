@@ -1,9 +1,8 @@
 return {
 	"saghen/blink.cmp",
 	dependencies = {
+		"saghen/blink.lib",
 		"folke/lazydev.nvim",
-		"hrsh7th/nvim-cmp",
-		"Kaiser-Yang/blink-cmp-avante",
 		-- "rafamadriz/friendly-snippets",
 	},
 	opts = {
@@ -32,17 +31,13 @@ return {
 		fuzzy = { implementation = "lua" },
 
 		sources = {
-			default = { "avante", "lsp", "path", "buffer", "snippets" },
+			default = { "lsp", "path", "buffer", "snippets" },
 			providers = {
 				lsp = {
 					score_offset = 10,
 				},
 				snippets = {
 					score_offset = 0,
-				},
-				avante = {
-					module = "blink-cmp-avante",
-					name = "Avante",
 				},
 			},
 		},

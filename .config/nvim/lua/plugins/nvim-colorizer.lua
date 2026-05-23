@@ -12,7 +12,7 @@ local defaults = {
 return {
   "NvChad/nvim-colorizer.lua",
   lazy = true,
-  init = function()
+  config = function()
     require("colorizer").setup({
       css = defaults,
       javascript = defaults,

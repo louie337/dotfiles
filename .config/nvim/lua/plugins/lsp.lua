@@ -1,5 +1,30 @@
 local telescope = require("telescope.builtin")
 
+local servers = { "lua_ls", "ts_ls", "ruff", "gopls" }
+
+local on_attach = function(client, buffer)
+  if client:supports_method("textDocument/documentSymbol") then
+    require("nvim-navic").attach(client, buffer)
+  end
+end
+
+local function configure_lsp_defaults()
+  vim.lsp.config("*", {
+    capabilities = require("blink.cmp").get_lsp_capabilities(),
+    on_attach = on_attach,
+  })
+
+  vim.lsp.config("ts_ls", {
+    on_attach = on_attach,
+  })
+
+  vim.lsp.config("ruff", {
+    init_options = {
+      settings = {},
+    },
+  })
+end
+
 return {
   {
     -- NOTE: LSP Server Manager
@@ -8,7 +33,15 @@ return {
   },
   {
     "mason-org/mason-lspconfig.nvim",
-    config = true,
+    dependencies = { "saghen/blink.cmp" },
+    config = function()
+      configure_lsp_defaults()
+
+      require("mason-lspconfig").setup({
+        ensure_installed = servers,
+        automatic_enable = true,
+      })
+    end,
   },
   {
     -- NOTE: LSP Configuration & Plugins
