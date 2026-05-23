@@ -1,4 +1,5 @@
 local dashboard = require("plugins.snacks.dashboard")
+local explorer = require("plugins.snacks.explorer")
 
 return {
   "folke/snacks.nvim",
@@ -14,7 +15,12 @@ return {
     explorer = { enabled = true },
     indent = { enabled = true },
     input = { enabled = false },
-    picker = { enabled = true },
+    picker = {
+      enabled = true,
+      sources = {
+        explorer = explorer,
+      },
+    },
     notifier = { enabled = false },
     quickfile = { enabled = true },
     scope = { enabled = true },
