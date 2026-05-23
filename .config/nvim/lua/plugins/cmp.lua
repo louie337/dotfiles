@@ -28,6 +28,14 @@ return {
 			ghost_text = { enabled = true },
 		},
 
+		cmdline = {
+			completion = {
+				menu = {
+					auto_show = false,
+				},
+			},
+		},
+
 		fuzzy = { implementation = "lua" },
 
 		sources = {
