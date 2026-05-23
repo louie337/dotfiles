@@ -1,3 +1,4 @@
+---@class snacks.Config
 ---@field explorer? snacks.explorer.Config
 return {
   layout = {
