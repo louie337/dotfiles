@@ -32,14 +32,14 @@ return {
     {
       "<leader>e",
       function()
-        require("neo-tree.command").execute({ toggle = true, dir = vim.loop.cwd(), position = "right" })
+        require("neo-tree.command").execute({ toggle = true, dir = vim.uv.cwd(), position = "right" })
       end,
       desc = "[E]xplore NeoTree (Toggle)",
     },
     {
       "<leader>E",
       function()
-        require("neo-tree.command").execute({ dir = vim.loop.cwd() })
+        require("neo-tree.command").execute({ dir = vim.uv.cwd() })
       end,
       desc = "[E]xplore NeoTree (Focus)",
     },
@@ -50,7 +50,7 @@ return {
   init = function()
     vim.g.neo_tree_remove_legacy_commands = 1
     if vim.fn.argc() == 1 then
-      local stat = vim.loop.fs_stat(vim.fn.argv(0))
+      local stat = vim.uv.fs_stat(vim.fn.argv(0))
       if stat and stat.type == "directory" then
         require("neo-tree")
       end
@@ -61,35 +61,6 @@ return {
     filesystem = {
       bind_to_cwd = false,
       follow_current_file = true,
-      -- NOTE: Avante
-      commands = {
-        avante_add_files = function(state)
-          local node = state.tree:get_node()
-          local filepath = node:get_id()
-          local relative_path = require("avante.utils").relative_path(filepath)
-
-          local sidebar = require("avante").get()
-
-          local open = sidebar:is_open()
-          -- ensure avante sidebar is open
-          if not open then
-            require("avante.api").ask()
-            sidebar = require("avante").get()
-          end
-
-          sidebar.file_selector:add_selected_file(relative_path)
-
-          -- remove neo tree buffer
-          if not open then
-            sidebar.file_selector:remove_selected_file("neo-tree filesystem [1]")
-          end
-        end,
-      },
-      window = {
-        mappings = {
-          ["oa"] = "avante_add_files",
-        },
-      },
       -- filtered_items = {
       --   visible = true, -- This is what you want: If you set this to `true`, all "hide" just mean "dimmed out"
       --   hide_dotfiles = false,

@@ -18,7 +18,7 @@ return {
     notifier = { enabled = false },
     quickfile = { enabled = true },
     scope = { enabled = true },
-    statuscolumn = { enabled = true },
+    statuscolumn = { enabled = false },
     words = { enabled = true },
     lazygit = { enabled = true },
   },

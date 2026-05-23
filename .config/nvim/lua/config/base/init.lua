@@ -54,13 +54,16 @@ vim.api.nvim_create_autocmd("TextYankPost", {
   callback = function()
     vim.hl.on_yank()
   end,
-  group = highlight_group,
+  group = vim.api.nvim_create_augroup("highlight_yank", { clear = true }),
   pattern = "*",
 })
 
 -- NOTE: Prevent auto commenting on newline
-vim.cmd("autocmd BufEnter * set formatoptions-=cro")
-vim.cmd("autocmd BufEnter * setlocal formatoptions-=cro")
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function()
+    vim.opt_local.formatoptions:remove({ "c", "r", "o" })
+  end,
+})
 
 -- NOTE: Add mdx file type support
 vim.filetype.add({
@@ -70,20 +73,26 @@ vim.filetype.add({
 })
 
 local icons = require("options.icons")
-local signs = {
+local diagnostic_signs = {
   Error = icons.diagnostics.Error,
   Warn = icons.diagnostics.Warn,
   Hint = icons.diagnostics.Hint,
   Info = icons.diagnostics.Info,
 }
-for type, icon in pairs(signs) do
-  local hl = "DiagnosticSign" .. type
-  vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
-end
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "help", "man" },
   command = "wincmd H", -- Move the help window to far left
 })
 
-vim.diagnostic.config({ virtual_text = true })
+vim.diagnostic.config({
+  virtual_text = true,
+  signs = {
+    text = {
+      [vim.diagnostic.severity.ERROR] = diagnostic_signs.Error,
+      [vim.diagnostic.severity.WARN] = diagnostic_signs.Warn,
+      [vim.diagnostic.severity.HINT] = diagnostic_signs.Hint,
+      [vim.diagnostic.severity.INFO] = diagnostic_signs.Info,
+    },
+  },
+})

@@ -17,7 +17,7 @@ return {
     vim.keymap.set('v', "<leader>Kn", function()
       builtin.operator('to_constant_case')
     end, { desc = "[C]hange [C]ase to constant case" })
-    vim.keymap.set('v', "<leader>Kd", function()
+    vim.keymap.set('v', "<leader>K.", function()
       builtin.operator('to_dot_case')
     end, { desc = "[C]hange [C]ase to dot case" })
     vim.keymap.set('v', "<leader>Ka", function()
