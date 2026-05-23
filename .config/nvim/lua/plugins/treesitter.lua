@@ -15,16 +15,47 @@ return {
     end
   end,
   config = function()
-    local filetypes = { "lua", "python", "typescript", "typescriptreact", "vim", "dockerfile", "html", "css", "scss" }
+    local parsers = {
+      "lua",
+      "python",
+      "typescript",
+      "tsx",
+      "vim",
+      "dockerfile",
+      "html",
+      "css",
+      "scss",
+      "go",
+      "gomod",
+      "gosum",
+      "gowork",
+    }
+    local filetypes = {
+      "lua",
+      "python",
+      "typescript",
+      "typescriptreact",
+      "vim",
+      "dockerfile",
+      "html",
+      "css",
+      "scss",
+      "go",
+      "gomod",
+      "gosum",
+      "gowork",
+    }
 
     require("nvim-treesitter").setup({
       install_dir = vim.fn.stdpath("data") .. "/site",
     })
 
+    require("nvim-treesitter").install(parsers)
+
     vim.api.nvim_create_autocmd("FileType", {
       pattern = filetypes,
       callback = function(args)
-        pcall(vim.treesitter.start)
+        pcall(vim.treesitter.start, args.buf)
 
         if vim.bo[args.buf].filetype ~= "python" then
           vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
