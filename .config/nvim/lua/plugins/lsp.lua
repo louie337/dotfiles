@@ -8,6 +8,14 @@ local on_attach = function(client, buffer)
   end
 end
 
+local function file_contains(path, pattern)
+  if vim.fn.filereadable(path) == 0 then
+    return false
+  end
+
+  return string.find(table.concat(vim.fn.readfile(path), "\n"), pattern) ~= nil
+end
+
 local function configure_lsp_defaults()
   vim.lsp.config("*", {
     capabilities = require("blink.cmp").get_lsp_capabilities(),
@@ -22,6 +30,17 @@ local function configure_lsp_defaults()
     init_options = {
       settings = {},
     },
+  })
+
+  vim.lsp.config("pyrefly", {
+    cmd = { "uv", "run", "pyrefly", "lsp" },
+    filetypes = { "python" },
+    root_dir = function(bufnr, on_dir)
+      local root = vim.fs.root(bufnr, "pyproject.toml")
+      if root and file_contains(root .. "/pyproject.toml", "pyrefly") then
+        on_dir(root)
+      end
+    end,
   })
 end
 
@@ -41,6 +60,8 @@ return {
         ensure_installed = servers,
         automatic_enable = true,
       })
+
+      vim.lsp.enable("pyrefly")
     end,
   },
   {

@@ -6,6 +6,25 @@ return {
 	config = function()
 		local null_ls = require("null-ls")
 
+		local function file_contains(path, pattern)
+			if vim.fn.filereadable(path) == 0 then
+				return false
+			end
+
+			return string.find(table.concat(vim.fn.readfile(path), "\n"), pattern) ~= nil
+		end
+
+		local function project_uses_mypy(_utils)
+			local root = vim.fs.root(0, { "pyproject.toml", "setup.cfg", "mypy.ini", ".git" })
+			if not root then
+				return false
+			end
+
+			return vim.fn.filereadable(root .. "/mypy.ini") == 1
+				or file_contains(root .. "/setup.cfg", "mypy")
+				or file_contains(root .. "/pyproject.toml", "mypy")
+		end
+
 		null_ls.setup({
 			sources = {
 				-- NOTE: Lua settings
@@ -15,10 +34,10 @@ return {
 				null_ls.builtins.formatting.gofmt,
 
 				-- NOTE: Python settings
-				-- Use mypy for type checking
 				null_ls.builtins.diagnostics.mypy.with({
 					command = "uv",
 					args = { "run", "mypy", "--show-column-numbers", "$FILENAME" },
+					condition = project_uses_mypy,
 				}),
 
 				-- NOTE: Prettier settings
