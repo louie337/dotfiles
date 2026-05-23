@@ -22,4 +22,8 @@ return {
     words = { enabled = true },
     lazygit = { enabled = true },
   },
+  keys = {
+    { "<leader>e", function() Snacks.explorer() end, desc = "[E]xplore Snacks Explorer" },
+    { "<leader>E", function() Snacks.explorer.reveal() end, desc = "[E]xplore Current File" },
+  },
 }
