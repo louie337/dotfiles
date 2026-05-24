@@ -356,67 +356,67 @@ return {
 			mode = { "n", "v" },
 		},
 		{
-			"<leader>Ss",
+			"<leader>ds",
 			function()
 				Snacks.picker.lsp_symbols()
 			end,
 			desc = "[S]nacks LSP [S]ymbols",
 		},
 		{
-			"<leader>SS",
+			"<leader>ws",
 			function()
 				Snacks.picker.lsp_workspace_symbols()
 			end,
 			desc = "[S]nacks LSP Workspace [S]ymbols",
 		},
 		{
-			"<leader>SLd",
+			"gd",
 			function()
 				Snacks.picker.lsp_definitions()
 			end,
-			desc = "[S]nacks [L]SP [D]efinitions",
+			desc = "Snacks [G]o to [D]efinitions",
 		},
 		{
-			"<leader>SLD",
+			"gD",
 			function()
 				Snacks.picker.lsp_declarations()
 			end,
-			desc = "[S]nacks [L]SP [D]eclarations",
+			desc = "Snacks [G]o to [D]eclarations",
 		},
 		{
-			"<leader>SLr",
+			"gr",
 			function()
 				Snacks.picker.lsp_references()
 			end,
-			desc = "[S]nacks [L]SP [R]eferences",
+			desc = "Snacks [G]o to [R]eferences",
 		},
 		{
-			"<leader>SLi",
+			"gI",
 			function()
 				Snacks.picker.lsp_implementations()
 			end,
-			desc = "[S]nacks [L]SP [I]mplementations",
+			desc = "Snacks [G]o to [I]mplementations",
 		},
 		{
-			"<leader>SLt",
+			"gt",
 			function()
 				Snacks.picker.lsp_type_definitions()
 			end,
-			desc = "[S]nacks [L]SP [T]ype Definitions",
+			desc = "Snacks [G]o to [T]ype Definitions",
 		},
 		{
-			"<leader>SLa",
+			"gi",
 			function()
 				Snacks.picker.lsp_incoming_calls()
 			end,
-			desc = "[S]nacks [L]SP Incoming C[a]lls",
+			desc = "Snacks [G]o to [I]ncoming Calls",
 		},
 		{
-			"<leader>SLo",
+			"go",
 			function()
 				Snacks.picker.lsp_outgoing_calls()
 			end,
-			desc = "[S]nacks [L]SP [O]utgoing Calls",
+			desc = "Snacks [G]o to [O]utgoing Calls",
 		},
 		{
 			"<leader>Sz",
