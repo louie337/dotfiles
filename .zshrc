@@ -1,8 +1,6 @@
 # OPENSPEC:START
 # OpenSpec shell completions configuration
 fpath=("$HOME/.oh-my-zsh/custom/completions" $fpath)
-autoload -Uz compinit
-compinit
 # OPENSPEC:END
 
 # NOTE: Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
@@ -18,6 +16,7 @@ fi
 # NOTE: oh-my-zsh Setup
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
+export ZSH_COMPDUMP=$ZSH/cache/.zcompdump-$HOST # NOTE: For caching (https://stackoverflow.com/a/71271754/14923262)
 
 # NOTE: Zsh-vi-mode settings, to prevent the zvm override other keybinds, such as fzf in insert mode
 ZVM_INIT_MODE=sourcing
@@ -129,7 +128,6 @@ export LC_ALL="en_US.UTF-8"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 # NOTE: Base setup
-export ZSH_COMPDUMP=$ZSH/cache/.zcompdump-$HOST # NOTE: For caching (https://stackoverflow.com/a/71271754/14923262)
 HISTSEARCH="history-beginning-search"
 XDG_CONFIG_HOME="$HOME/.config"
 
@@ -179,19 +177,23 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 # NOTE: Nvim Setup
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+load-nvm() {
+  unset -f load-nvm nvm node npm npx corepack
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+}
+nvm() { load-nvm && nvm "$@"; }
+node() { load-nvm && node "$@"; }
+npm() { load-nvm && npm "$@"; }
+npx() { load-nvm && npx "$@"; }
+corepack() { load-nvm && corepack "$@"; }
 
 # NOTE: Yarn Setup
-export PATH=$PATH:$(yarn global bin)
+export PATH="$PATH:$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin"
 
 # NOTE: pnpm setup
 export PNPM_HOME=$HOME/Library/pnpm
 export PATH="$PATH:$PNPM_HOME"
 # pnpm endexport 
-
-# NOTE: thefuck setup
-eval $(thefuck --alias fk)
 
 # NOTE: rust setup
 export PATH=$PATH:$HOME/.cargo/bin:
@@ -209,7 +211,12 @@ export LDFLAGS="-L/opt/homebrew/opt/zlib/lib"
 export CPPFLAGS="-I/opt/homebrew/opt/zlib/include"
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+[[ -d $PYENV_ROOT/shims ]] && export PATH="$PYENV_ROOT/shims:$PATH"
+pyenv() {
+  unset -f pyenv
+  eval "$(command pyenv init -)"
+  pyenv "$@"
+}
 
 # NOTE: fzf Setup
 source <(fzf --zsh)
