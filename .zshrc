@@ -1,6 +1,6 @@
 # OPENSPEC:START
 # OpenSpec shell completions configuration
-fpath=("/Users/louie/.oh-my-zsh/custom/completions" $fpath)
+fpath=("$HOME/.oh-my-zsh/custom/completions" $fpath)
 autoload -Uz compinit
 compinit
 # OPENSPEC:END
@@ -240,10 +240,10 @@ export PATH=$PATH:~/go/bin
 export GOPATH=$HOME/go
 
 # NOTE: UV Setup
-export PATH=$PATH:/Users/louie/.local/bin
+export PATH=$PATH:$HOME/.local/bin
 
 # NOTE: Bun Setup
-[ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
@@ -254,8 +254,8 @@ if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)
 export LG_CONFIG_FILE=$HOME/.config/lazygit/config.yml
 
 # opencode
-export PATH=/Users/louie/.opencode/bin:$PATH
+export PATH=$HOME/.opencode/bin:$PATH
 export PATH=$PATH:$HOME/.maestro/bin
 
 # GVM
-[[ -s "/Users/louie/.gvm/scripts/gvm" ]] && source "/Users/louie/.gvm/scripts/gvm"
+[[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
