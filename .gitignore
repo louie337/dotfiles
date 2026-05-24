@@ -1,3 +1,5 @@
 .config/worktrunk/approvals.toml
 .config/worktrunk/approvals.toml.lock
 node_modules
+.config/tmuxinator/*
+!.config/tmuxinator/workbench.yml

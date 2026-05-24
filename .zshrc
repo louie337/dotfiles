@@ -249,10 +249,10 @@ alias oc="opencode"
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
 
 # NOTE: UV Setup
-export PATH=$PATH:/Users/louie/.local/bin
+export PATH=$PATH:$HOME/.local/bin
 
 # NOTE: Bun Setup
-[ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
@@ -263,4 +263,8 @@ if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)
 export LG_CONFIG_FILE=$HOME/.config/lazygit/config.yml
 
 # opencode
-export PATH=/Users/louie/.opencode/bin:$PATH
+export PATH=$HOME/.opencode/bin:$PATH
+export PATH=$PATH:$HOME/.maestro/bin
+
+# GVM
+[[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
