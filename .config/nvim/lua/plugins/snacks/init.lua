@@ -1,6 +1,7 @@
 local dashboard = require("plugins.snacks.dashboard")
 local explorer = require("plugins.snacks.explorer")
 local explorer_hidden = true
+local explorer_ignored = false
 
 local function current_explorer()
 	return Snacks.picker.get({ source = "explorer" })[1]
@@ -10,11 +11,13 @@ local function explorer_opts(opts)
 	local current = current_explorer()
 	if current then
 		explorer_hidden = current.opts.hidden
+		explorer_ignored = current.opts.ignored
 	end
-	opts = vim.tbl_extend("force", { hidden = explorer_hidden }, opts or {})
+	opts = vim.tbl_extend("force", { hidden = explorer_hidden, ignored = explorer_ignored }, opts or {})
 	local on_close = opts.on_close
 	opts.on_close = function(picker)
 		explorer_hidden = picker.opts.hidden
+		explorer_ignored = picker.opts.ignored
 		if on_close then
 			on_close(picker)
 		end
