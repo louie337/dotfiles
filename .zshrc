@@ -131,11 +131,12 @@ export LC_ALL="en_US.UTF-8"
 # NOTE: Base setup
 export ZSH_COMPDUMP=$ZSH/cache/.zcompdump-$HOST # NOTE: For caching (https://stackoverflow.com/a/71271754/14923262)
 HISTSEARCH="history-beginning-search"
+XDG_CONFIG_HOME="$HOME/.config"
 
 # NOTE: Brew setup
 export HOMEBREW_NO_AUTO_UPDATE=1
 
-# NOTE: Personal aliases
+# NOTE: Aliases
 # alias vim="nvim --listen /tmp/nvim-server.pipe" # NOTE: Suggested by lazygit.nvim
 alias vim="nvim" # NOTE: Suggested by lazygit.nvim
 alias vnvim='nvim $HOME/.config/nvim' # NOTE: Suggested by lazygit.nvim
@@ -241,15 +242,16 @@ export GOPATH=$HOME/go
 # NOTE: UV Setup
 export PATH=$PATH:/Users/louie/.local/bin
 
-# bun completions
+# NOTE: Bun Setup
 [ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
-
-# bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 # NOTE: WorkTrunk
 if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
+
+# NOTE: Lazygit
+export LG_CONFIG_FILE=$HOME/.config/lazygit/config.yml
 
 # opencode
 export PATH=/Users/louie/.opencode/bin:$PATH
