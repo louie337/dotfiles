@@ -14,6 +14,7 @@ return {
 			{ "<leader>x", group = "+Trouble [X]", mode = modes },
 			{ "<leader>p", group = "+[P]rint", mode = modes },
 			{ "<leader>s", group = "+[S]earch", mode = modes },
+			{ "<leader>S", group = "+[S]nacks", mode = modes },
 			{ "<leader>K", group = "+[C]ase Change", mode = modes },
 		},
 	},
