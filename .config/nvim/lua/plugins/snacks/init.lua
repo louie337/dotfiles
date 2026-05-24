@@ -22,15 +22,12 @@ local function explorer_opts(opts)
 	return opts
 end
 
-local function reveal_explorer()
-	if current_explorer() then
-		Snacks.explorer.reveal()
+local function focus_explorer()
+	local current = current_explorer()
+	if current then
+		current:focus("list", { show = true })
 	else
-		Snacks.explorer(explorer_opts({
-			on_show = function()
-				Snacks.explorer.reveal()
-			end,
-		}))
+		Snacks.explorer(explorer_opts())
 	end
 end
 
@@ -82,7 +79,7 @@ return {
 			end,
 			desc = "[S]earch [E]xplore Files",
 		},
-		{ "<leader>E", reveal_explorer, desc = "[S]earch [E]xplore Current File" },
+		{ "<leader>E", focus_explorer, desc = "[S]earch [E]xplorer Focus" },
 		{
 			"<leader>ss",
 			function()
