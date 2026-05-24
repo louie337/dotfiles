@@ -1,3 +1,6 @@
+# Profiler
+zmodload zsh/zprof
+
 # OPENSPEC:START
 # OpenSpec shell completions configuration
 fpath=("$HOME/.oh-my-zsh/custom/completions" $fpath)
