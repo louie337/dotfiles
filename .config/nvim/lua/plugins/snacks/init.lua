@@ -119,7 +119,7 @@ return {
 			desc = "[S]earch [R]ecent Files",
 		},
 		{
-			"<leader>s/",
+			"<leader>/",
 			function()
 				Snacks.picker.lines()
 			end,
