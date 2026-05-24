@@ -83,9 +83,9 @@ return {
 		{
 			"<leader>ss",
 			function()
-				Snacks.picker.smart()
+				Snacks.picker.spelling()
 			end,
-			desc = "[S]earch Smart Find Files",
+			desc = "[S]earch [S]pelling",
 		},
 		{
 			"<leader>sb",
