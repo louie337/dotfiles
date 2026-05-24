@@ -1,4 +1,5 @@
-.git
-.gitignore
-.config/opencode/tools
-./opencode.json
+^/.git
+^/.gitignore
+README.md
+^/config/opencode/tools
+^/opencode.json
