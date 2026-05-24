@@ -94,7 +94,7 @@ end, { desc = "[C]opy [F]ull path to clipboard" })
 
 -- Copy relative path
 vim.keymap.set("n", "<leader>cr", function()
-	local rel_path = vim.fn.expand("%")
+	local rel_path = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
 	vim.fn.setreg("+", rel_path)
 	vim.notify("Copied: " .. rel_path)
 end, { desc = "[C]opy [R]elative path to clipboard" })
