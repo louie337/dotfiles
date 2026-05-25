@@ -140,7 +140,7 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 # NOTE: Aliases
 # alias vim="nvim --listen /tmp/nvim-server.pipe" # NOTE: Suggested by lazygit.nvim
 alias vim="nvim" # NOTE: Suggested by lazygit.nvim
-alias vnvim='nvim $HOME/.config/nvim' # NOTE: Suggested by lazygit.nvim
+alias vnvim="nvim $HOME/.config/nvim" # NOTE: Suggested by lazygit.nvim
 alias vzsh="nvim $HOME/.zshrc"
 alias szsh="source $HOME/.zshrc"
 alias studio="open -a /Applications/Android\ Studio.app"
@@ -173,7 +173,7 @@ export PATH=$PATH:/opt/homebrew/opt/openjdk/bin
 export CPPFLAGS="-I/opt/homebrew/opt/openjdk/include"
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
 # export JAVA_HOME='/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home' # Init at 2021
-export JAVA_HOME='/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home' # Update at 2023
+export JAVA_HOME="/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home" # Update at 2023
 
 # NOTE: Docker Setup
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
