@@ -401,7 +401,7 @@ return {
 			desc = "Snacks [G]o to [I]mplementations",
 		},
 		{
-			"gt",
+			"gT",
 			function()
 				Snacks.picker.lsp_type_definitions()
 			end,
