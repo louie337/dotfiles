@@ -31,11 +31,15 @@ local function configure_lsp_defaults()
   })
 
   vim.lsp.config("pyrefly", {
-    cmd = { "uv", "run", "pyrefly", "lsp" },
+    cmd = { "uv", "tool", "run", "pyrefly", "lsp" },
     filetypes = { "python" },
     root_dir = function(bufnr, on_dir)
-      local root = vim.fs.root(bufnr, "pyproject.toml")
-      if root and file_contains(root .. "/pyproject.toml", "pyrefly") then
+      local root = vim.fs.root(bufnr, { "pyrefly.toml", "pyproject.toml", "mypy.ini" })
+      if root and (
+        vim.fn.filereadable(root .. "/pyrefly.toml") == 1
+        or vim.fn.filereadable(root .. "/mypy.ini") == 1
+        or file_contains(root .. "/pyproject.toml", "pyrefly")
+      ) then
         on_dir(root)
       end
     end,
