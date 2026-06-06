@@ -9,7 +9,7 @@
 				"-y",
 				"chrome-devtools-mcp@latest"
 			],
-			"enabled": true,
+			"enabled": true
 		}
 	},
 	"permission": {
@@ -23,10 +23,10 @@
 	},
 	"agent": {
 		"build": {
-			"model": "openai/gpt-5.5"
+			"model": "datax_openai/gpt-5.5"
 		},
 		"plan": {
-			"model": "openai/gpt-5.5",
+			"model": "datax_openai/gpt-5.5",
 			"color": "#FF6B6B",
 			"permission": {
 				"eidt": "deny"
@@ -38,10 +38,10 @@
 		"patch": {
 			"color": "#FFD966"
 		},
-		"compaction": {},
+		"compaction": {}
 	},
 	"provider": {
-		"openai": {
+		"datax_openai": {
 			"name": "Datax OpenAI",
 			"options": {
 				"baseURL": "https://sg.datax.io/v1",
@@ -54,12 +54,13 @@
 						"input": 272000,
 						"output": 128000
 					}
-				}
+				},
+				"gpt-5.4-mini": {}
 			}
-		},
+		}
 	},
 	"plugin": [
 		"@mohak34/opencode-notifier@latest"
 	],
-	"small_model": "openai/gpt-5.4-mini",
+	"small_model": "datax_openai/gpt-5.4-mini"
 }
