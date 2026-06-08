@@ -1,2 +1,2 @@
 [commit.generation]
-command = "opencode run -m github-copilot/gpt-5.1-codex-mini"
+command = "opencode run -m datax_openai/gpt-5.4-mini"
