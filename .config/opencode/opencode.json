@@ -29,11 +29,14 @@
 			"model": "datax_openai/gpt-5.5",
 			"color": "#FF6B6B",
 			"permission": {
-				"eidt": "deny"
+				"edit": "deny"
 			}
 		},
 		"teach": {
-			"color": "#2FACED"
+			"color": "#2FACED",
+			"permission": {
+				"edit": "deny"
+			}
 		},
 		"patch": {
 			"color": "#FFD966"
