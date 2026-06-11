@@ -155,6 +155,7 @@ alias stmux="tmux source $HOME/.tmux.conf"
 alias vtmuxpwl="cd $HOME/.tmux/plugins/tmux-powerline"
 alias pnpx="pnpm dlx"
 alias t8r="tmuxinator"
+alias vvpn="nvim /etc/wireguard"
 
 # NOTE: VIM paths
 export GIT_EDITOR=nvim
@@ -240,6 +241,7 @@ alias claude="~/.claude/local/claude"
 
 # NOTE: Claude Code Setup
 alias oc="opencode"
+alias ocv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 opencode"
 
 # NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
