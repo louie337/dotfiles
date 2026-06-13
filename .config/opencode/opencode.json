@@ -9,12 +9,13 @@
 				"-y",
 				"chrome-devtools-mcp@latest"
 			],
-			"enabled": true,
+			"enabled": true
 		},
 		"mobile-mcp": {
 			"type": "local",
 			"command": [
 				"npx",
+				"-y",
 				"@mobilenext/mobile-mcp@latest"
 			],
 			"enabled": true

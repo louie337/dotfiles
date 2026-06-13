@@ -239,9 +239,18 @@ fi
 # NOTE: Claude Code Setup
 alias claude="~/.claude/local/claude"
 
-# NOTE: Claude Code Setup
-alias oc="opencode"
-alias ocv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 opencode"
+# NOTE: opencode Setup
+oc() {
+  load-nvm
+  local node_bin="$(dirname "$(command -v node)")"
+  PATH="$node_bin:$PATH" opencode "$@"
+}
+
+ocv() {
+  load-nvm
+  local node_bin="$(dirname "$(command -v node)")"
+  PATH="$node_bin:$PATH" HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 opencode "$@"
+}
 
 # NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
