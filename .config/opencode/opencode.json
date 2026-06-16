@@ -56,9 +56,18 @@
 						"context": 400000,
 						"input": 272000,
 						"output": 128000
-					}
+					},
+					"modalities": {
+						"input": ["text", "image"],
+						"output": ["text"]
+          }
 				},
-				"gpt-5.4-mini": {}
+				"gpt-5.4-mini": {
+					"modalities": {
+						"input": ["text", "image"],
+						"output": ["text"]
+          }
+				}
 			}
 		}
 	},
