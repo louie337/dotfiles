@@ -182,8 +182,12 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 # NOTE: Nvim Setup
 export NVM_DIR="$HOME/.nvm"
 load-nvm() {
-  unset -f load-nvm nvm node npm npx corepack
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [[ -n ${__NVM_LOADED:-} ]] && return 0
+
+  unset -f nvm node npm npx corepack 2>/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] || return 1
+  \. "$NVM_DIR/nvm.sh"
+  __NVM_LOADED=1
 }
 nvm() { load-nvm && nvm "$@"; }
 node() { load-nvm && node "$@"; }
