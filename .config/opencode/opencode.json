@@ -1,92 +1,107 @@
 {
-"$schema": "https://opencode.ai/config.json",
-"autoupdate": false,
-"mcp": {
-"chrome-devtools": {
-"type": "local",
-"command": [
-"npx",
-"-y",
-"chrome-devtools-mcp@latest"
-],
-"enabled": true
-},
-"linear": {
-"type": "remote",
-"url": "https://mcp.linear.app/mcp",
-"enabled": true
-}
-},
-"permission": {
-"bash": {
-"*": "allow",
-"git add *": "ask",
-"git commit *": "ask",
-"git stash *": "allow",
-"git push *": "deny"
-}
-},
-"provider": {
-"openai": {
-"options": {
-"headerTimeout": 60000,
-"chunkTimeout": 60000,
-"timeout": 600000
-}
-}
-},
-"agent": {
-"build": {
-"model": "datax_openai/gpt-5.5"
-},
-"plan": {
-"model": "datax_openai/gpt-5.5",
-"color": "#FF6B6B",
-"permission": {
-"edit": "deny"
-}
-},
-"teach": {
-"color": "#2FACED",
-"permission": {
-"edit": "deny"
-}
-},
-"patch": {
-"color": "#FFD966"
-},
-"compaction": {}
-},
-"provider": {
-"datax_openai": {
-"name": "Datax OpenAI",
-"options": {
-"baseURL": "https://sg.datax.io/v1",
-"apiKey": "{env:DATAX_OPENAI_API_KEY}"
-},
-"models": {
-"gpt-5.5": {
-"limit": {
-"context": 400000,
-"input": 272000,
-"output": 128000
-},
-"modalities": {
-"input": ["text", "image"],
-"output": ["text"]
-}
-},
-"gpt-5.4-mini": {
-"modalities": {
-"input": ["text", "image"],
-"output": ["text"]
-}
-}
-}
-}
-},
-"plugin": [
-"@mohak34/opencode-notifier@latest"
-],
-"small_model": "datax_openai/gpt-5.4-mini"
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "mcp": {
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "enabled": true
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": true
+    },
+    "gitlab": {
+      "type": "remote",
+      "url": "https://gitlab.com/api/v4/mcp",
+      "enabled": true
+    }
+  },
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "git add *": "ask",
+      "git commit *": "ask",
+      "git stash *": "allow",
+      "git push *": "deny"
+    }
+  },
+  "provider": {
+    "openai": {
+      "options": {
+        "headerTimeout": 60000,
+        "chunkTimeout": 60000,
+        "timeout": 600000
+      }
+    }
+  },
+  "agent": {
+    "build": {
+      "model": "datax_openai/gpt-5.5"
+    },
+    "plan": {
+      "model": "datax_openai/gpt-5.5",
+      "color": "#FF6B6B",
+      "permission": {
+        "edit": "deny"
+      }
+    },
+    "teach": {
+      "color": "#2FACED",
+      "permission": {
+        "edit": "deny"
+      }
+    },
+    "patch": {
+      "color": "#FFD966"
+    },
+    "compaction": {}
+  },
+  "provider": {
+    "datax_openai": {
+      "name": "Datax OpenAI",
+      "options": {
+        "baseURL": "https://sg.datax.io/v1",
+        "apiKey": "{env:DATAX_OPENAI_API_KEY}"
+      },
+      "models": {
+        "gpt-5.5": {
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.4-mini": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "plugin": [
+    "@mohak34/opencode-notifier@latest"
+  ],
+  "small_model": "datax_openai/gpt-5.4-mini"
 }
