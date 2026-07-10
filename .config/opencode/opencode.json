@@ -42,10 +42,10 @@
   },
   "agent": {
     "build": {
-      "model": "datax_openai/gpt-5.5"
+      "model": "datax_openai/gpt-5.6-sol"
     },
     "plan": {
-      "model": "datax_openai/gpt-5.5",
+      "model": "datax_openai/gpt-5.6-sol",
       "color": "#FF6B6B",
       "permission": {
         "edit": "deny"
@@ -70,6 +70,39 @@
         "apiKey": "{env:DATAX_OPENAI_API_KEY}"
       },
       "models": {
+        "gpt-5.6-sol": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.6-terra": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.6-luna": {
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
         "gpt-5.5": {
           "limit": {
             "context": 400000,
