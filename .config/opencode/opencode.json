@@ -133,7 +133,8 @@
     }
   },
   "plugin": [
-    "@mohak34/opencode-notifier@latest"
+    "@mohak34/opencode-notifier@latest",
+    "superpowers@git+https://github.com/obra/superpowers.git"
   ],
   "small_model": "datax_openai/gpt-5.4-mini"
 }
