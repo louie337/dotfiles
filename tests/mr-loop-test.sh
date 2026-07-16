@@ -97,6 +97,15 @@ assert_eq "wait for approval synchronization" "wait" "$(merge_status_action appr
 assert_eq "accept mergeable status" "ready" "$(merge_status_action mergeable)"
 assert_eq "stop on stable blocked status" "stop" "$(merge_status_action blocked_status)"
 
+assert_eq "request rebase when behind" request "$(rebase_action \
+  '{"diverged_commits_count":2,"rebase_in_progress":false,"merge_error":null}')"
+assert_eq "accept up-to-date target branch" ready "$(rebase_action \
+  '{"diverged_commits_count":0,"rebase_in_progress":false,"merge_error":null}')"
+assert_eq "wait for active GitLab rebase" wait "$(rebase_action \
+  '{"diverged_commits_count":2,"rebase_in_progress":true,"merge_error":null}')"
+assert_eq "stop on GitLab rebase error" error "$(rebase_action \
+  '{"diverged_commits_count":2,"rebase_in_progress":false,"merge_error":"conflict"}')"
+
 expected_mr='{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
 assert_status "accept unchanged MR identity" 0 mr_matches_expected "$expected_mr" "abc" "fix-ci" "7"
 assert_status "reject closed MR identity" 1 mr_matches_expected \
@@ -104,6 +113,35 @@ assert_status "reject closed MR identity" 1 mr_matches_expected \
 assert_status "reject changed source branch" 1 mr_matches_expected "$expected_mr" "abc" "other" "7"
 
 assert_eq "default generated repair limit" "12" "$MAX_REPAIRS"
+
+rebase_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-rebase.XXXXXX")
+rebase_fetch_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-rebase-state.XXXXXX")
+rm -f "$rebase_fetch_state"
+api() {
+  printf '%s\n' "$*" >>"$rebase_calls"
+  case $* in
+    *--method\ PUT*rebase*) printf '{"rebase_in_progress":true}\n' ;;
+    *) return 1 ;;
+  esac
+}
+fetch_mr() {
+  if [ ! -e "$rebase_fetch_state" ]; then
+    : >"$rebase_fetch_state"
+    printf '%s\n' '{"state":"opened","sha":"old","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":false,"merge_error":null}'
+  else
+    printf '%s\n' '{"state":"opened","sha":"new","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":false,"merge_error":null}'
+  fi
+}
+POLL_INTERVAL=0
+EXPECTED_LOCAL_SHA=old
+align_after_gitlab_rebase() { printf 'align %s %s %s\n' "$@" >>"$rebase_calls"; }
+request_gitlab_rebase old fix-ci 7
+assert_eq "request rebase before local alignment" \
+  "--method PUT projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/rebase" \
+  "$(sed -n '1p' "$rebase_calls")"
+assert_eq "align checkout to server rebase" "align fix-ci old new" "$(sed -n '2p' "$rebase_calls")"
+rm -f "$rebase_calls" "$rebase_fetch_state"
+unset -f api fetch_mr align_after_gitlab_rebase 2>/dev/null || true
 
 ancestry_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-ancestry.XXXXXX")
 git -C "$ancestry_repo" init -q

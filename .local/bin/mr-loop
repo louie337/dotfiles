@@ -105,6 +105,16 @@ merge_status_action() {
   esac
 }
 
+rebase_action() {
+  printf '%s' "$1" | jq -r '
+    if (.merge_error // null) != null then "error"
+    elif (.rebase_in_progress // false) then "wait"
+    elif (.diverged_commits_count // 0) > 0 then "request"
+    else "ready"
+    end
+  '
+}
+
 mr_is_mergeable() {
   mr_json=$1
   expected_sha=$2
@@ -205,7 +215,7 @@ api() {
 }
 
 fetch_mr() {
-  mr=$(api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID") || return 1
+  mr=$(api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID?include_rebase_in_progress=true&include_diverged_commits_count=true") || return 1
   approvals=$(api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/approvals") || return 1
   printf '%s\n%s\n' "$mr" "$approvals" | jq -s '
     .[0] + {
@@ -357,6 +367,44 @@ sync_local_descendant() {
   EXPECTED_LOCAL_SHA=$local_sha
 }
 
+align_after_gitlab_rebase() {
+  source_branch=$1
+  old_sha=$2
+  new_sha=$3
+  [ -z "$(git status --porcelain --untracked-files=normal)" ] || return 1
+  [ "$(git branch --show-current)" = "$source_branch" ] || return 1
+  [ "$(git rev-parse HEAD)" = "$old_sha" ] || return 1
+  retry run_with_timeout "$COMMAND_TIMEOUT" git fetch origin "$source_branch" || return 1
+  [ "$(git rev-parse FETCH_HEAD)" = "$new_sha" ] || return 1
+  git switch --detach "$new_sha" >/dev/null || return 1
+  git branch -f "$source_branch" "$new_sha" >/dev/null || return 1
+  git switch "$source_branch" >/dev/null || return 1
+  EXPECTED_LOCAL_SHA=$new_sha
+}
+
+request_gitlab_rebase() {
+  expected_sha=$1
+  source_branch=$2
+  project_id=$3
+  latest_mr=$(fetch_mr) || return 1
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
+  api --method PUT "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/rebase" >/dev/null || return 1
+  deadline=$(($(date +%s) + STATE_CHANGE_TIMEOUT))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    latest_mr=$(fetch_mr) || return 1
+    [ "$(printf '%s' "$latest_mr" | jq -r '.merge_error // empty')" = "" ] || return 1
+    if [ "$(printf '%s' "$latest_mr" | jq -r '.rebase_in_progress // false')" = false ]; then
+      new_sha=$(printf '%s' "$latest_mr" | jq -r .sha)
+      if [ "$new_sha" != "$expected_sha" ]; then
+        align_after_gitlab_rebase "$source_branch" "$expected_sha" "$new_sha"
+        return $?
+      fi
+    fi
+    sleep "$POLL_INTERVAL"
+  done
+  return 1
+}
+
 checkout_mr_branch() {
   mr_json=$1
   source_project_id=$(printf '%s' "$mr_json" | jq -r .source_project_id)
@@ -470,6 +518,21 @@ monitor() {
     source_branch=$(printf '%s' "$mr_json" | jq -r .source_branch)
     assert_unchanged_head "$source_branch" "$EXPECTED_LOCAL_SHA" || die "Current branch or HEAD changed unexpectedly"
     [ -z "$(git status --porcelain --untracked-files=normal)" ] || die "Working tree changed outside the repair agent"
+    case $(rebase_action "$mr_json") in
+      ready) ;;
+      request)
+        project_id=$(printf '%s' "$mr_json" | jq -r .target_project_id)
+        request_gitlab_rebase "$LAST_MR_SHA" "$source_branch" "$project_id" || \
+          die "GitLab rebase failed or did not converge"
+        continue
+        ;;
+      wait)
+        log "GitLab rebase is in progress; waiting ${POLL_INTERVAL}s"
+        sleep "$POLL_INTERVAL"
+        continue
+        ;;
+      error) die "GitLab rebase reported an error" ;;
+    esac
     pipelines=$(fetch_pipelines) || die "Unable to fetch MR pipelines"
     pipeline=$(printf '%s' "$pipelines" | pipeline_for_sha "$LAST_MR_SHA")
     if [ "$pipeline" = null ]; then
