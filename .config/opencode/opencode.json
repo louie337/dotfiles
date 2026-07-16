@@ -31,7 +31,7 @@
   },
   "permission": {
     "bash": {
-      "*": "allow",
+      "*": "ask",
       "git add *": "ask",
       "git commit *": "ask",
       "git stash *": "allow",
