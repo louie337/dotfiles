@@ -16,12 +16,12 @@
         "chrome-devtools-mcp@latest",
         "--auto-connect"
       ],
-      "enabled": true
+      "enabled": false
     },
     "linear": {
       "type": "remote",
       "url": "https://mcp.linear.app/mcp",
-      "enabled": true
+      "enabled": false
     }
   },
   "permission": {
