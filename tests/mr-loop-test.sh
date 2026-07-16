@@ -136,6 +136,10 @@ assert_eq "fetch discussions requests pagination" "--paginate" "$(sed -n '1p' "$
 rm -f "$pagination_args"
 unset -f api 2>/dev/null || true
 
+api() { return 1; }
+assert_status "propagate paginated discussion API failure" 1 fetch_discussions
+unset -f api 2>/dev/null || true
+
 discussion_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-calls.XXXXXX")
 fetch_mr() {
   printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
