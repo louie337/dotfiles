@@ -131,6 +131,16 @@ mr_is_mergeable() {
   ' >/dev/null
 }
 
+mr_is_healthy() {
+  mr_json=$1
+  expected_sha=$2
+  discussions_json=$3
+  pipeline_status=$4
+  [ "$pipeline_status" = success ] || return 1
+  mr_is_mergeable "$mr_json" "$expected_sha" || return 1
+  [ "$(printf '%s' "$discussions_json" | next_unresolved_discussion)" = null ]
+}
+
 repair_allowed() {
   [ "$1" -lt "$2" ]
 }
@@ -612,10 +622,12 @@ process_discussion() {
 merge_mr() {
   expected_sha=$1
   latest_mr=$(fetch_mr) || die "Unable to refresh MR before merge"
-  mr_is_mergeable "$latest_mr" "$expected_sha" || die "MR is no longer mergeable"
+  latest_discussions=$(fetch_discussions) || die "Unable to refresh discussions before merge"
   latest_pipelines=$(fetch_pipelines) || die "Unable to refresh pipeline before merge"
   latest_pipeline=$(printf '%s' "$latest_pipelines" | pipeline_for_sha "$expected_sha")
-  [ "$(printf '%s' "$latest_pipeline" | jq -r '.status // "missing"')" = success ] || die "Latest MR SHA no longer has a successful pipeline"
+  latest_pipeline_status=$(printf '%s' "$latest_pipeline" | jq -r '.status // "missing"')
+  mr_is_healthy "$latest_mr" "$expected_sha" "$latest_discussions" "$latest_pipeline_status" || \
+    die "MR no longer satisfies merge health gates"
   run_with_timeout "$COMMAND_TIMEOUT" glab mr merge "$MR_IID" --repo "$MR_PROJECT" --sha "$expected_sha" --auto-merge=false --yes || die "GitLab rejected the merge"
 }
 
@@ -690,7 +702,8 @@ monitor() {
         sleep "$POLL_INTERVAL"
         ;;
       check-merge)
-        if mr_is_mergeable "$mr_json" "$LAST_MR_SHA"; then
+        latest_discussions=$(fetch_discussions) || die "Unable to refresh discussions before success"
+        if mr_is_healthy "$mr_json" "$LAST_MR_SHA" "$latest_discussions" "$LAST_PIPELINE_STATUS"; then
           if [ "$ON_SUCCESS" = merge ]; then
             merge_mr "$LAST_MR_SHA" || return 1
             print_summary merged

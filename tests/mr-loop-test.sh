@@ -89,6 +89,43 @@ assert_status "reject conflicts" 1 mr_is_mergeable \
   '{"sha":"abc","has_conflicts":true,"detailed_merge_status":"mergeable","blocking_discussions_resolved":true,"approved":true}' "abc"
 assert_status "reject missing approval" 1 mr_is_mergeable \
   '{"sha":"abc","has_conflicts":false,"detailed_merge_status":"mergeable","blocking_discussions_resolved":true,"approved":false}' "abc"
+assert_status "accept healthy MR with no discussions" 0 mr_is_healthy \
+  "$mergeable" "abc" '[]' success
+assert_status "reject healthy status with unresolved discussion" 1 mr_is_healthy \
+  "$mergeable" "abc" '[{"id":"thread","notes":[{"resolvable":true,"resolved":false}]}]' success
+assert_status "reject healthy status with failed exact-SHA pipeline" 1 mr_is_healthy \
+  "$mergeable" "abc" '[]' failed
+
+merge_gate_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-merge-gate.XXXXXX")
+fetch_mr() {
+  printf 'fetch-mr\n' >>"$merge_gate_calls"
+  printf '%s\n' "$mergeable"
+}
+fetch_discussions() {
+  printf 'fetch-discussions\n' >>"$merge_gate_calls"
+  printf '%s\n' '[]'
+}
+fetch_pipelines() {
+  printf 'fetch-pipelines\n' >>"$merge_gate_calls"
+  printf '%s\n' '[{"id":9,"sha":"abc","status":"success"}]'
+}
+run_with_timeout() { printf 'merge:%s\n' "$*" >>"$merge_gate_calls"; }
+merge_mr abc
+assert_eq "merge refreshes all health inputs before mutation" \
+  "fetch-mr fetch-discussions fetch-pipelines merge:120 glab mr merge 17 --repo acme/widget --sha abc --auto-merge=false --yes" \
+  "$(paste -sd ' ' "$merge_gate_calls")"
+: >"$merge_gate_calls"
+fetch_discussions() {
+  printf 'fetch-discussions\n' >>"$merge_gate_calls"
+  printf '%s\n' '[{"id":"thread","notes":[{"resolvable":true,"resolved":false}]}]'
+}
+merge_mr_in_subshell() { ( merge_mr "$@" ); }
+assert_status "fresh unresolved discussion prevents merge" 1 merge_mr_in_subshell abc
+assert_eq "rejected health gate prevents merge mutation" \
+  "fetch-mr fetch-discussions fetch-pipelines" "$(paste -sd ' ' "$merge_gate_calls")"
+rm -f "$merge_gate_calls"
+unset -f fetch_mr fetch_discussions fetch_pipelines run_with_timeout merge_mr_in_subshell 2>/dev/null || true
+. "$SCRIPT"
 
 assert_status "allow repair before limit" 0 repair_allowed 2 3
 assert_status "stop repair at limit" 1 repair_allowed 3 3
@@ -480,6 +517,11 @@ if [ -f "$COMMAND" ] && grep -q '\$HOME/.local/bin/mr-loop \$ARGUMENTS' "$COMMAN
   pass "slash command forwards arguments to supervisor"
 else
   fail "slash command forwards arguments to supervisor"
+fi
+if [ -f "$COMMAND" ] && grep -qi 'synchronize, repair discussions' "$COMMAND"; then
+  pass "slash command describes expanded supervisor"
+else
+  fail "slash command describes expanded supervisor"
 fi
 
 printf '1..%s\n' "$((PASS + FAIL))"
