@@ -75,10 +75,20 @@
       },
       "models": {
         "gpt-5.6-sol": {
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "attachment": true,
+          "reasoning": true,
+          "temperature": false,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -86,10 +96,20 @@
           }
         },
         "gpt-5.6-terra": {
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "attachment": true,
+          "reasoning": true,
+          "temperature": false,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -97,10 +117,20 @@
           }
         },
         "gpt-5.6-luna": {
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "attachment": true,
+          "reasoning": true,
+          "temperature": false,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -109,14 +139,19 @@
         },
         "gpt-5.5": {
           "limit": {
-            "context": 400000,
-            "input": 272000,
+            "context": 1050000,
+            "input": 922000,
             "output": 128000
           },
+          "attachment": true,
+          "reasoning": true,
+          "temperature": false,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -124,6 +159,15 @@
           }
         },
         "gpt-5.4-mini": {
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "attachment": true,
+          "reasoning": true,
+          "temperature": false,
+          "tool_call": true,
           "modalities": {
             "input": [
               "text",
