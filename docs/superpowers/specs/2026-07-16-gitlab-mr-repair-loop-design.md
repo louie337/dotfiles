@@ -2,12 +2,14 @@
 
 ## Goal
 
-Provide an OpenCode slash command that monitors a GitLab merge request from the
-current repository, repairs failed pipelines, and continues until the merge
-request is green and mergeable or a safety limit is reached.
+Provide an OpenCode slash command that synchronizes and monitors a GitLab merge
+request from the current repository, repairs unresolved discussions and failed
+pipelines, and continues until the merge request is green and mergeable or a
+safety limit is reached.
 
-The supervisor owns polling, state, and termination. OpenCode is invoked only
-to diagnose and repair a terminal pipeline failure.
+The supervisor owns polling, Git and GitLab mutations, state, and termination.
+OpenCode is invoked only to evaluate one unresolved discussion or diagnose and
+repair a terminal pipeline failure.
 
 ## User Interface
 
@@ -41,32 +43,44 @@ A deterministic shell program coordinates the run. It:
 1. Validates the local repository and MR.
 2. Acquires a repository-scoped lock.
 3. Checks out and tracks the MR source branch in the current checkout.
-4. Polls GitLab for the MR SHA, pipeline, and merge status.
-5. Invokes the repair agent after a terminal pipeline failure.
-6. Verifies, commits, and pushes a repair.
-7. Waits for a pipeline associated with the pushed SHA.
-8. Stops on success, cancellation, or a safety condition.
+4. Pushes a clean local head when it is a descendant of the MR SHA.
+5. Requests and waits for a GitLab rebase when the source is behind the target.
+6. Evaluates, replies to, and resolves unresolved discussions one at a time.
+7. Polls GitLab for the exact MR SHA pipeline and merge status.
+8. Invokes a repair agent after a terminal pipeline failure.
+9. Verifies, commits, and pushes generated repairs.
+10. Stops on success, cancellation, or a safety condition.
 
 The supervisor uses `glab` and `git` directly. Machine-readable `glab` output
 is preferred so control flow never depends on formatted tables.
 
-### Repair Agent
+### Repair Agents
 
-A dedicated primary OpenCode agent receives:
+A dedicated pipeline-repair agent receives:
 
 - The MR URL, source branch, and current SHA.
 - Failed job names and relevant log output.
 - The current repair attempt number.
 - Instructions to diagnose the root cause, make the smallest correct repair,
-  run relevant local checks, and leave changes uncommitted.
+  recommend relevant local checks, and leave changes uncommitted.
 
-The supervisor, not the agent, performs commits and pushes. This makes the
-three-push limit enforceable outside model behavior.
+The discussion-repair agent receives one unresolved resolvable thread at a
+time, including its complete notes, position, current MR SHA, and relevant
+repository context. It returns a machine-readable disposition:
 
-The agent may read and edit the repository and run development commands. It
-must not push, merge, force-push, rewrite history, change branches, or stash
-work. Existing global permissions remain unchanged; the supervisor performs
-the explicitly requested Git operations itself.
+- `fixed`: the feedback is valid and repository changes were made.
+- `invalid`: the feedback does not apply, with a technical rationale.
+- `obsolete`: the current MR already makes the feedback inapplicable.
+- `blocked`: the thread cannot be handled safely or needs a human decision.
+
+The supervisor, not either agent, performs commits, pushes, discussion replies,
+resolution, rebases, and merges. This makes the repair limit and stale-state
+guards enforceable outside model behavior.
+
+The agents may read and edit the repository. They have no shell access and must
+not stage, commit, push, merge, resolve discussions, rewrite history, change
+branches, or stash work. Existing global permissions remain unchanged; the
+supervisor performs the explicitly requested Git and GitLab operations itself.
 
 ## Preconditions
 
@@ -82,9 +96,50 @@ The supervisor refuses to start unless:
 
 It never stashes, discards, or overwrites local work.
 
+After switching to the MR source branch, the supervisor compares local `HEAD`
+with the current MR SHA:
+
+- Equal SHAs continue without mutation.
+- A clean local `HEAD` that descends from the MR SHA is pushed normally to the
+  source branch, then the supervisor waits for the MR to report that SHA.
+- A local branch behind the MR or divergent from it stops without resetting,
+  rebasing, or overwriting either history.
+
 ## State Machine
 
-### Observe
+### Synchronize
+
+Fetch current MR metadata and confirm the local branch relationship described
+in Preconditions. A normal push of pre-existing descendant commits is a
+synchronization action and does not consume the generated-repair budget.
+
+If GitLab reports that the source branch is behind its target branch, request a
+rebase through the GitLab merge-request rebase API. Poll while
+`rebase_in_progress` is true and continue only after GitLab publishes the new
+MR SHA. A GitLab rebase does not consume the generated-repair budget. Stop on
+conflicts, `merge_error`, API failure, timeout, or an unexpected MR identity
+change. Never fall back to a local rebase or force-push.
+
+### Discussions
+
+Fetch all MR discussions and select the oldest unresolved resolvable thread.
+Process only one thread per iteration so each disposition, repair, reply, and
+resolution remains attributable to one review item.
+
+For a `fixed` disposition:
+
+1. Require repository changes while branch and `HEAD` remain otherwise stable.
+2. Re-fetch the MR and thread to reject stale state.
+3. Commit and normally push the repair.
+4. Wait for the MR to report the pushed SHA.
+5. Post the technical reply and resolve the thread.
+
+For `invalid` or `obsolete`, require a non-empty technical rationale, re-fetch
+the thread, post the reply, and then resolve it without a push. For `blocked`,
+stop without resolving the thread. A reply must succeed before resolution, and
+resolution must target the exact discussion that was evaluated.
+
+### Observe Pipeline
 
 Fetch current MR metadata and identify the latest pipeline for the exact MR
 head SHA.
@@ -115,20 +170,24 @@ After OpenCode exits:
 - Stop if the command failed or timed out.
 - Stop if the working tree has no changes.
 - Stop if forbidden repository state changed, including branch or HEAD.
-- Run repository-relevant verification selected by the repair agent and report
-  its results in the session output.
+- Report the repair agent's recommended verification commands for execution by
+  CI; the shell-restricted agent does not execute repository-controlled code.
 - Commit all intended tracked and untracked repair files with a concise repair
   message.
 - Push normally to the MR source branch. Never force-push.
-- Increment the repair-push count and return to Observe.
+- Increment the repair-push count and return to Synchronize.
 
-The maximum is three repair pushes. Reaching three without a green, mergeable
-MR stops the run and reports the remaining failure.
+The default maximum is 12 generated repair pushes, configurable through the
+existing environment override. Discussion and pipeline repair pushes share the
+same budget. Pre-existing local descendant pushes and GitLab rebases do not
+consume it. Reaching the limit without a green, mergeable MR stops the run and
+reports the remaining failure or discussion.
 
 ### Success
 
 Success requires all of the following for the same current MR SHA:
 
+- No unresolved resolvable discussions remain.
 - The latest applicable pipeline completed successfully.
 - GitLab reports no merge conflicts.
 - GitLab reports the MR mergeable rather than checking, blocked, or unknown.
@@ -151,9 +210,10 @@ The supervisor records the initial branch and HEAD for reporting. It does not
 automatically restore the initial branch because successful repairs leave the
 current checkout on the MR branch by design.
 
-At every transition, the remote MR SHA is authoritative. If another actor
-pushes to the MR while a repair is underway, the supervisor stops rather than
-pushing work based on an obsolete SHA.
+At every mutating transition, the remote MR SHA and identity are re-fetched and
+authoritative. If another actor pushes to the MR while a repair is underway,
+the supervisor stops rather than pushing work, replying, or resolving a thread
+based on obsolete state.
 
 ## Error Handling And Reporting
 
@@ -188,22 +248,29 @@ commands can be stubbed in tests. Tests cover:
 - Dirty-worktree and concurrent-run rejection.
 - Pipeline-to-SHA matching.
 - Pending, running, failed, successful, manual, and missing pipeline states.
-- Three-push enforcement.
+- Clean local descendant push and remote-SHA convergence.
+- Rejection of local-behind and divergent histories.
+- GitLab rebase request, polling, conflict, error, and timeout behavior.
+- Unresolved discussion selection and structured dispositions.
+- Reply-before-resolve ordering and stale-thread rejection.
+- Shared 12-repair-push enforcement.
 - Changed remote SHA before repair, push, and merge.
 - Notify and merge success policies.
 - Merge refusal when approvals, conflicts, or merge checks block the MR.
 - Signal cleanup and stale-lock handling.
 - Redaction and bounded failed-job log collection.
 
-A dry-run fixture test simulates a failure, one repair push, a successful new
-pipeline, and both success policies without contacting GitLab or a model.
+A dry-run fixture test simulates local synchronization, a GitLab rebase, one
+discussion repair, one pipeline repair, a successful new pipeline, and both
+success policies without contacting GitLab or a model.
 
 ## Out Of Scope
 
 - Monitoring multiple MRs in one process.
 - Running as a background daemon or launchd service.
 - GitLab CI-based self-repair loops.
-- Automatically resolving review discussions or approval requests.
-- Force-pushing, rebasing, or rewriting MR history.
+- Force-pushing, local rebasing, or rewriting MR history outside GitLab's
+  guarded merge-request rebase API.
+- Automatically approving merge requests or bypassing required approvals.
 - Repairing MRs from forks without a pushable source branch.
 - Restoring or cleaning the user's checkout automatically.
