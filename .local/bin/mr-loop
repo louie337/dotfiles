@@ -219,11 +219,32 @@ fetch_pipelines() {
 
 fetch_failed_logs() {
   pipeline_id=$1
-  jobs=$(api "projects/$MR_PROJECT_ENCODED/pipelines/$pipeline_id/jobs?scope[]=failed&per_page=100") || return 1
-  LAST_FAILED_JOBS=$(printf '%s' "$jobs" | jq -r 'map(.name) | join(", ")')
-  printf '%s' "$jobs" | jq -r '.[] | [.id, .name] | @tsv' | while IFS="$(printf '\t')" read -r job_id job_name; do
+  jobs_file=$(mktemp "${TMPDIR:-/tmp}/mr-loop-jobs.XXXXXX") || return 1
+  if ! collect_failed_jobs "$pipeline_id" >"$jobs_file" || [ ! -s "$jobs_file" ]; then
+    rm -f "$jobs_file"
+    return 1
+  fi
+  LAST_FAILED_JOBS=$(cut -f2 "$jobs_file" | paste -sd ', ' -)
+  while IFS="$(printf '\t')" read -r job_id job_name; do
     printf '\n===== FAILED JOB: %s (id %s) =====\n' "$job_name" "$job_id"
-    fetch_job_trace "$job_id" || exit 1
+    fetch_job_trace "$job_id" || {
+      rm -f "$jobs_file"
+      return 1
+    }
+  done <"$jobs_file"
+  rm -f "$jobs_file"
+}
+
+collect_failed_jobs() {
+  pipeline_id=$1
+  depth=${2:-0}
+  [ "$depth" -lt 5 ] || return 1
+  jobs=$(api "projects/$MR_PROJECT_ENCODED/pipelines/$pipeline_id/jobs?scope[]=failed&per_page=100") || return 1
+  printf '%s' "$jobs" | jq -r '.[] | [.id, .name] | @tsv'
+  bridges=$(api "projects/$MR_PROJECT_ENCODED/pipelines/$pipeline_id/bridges?per_page=100") || return 1
+  downstream_ids=$(printf '%s' "$bridges" | jq -r '.[] | select(.status == "failed" or .status == "canceled") | .downstream_pipeline.id // empty')
+  for downstream_id in $downstream_ids; do
+    collect_failed_jobs "$downstream_id" "$((depth + 1))" || return 1
   done
 }
 

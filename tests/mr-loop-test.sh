@@ -129,6 +129,19 @@ api() { return 1; }
 assert_status "trace download failure is propagated" 1 fetch_job_trace 99
 unset -f api 2>/dev/null || true
 
+api() {
+  case $1 in
+    */pipelines/100/jobs*) printf '[]\n' ;;
+    */pipelines/100/bridges*) printf '[{"status":"failed","downstream_pipeline":{"id":200}}]\n' ;;
+    */pipelines/200/jobs*) printf '[{"id":300,"name":"child:test","status":"failed"}]\n' ;;
+    */pipelines/200/bridges*) printf '[]\n' ;;
+    *) return 1 ;;
+  esac
+}
+child_jobs=$(collect_failed_jobs 100)
+assert_eq "collect failed job from downstream pipeline" "300	child:test" "$child_jobs"
+unset -f api 2>/dev/null || true
+
 redacted=$(printf 'Authorization: Bearer secret-token\nPRIVATE-TOKEN: abc123\nnormal failure\n' | redact_log)
 assert_eq "redact bearer token" "Authorization: Bearer [REDACTED]" "$(printf '%s' "$redacted" | sed -n '1p')"
 assert_eq "redact private token" "PRIVATE-TOKEN: [REDACTED]" "$(printf '%s' "$redacted" | sed -n '2p')"
