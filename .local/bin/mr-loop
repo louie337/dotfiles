@@ -279,7 +279,11 @@ discussion_snapshot() {
   jq -cS '{
     id,
     position: ((.position // null) | if type == "object" then del(.base_sha, .start_sha, .head_sha) else . end),
-    notes
+    notes: [(.notes // [])[] |
+      if (.position | type) == "object" then
+        .position |= del(.base_sha, .start_sha, .head_sha)
+      else . end
+    ]
   }'
 }
 

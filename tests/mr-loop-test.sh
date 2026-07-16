@@ -183,6 +183,12 @@ evaluated_snapshot=$(printf '%s' "$evaluated_discussion" | discussion_snapshot)
 assert_status "accept identical evaluated discussion snapshot" 0 discussion_matches_snapshot "$evaluated_snapshot" "$evaluated_discussion"
 assert_status "accept GitLab-managed position SHA refresh" 0 discussion_matches_snapshot "$evaluated_snapshot" \
   '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9,"base_sha":"base","start_sha":"start","head_sha":"new-head"},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
+positioned_discussion='{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/a.c","new_line":9,"base_sha":"old-base","start_sha":"old-start","head_sha":"old-head"}}]}'
+positioned_snapshot=$(printf '%s' "$positioned_discussion" | discussion_snapshot)
+assert_status "accept post-push note position SHA refresh" 0 discussion_matches_snapshot "$positioned_snapshot" \
+  '{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/a.c","new_line":9,"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head"}}]}'
+assert_status "reject changed note position after push" 1 discussion_matches_snapshot "$positioned_snapshot" \
+  '{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/b.c","new_line":9,"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head"}}]}'
 assert_status "reject changed discussion note content" 1 discussion_matches_snapshot "$evaluated_snapshot" \
   '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Changed","resolvable":true,"resolved":false}]}'
 assert_status "reject changed discussion position" 1 discussion_matches_snapshot "$evaluated_snapshot" \
