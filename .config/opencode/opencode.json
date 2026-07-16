@@ -31,11 +31,13 @@
   },
   "permission": {
     "bash": {
-      "*": "ask",
-      "git add *": "ask",
-      "git commit *": "ask",
-      "git stash *": "allow",
-      "git push *": "deny"
+      "sudo *": "deny",
+      "su *": "deny",
+      "dd": "deny",
+      "chmod 777": "deny",
+      "rm *": "deny",
+      "kubectl *": "deny",
+      "tofu *": "deny"
     }
   },
   "agent": {
