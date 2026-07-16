@@ -140,6 +140,14 @@ api() { return 1; }
 assert_status "propagate paginated discussion API failure" 1 fetch_discussions
 unset -f api 2>/dev/null || true
 
+api() { return 0; }
+assert_status "reject empty paginated discussion response" 1 fetch_discussions
+unset -f api 2>/dev/null || true
+
+api() { printf '[]\n'; }
+assert_eq "retain valid empty discussion array" "[]" "$(fetch_discussions)"
+unset -f api 2>/dev/null || true
+
 discussion_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-calls.XXXXXX")
 fetch_mr() {
   printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'

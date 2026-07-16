@@ -231,6 +231,7 @@ fetch_mr() {
 fetch_discussions() {
   discussion_pages=$(api --paginate \
     "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/discussions?per_page=100") || return 1
+  [ -n "$discussion_pages" ] || return 1
   printf '%s\n' "$discussion_pages" | jq -s 'add // []'
 }
 
