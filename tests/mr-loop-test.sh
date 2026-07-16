@@ -143,6 +143,28 @@ assert_eq "align checkout to server rebase" "align fix-ci old new" "$(sed -n '2p
 rm -f "$rebase_calls" "$rebase_fetch_state"
 unset -f api fetch_mr align_after_gitlab_rebase 2>/dev/null || true
 
+active_rebase_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-active-rebase.XXXXXX")
+active_rebase_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-active-rebase-state.XXXXXX")
+printf '0\n' >"$active_rebase_state"
+fetch_mr() {
+  active_rebase_fetches=$(sed -n '1p' "$active_rebase_state")
+  active_rebase_fetches=$((active_rebase_fetches + 1))
+  printf '%s\n' "$active_rebase_fetches" >"$active_rebase_state"
+  case $active_rebase_fetches in
+    1) printf '%s\n' '{"sha":"old","rebase_in_progress":true,"merge_error":null}' ;;
+    2) printf '%s\n' '{"sha":"old","rebase_in_progress":false,"merge_error":null}' ;;
+    *) printf '%s\n' '{"sha":"new","rebase_in_progress":false,"merge_error":null}' ;;
+  esac
+}
+align_after_gitlab_rebase() { printf 'align %s %s %s\n' "$@" >>"$active_rebase_calls"; }
+wait_for_gitlab_rebase old fix-ci
+assert_eq "active rebase waits for new SHA before alignment" "align fix-ci old new" \
+  "$(sed -n '1p' "$active_rebase_calls")"
+assert_eq "active rebase polls past unchanged completed SHA" "3" \
+  "$(sed -n '1p' "$active_rebase_state")"
+rm -f "$active_rebase_calls" "$active_rebase_state"
+unset -f fetch_mr align_after_gitlab_rebase 2>/dev/null || true
+
 ancestry_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-ancestry.XXXXXX")
 git -C "$ancestry_repo" init -q
 git -C "$ancestry_repo" config user.name test

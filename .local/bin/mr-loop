@@ -382,13 +382,9 @@ align_after_gitlab_rebase() {
   EXPECTED_LOCAL_SHA=$new_sha
 }
 
-request_gitlab_rebase() {
+wait_for_gitlab_rebase() {
   expected_sha=$1
   source_branch=$2
-  project_id=$3
-  latest_mr=$(fetch_mr) || return 1
-  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
-  api --method PUT "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/rebase" >/dev/null || return 1
   deadline=$(($(date +%s) + STATE_CHANGE_TIMEOUT))
   while [ "$(date +%s)" -lt "$deadline" ]; do
     latest_mr=$(fetch_mr) || return 1
@@ -403,6 +399,16 @@ request_gitlab_rebase() {
     sleep "$POLL_INTERVAL"
   done
   return 1
+}
+
+request_gitlab_rebase() {
+  expected_sha=$1
+  source_branch=$2
+  project_id=$3
+  latest_mr=$(fetch_mr) || return 1
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
+  api --method PUT "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/rebase" >/dev/null || return 1
+  wait_for_gitlab_rebase "$expected_sha" "$source_branch"
 }
 
 checkout_mr_branch() {
@@ -528,7 +534,8 @@ monitor() {
         ;;
       wait)
         log "GitLab rebase is in progress; waiting ${POLL_INTERVAL}s"
-        sleep "$POLL_INTERVAL"
+        wait_for_gitlab_rebase "$LAST_MR_SHA" "$source_branch" || \
+          die "GitLab rebase failed or did not converge"
         continue
         ;;
       error) die "GitLab rebase reported an error" ;;
