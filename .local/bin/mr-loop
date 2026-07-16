@@ -4,12 +4,13 @@ set -u
 
 PROGRAM=${0##*/}
 POLL_INTERVAL=${MR_LOOP_POLL_INTERVAL:-30}
-MAX_REPAIRS=${MR_LOOP_MAX_REPAIRS:-3}
+MAX_REPAIRS=${MR_LOOP_MAX_REPAIRS:-12}
 MAX_RUNTIME=${MR_LOOP_MAX_RUNTIME:-14400}
 MAX_LOG_LINES=${MR_LOOP_MAX_LOG_LINES:-400}
 NETWORK_RETRIES=${MR_LOOP_NETWORK_RETRIES:-3}
 COMMAND_TIMEOUT=${MR_LOOP_COMMAND_TIMEOUT:-120}
 AGENT_TIMEOUT=${MR_LOOP_AGENT_TIMEOUT:-1800}
+STATE_CHANGE_TIMEOUT=${MR_LOOP_STATE_CHANGE_TIMEOUT:-600}
 ON_SUCCESS=notify
 MR_URL=
 MR_HOST=
@@ -315,6 +316,47 @@ cleanup() {
   release_lock
 }
 
+local_head_relation() {
+  mr_sha=$1
+  local_sha=$2
+  if [ "$mr_sha" = "$local_sha" ]; then
+    printf 'equal\n'
+  elif git -C "$REPO_ROOT" merge-base --is-ancestor "$mr_sha" "$local_sha"; then
+    printf 'ahead\n'
+  elif git -C "$REPO_ROOT" merge-base --is-ancestor "$local_sha" "$mr_sha"; then
+    printf 'behind\n'
+  else
+    printf 'diverged\n'
+  fi
+}
+
+wait_for_mr_sha() {
+  expected_sha=$1
+  deadline=$(($(date +%s) + STATE_CHANGE_TIMEOUT))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    current_mr=$(fetch_mr) || return 1
+    [ "$(printf '%s' "$current_mr" | jq -r .state)" = opened ] || return 1
+    if [ "$(printf '%s' "$current_mr" | jq -r .sha)" = "$expected_sha" ]; then
+      return 0
+    fi
+    sleep "$POLL_INTERVAL"
+  done
+  return 1
+}
+
+sync_local_descendant() {
+  source_branch=$1
+  remote_sha=$2
+  project_id=$3
+  local_sha=$(git -C "$REPO_ROOT" rev-parse HEAD) || return 1
+  [ "$(local_head_relation "$remote_sha" "$local_sha")" = ahead ] || return 1
+  latest_mr=$(fetch_mr) || return 1
+  mr_matches_expected "$latest_mr" "$remote_sha" "$source_branch" "$project_id" || return 1
+  run_with_timeout "$COMMAND_TIMEOUT" git -C "$REPO_ROOT" push origin "HEAD:$source_branch" || return 1
+  wait_for_mr_sha "$local_sha" || return 1
+  EXPECTED_LOCAL_SHA=$local_sha
+}
+
 checkout_mr_branch() {
   mr_json=$1
   source_project_id=$(printf '%s' "$mr_json" | jq -r .source_project_id)
@@ -329,8 +371,16 @@ checkout_mr_branch() {
     git switch --track -c "$source_branch" "origin/$source_branch" >/dev/null || die "Unable to create $source_branch"
   fi
   local_sha=$(git rev-parse HEAD)
-  [ "$local_sha" = "$remote_sha" ] || die "Local branch HEAD $local_sha does not match MR SHA $remote_sha"
-  EXPECTED_LOCAL_SHA=$local_sha
+  case $(local_head_relation "$remote_sha" "$local_sha") in
+    equal) ;;
+    ahead)
+      sync_local_descendant "$source_branch" "$remote_sha" "$target_project_id" || \
+        die "Unable to push local descendant commits or converge MR state"
+      ;;
+    behind) die "Local branch is behind MR SHA $remote_sha" ;;
+    diverged) die "Local branch diverges from MR SHA $remote_sha" ;;
+  esac
+  EXPECTED_LOCAL_SHA=$(git -C "$REPO_ROOT" rev-parse HEAD)
 }
 
 assert_unchanged_head() {

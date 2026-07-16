@@ -103,6 +103,59 @@ assert_status "reject closed MR identity" 1 mr_matches_expected \
   '{"state":"closed","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}' "abc" "fix-ci" "7"
 assert_status "reject changed source branch" 1 mr_matches_expected "$expected_mr" "abc" "other" "7"
 
+assert_eq "default generated repair limit" "12" "$MAX_REPAIRS"
+
+ancestry_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-ancestry.XXXXXX")
+git -C "$ancestry_repo" init -q
+git -C "$ancestry_repo" config user.name test
+git -C "$ancestry_repo" config user.email test@example.com
+printf 'base\n' >"$ancestry_repo/file"
+git -C "$ancestry_repo" add file
+git -C "$ancestry_repo" commit -qm base
+base_sha=$(git -C "$ancestry_repo" rev-parse HEAD)
+printf 'ahead\n' >>"$ancestry_repo/file"
+git -C "$ancestry_repo" commit -qam ahead
+ahead_sha=$(git -C "$ancestry_repo" rev-parse HEAD)
+git -C "$ancestry_repo" switch -q --detach "$base_sha"
+printf 'diverged\n' >"$ancestry_repo/other"
+git -C "$ancestry_repo" add other
+git -C "$ancestry_repo" commit -qm diverged
+diverged_sha=$(git -C "$ancestry_repo" rev-parse HEAD)
+
+REPO_ROOT=$ancestry_repo
+assert_eq "equal local head relation" "equal" "$(local_head_relation "$base_sha" "$base_sha")"
+assert_eq "ahead local head relation" "ahead" "$(local_head_relation "$base_sha" "$ahead_sha")"
+assert_eq "behind local head relation" "behind" "$(local_head_relation "$ahead_sha" "$base_sha")"
+assert_eq "diverged local head relation" "diverged" "$(local_head_relation "$ahead_sha" "$diverged_sha")"
+rm -rf "$ancestry_repo"
+REPO_ROOT=
+
+sync_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-sync.XXXXXX")
+git init -q --bare "$sync_root/remote.git"
+git clone -q "$sync_root/remote.git" "$sync_root/work"
+git -C "$sync_root/work" config user.name test
+git -C "$sync_root/work" config user.email test@example.com
+printf 'base\n' >"$sync_root/work/file"
+git -C "$sync_root/work" add file
+git -C "$sync_root/work" commit -qm base
+git -C "$sync_root/work" branch -M fix-ci
+git -C "$sync_root/work" push -qu origin fix-ci
+remote_sha=$(git -C "$sync_root/work" rev-parse HEAD)
+printf 'local\n' >>"$sync_root/work/file"
+git -C "$sync_root/work" commit -qam local
+local_sha=$(git -C "$sync_root/work" rev-parse HEAD)
+REPO_ROOT=$sync_root/work
+fetch_mr() {
+  printf '{"state":"opened","sha":"%s","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}\n' "$remote_sha"
+}
+wait_for_mr_sha() { [ "$1" = "$local_sha" ]; }
+sync_local_descendant fix-ci "$remote_sha" 7
+assert_eq "push local descendant to MR branch" "$local_sha" \
+  "$(git --git-dir="$sync_root/remote.git" rev-parse refs/heads/fix-ci)"
+unset -f fetch_mr wait_for_mr_sha 2>/dev/null || true
+rm -rf "$sync_root"
+REPO_ROOT=
+
 assert_status "bounded command succeeds" 0 run_with_timeout 2 sh -c 'exit 0'
 started=$(date +%s)
 captured=$(run_with_timeout 5 printf 'ready')
