@@ -144,13 +144,15 @@ run_with_timeout() {
   command_pid=$!
   timeout_marker="${TMPDIR:-/tmp}/mr-loop-timeout.$$.$command_pid"
   rm -f "$timeout_marker"
-  (
-    sleep "$seconds"
-    : >"$timeout_marker"
-    kill -TERM -"$command_pid" 2>/dev/null || true
-    sleep 2
-    kill -KILL -"$command_pid" 2>/dev/null || true
-  ) &
+  perl -e '
+    my ($seconds, $marker, $pgid) = @ARGV;
+    sleep $seconds;
+    open my $fh, ">", $marker or exit 1;
+    close $fh;
+    kill "TERM", -$pgid;
+    sleep 2;
+    kill "KILL", -$pgid;
+  ' "$seconds" "$timeout_marker" "$command_pid" &
   timer_pid=$!
   wait "$command_pid"
   status=$?

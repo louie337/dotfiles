@@ -104,6 +104,15 @@ assert_status "reject closed MR identity" 1 mr_matches_expected \
 assert_status "reject changed source branch" 1 mr_matches_expected "$expected_mr" "abc" "other" "7"
 
 assert_status "bounded command succeeds" 0 run_with_timeout 2 sh -c 'exit 0'
+started=$(date +%s)
+captured=$(run_with_timeout 5 printf 'ready')
+elapsed=$(($(date +%s) - started))
+assert_eq "bounded command preserves stdout" "ready" "$captured"
+if [ "$elapsed" -lt 3 ]; then
+  pass "bounded command returns before timeout"
+else
+  fail "bounded command returns before timeout (took ${elapsed}s)"
+fi
 assert_status "bounded command times out" 142 run_with_timeout 1 sleep 2
 assert_status "bounded command kills TERM-resistant process" 142 run_with_timeout 1 sh -c \
   'trap "" TERM; while :; do sleep 1; done'
