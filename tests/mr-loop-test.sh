@@ -5,6 +5,7 @@ set -u
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 SCRIPT="$ROOT/.local/bin/mr-loop"
 AGENT="$ROOT/.config/opencode/agents/mr-repair.md"
+DISCUSSION_AGENT="$ROOT/.config/opencode/agents/mr-discussion-repair.md"
 COMMAND="$ROOT/.config/opencode/commands/mr-loop.md"
 PASS=0
 FAIL=0
@@ -113,6 +114,19 @@ assert_status "reject closed MR identity" 1 mr_matches_expected \
 assert_status "reject changed source branch" 1 mr_matches_expected "$expected_mr" "abc" "other" "7"
 
 assert_eq "default generated repair limit" "12" "$MAX_REPAIRS"
+
+result_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-result.XXXXXX")
+REPO_ROOT=$result_root
+DISCUSSION_RESULT_FILE="$REPO_ROOT/.mr-loop-discussion-result.json"
+printf '%s\n' '{"disposition":"invalid","reply":"The current code already validates this state."}' >"$DISCUSSION_RESULT_FILE"
+parse_discussion_result
+assert_eq "parse discussion disposition" "invalid" "$DISCUSSION_DISPOSITION"
+assert_eq "parse discussion reply" "The current code already validates this state." "$DISCUSSION_REPLY"
+assert_status "reject unknown discussion disposition" 1 sh -c \
+  'printf "%s\n" '\''{"disposition":"maybe","reply":"x"}'\'' >"$1"; . "$2"; REPO_ROOT=$(dirname "$1"); DISCUSSION_RESULT_FILE=$1; parse_discussion_result' \
+  sh "$DISCUSSION_RESULT_FILE" "$SCRIPT"
+rm -rf "$result_root"
+REPO_ROOT=$ROOT
 
 rebase_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-rebase.XXXXXX")
 rebase_fetch_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-rebase-state.XXXXXX")
@@ -282,11 +296,36 @@ if [ -n "$prompt_line" ] && [ -n "$file_line" ] && [ "$prompt_line" -lt "$file_l
 else
   fail "repair prompt precedes array-valued file option"
 fi
+printf '%s\n' '#!/bin/sh' \
+  'printf "%s\n" "$@" >"$MR_LOOP_FAKE_ARGS"' \
+  'printf "%s\n" '\''{"disposition":"obsolete","reply":"The referenced code has already been removed."}'\'' >"$MR_LOOP_FAKE_DISCUSSION_RESULT"' \
+  >"$fake_bin/opencode"
+MR_LOOP_FAKE_DISCUSSION_RESULT="$ROOT/.mr-loop-discussion-result.json"
+export MR_LOOP_FAKE_DISCUSSION_RESULT
+run_discussion_agent '{"sha":"abc"}' '{"id":"discussion-1"}'
+assert_eq "discussion agent disposition retained after cleanup" "obsolete" "$DISCUSSION_DISPOSITION"
+assert_eq "discussion agent reply retained after cleanup" "The referenced code has already been removed." "$DISCUSSION_REPLY"
+assert_status "discussion result removed before repository inspection" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"
+assert_eq "discussion context cleared after invocation" "" "$DISCUSSION_CONTEXT_FILE"
 PATH=$original_path
 export PATH
 rm -rf "$fake_bin"
 rm -f "$fake_args"
 unset -f fetch_failed_logs 2>/dev/null || true
+
+if [ -f "$DISCUSSION_AGENT" ]; then
+  pass "discussion repair agent exists"
+else
+  fail "discussion repair agent exists ($DISCUSSION_AGENT is missing)"
+fi
+if [ -f "$DISCUSSION_AGENT" ] && \
+   grep -Eq '"?\*"?: deny' "$DISCUSSION_AGENT" && \
+   grep -q 'fixed.*invalid.*obsolete.*blocked' "$DISCUSSION_AGENT" && \
+   grep -q '.mr-loop-discussion-result.json' "$DISCUSSION_AGENT"; then
+  pass "discussion agent is restricted and structured"
+else
+  fail "discussion agent is restricted and structured"
+fi
 
 if [ -f "$AGENT" ]; then
   pass "repair agent exists"

@@ -29,6 +29,10 @@ STOP_REASON=
 EXPECTED_LOCAL_SHA=
 CONTEXT_FILE=
 TRACE_FILE=
+DISCUSSION_CONTEXT_FILE=
+DISCUSSION_RESULT_FILE=
+DISCUSSION_DISPOSITION=
+DISCUSSION_REPLY=
 
 usage() {
   printf 'Usage: %s <MR URL> [--on-success notify|merge]\n' "$PROGRAM" >&2
@@ -321,8 +325,12 @@ release_lock() {
 cleanup() {
   [ -z "$CONTEXT_FILE" ] || rm -f "$CONTEXT_FILE"
   [ -z "$TRACE_FILE" ] || rm -f "$TRACE_FILE"
+  [ -z "$DISCUSSION_CONTEXT_FILE" ] || rm -f "$DISCUSSION_CONTEXT_FILE"
+  [ -z "$DISCUSSION_RESULT_FILE" ] || rm -f "$DISCUSSION_RESULT_FILE"
   CONTEXT_FILE=
   TRACE_FILE=
+  DISCUSSION_CONTEXT_FILE=
+  DISCUSSION_RESULT_FILE=
   release_lock
 }
 
@@ -466,6 +474,46 @@ run_repair_agent() {
   status=$?
   rm -f "$CONTEXT_FILE"
   CONTEXT_FILE=
+  return "$status"
+}
+
+parse_discussion_result() {
+  [ -f "$DISCUSSION_RESULT_FILE" ] || return 1
+  jq -e '
+    (keys | sort) == ["disposition", "reply"] and
+    (.disposition | IN("fixed", "invalid", "obsolete", "blocked")) and
+    (.reply | type == "string" and length > 0)
+  ' "$DISCUSSION_RESULT_FILE" >/dev/null || return 1
+  DISCUSSION_DISPOSITION=$(jq -r .disposition "$DISCUSSION_RESULT_FILE")
+  DISCUSSION_REPLY=$(jq -r .reply "$DISCUSSION_RESULT_FILE")
+}
+
+run_discussion_agent() {
+  mr_json=$1
+  discussion_json=$2
+  DISCUSSION_CONTEXT_FILE=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion.XXXXXX") || return 1
+  DISCUSSION_RESULT_FILE="$REPO_ROOT/.mr-loop-discussion-result.json"
+  rm -f "$DISCUSSION_RESULT_FILE"
+  if ! {
+    printf '# GitLab MR discussion repair context\n\n'
+    printf 'MR: %s\n' "$MR_URL"
+    printf 'MR SHA: %s\n' "$(printf '%s' "$mr_json" | jq -r .sha)"
+    printf 'Generated repair attempt: %s of %s\n\n' "$((REPAIRS + 1))" "$MAX_REPAIRS"
+    printf '## Discussion JSON\n\n```json\n%s\n```\n' "$discussion_json"
+  } >"$DISCUSSION_CONTEXT_FILE"; then
+    status=1
+  elif ! run_with_timeout "$AGENT_TIMEOUT" opencode run \
+    "Evaluate the attached discussion, repair it if valid, and write the required result file." \
+    --agent mr-discussion-repair --dir "$REPO_ROOT" --file "$DISCUSSION_CONTEXT_FILE"; then
+    status=1
+  elif ! parse_discussion_result; then
+    status=1
+  else
+    status=0
+  fi
+  rm -f "$DISCUSSION_RESULT_FILE" "$DISCUSSION_CONTEXT_FILE"
+  DISCUSSION_RESULT_FILE=
+  DISCUSSION_CONTEXT_FILE=
   return "$status"
 }
 
