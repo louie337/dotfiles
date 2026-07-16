@@ -1,5 +1,10 @@
+^/.DS_Store
 ^/.git
 ^/.gitignore
 README.md
-^/config/opencode/tools
+^/.config/opencode/tools
+^/.config/opencode/node_modules
+^/.config/opencode/.gitignore
+^/.config/opencode/package-lock.json
+^/.config/opencode/package.json
 ^/opencode.json
