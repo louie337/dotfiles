@@ -643,17 +643,25 @@ case $repair_context_path in
 esac
 printf '%s\n' '#!/bin/sh' \
   'printf "%s\n" "$@" >"$MR_LOOP_FAKE_ARGS"' \
+  'for arg do context_path=$arg; done' \
+  'cp "$context_path" "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"' \
   'printf "%s\n" '\''{"disposition":"obsolete","reply":"The referenced code has already been removed."}'\'' >"$MR_LOOP_FAKE_DISCUSSION_RESULT"' \
   >"$fake_bin/opencode"
 MR_LOOP_FAKE_DISCUSSION_RESULT="$ROOT/.mr-loop-discussion-result.json"
+MR_LOOP_FAKE_DISCUSSION_CONTEXT=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-context.XXXXXX")
 export MR_LOOP_FAKE_DISCUSSION_RESULT
-run_discussion_agent '{"sha":"abc"}' '{"id":"discussion-1"}'
+export MR_LOOP_FAKE_DISCUSSION_CONTEXT
+run_discussion_agent '{"sha":"abc","title":"Fix project names","description":"SUB-1016 scope","source_branch":"fix-ci","target_branch":"main"}' '{"id":"discussion-1"}'
 discussion_file_line=$(grep -n '^--file$' "$fake_args" | cut -d: -f1)
 discussion_context_path=$(sed -n "$((discussion_file_line + 1))p" "$fake_args")
 case $discussion_context_path in
   "$ROOT"/.mr-loop-discussion.*) pass "discussion context stays inside repository" ;;
   *) fail "discussion context stays inside repository (got '$discussion_context_path')" ;;
 esac
+assert_status "discussion context includes MR title" 0 grep -q '^MR title: Fix project names$' "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
+assert_status "discussion context includes MR description" 0 grep -q '^SUB-1016 scope$' "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
+assert_status "discussion context includes source branch" 0 grep -q '^Source branch: fix-ci$' "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
+assert_status "discussion context includes target branch" 0 grep -q '^Target branch: main$' "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
 assert_eq "discussion agent disposition retained after cleanup" "obsolete" "$DISCUSSION_DISPOSITION"
 assert_eq "discussion agent reply retained after cleanup" "The referenced code has already been removed." "$DISCUSSION_REPLY"
 assert_status "discussion result removed before repository inspection" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"
@@ -675,7 +683,7 @@ assert_eq "invocation failure clears result path" "" "$DISCUSSION_RESULT_FILE"
 PATH=$original_path
 export PATH
 rm -rf "$fake_bin"
-rm -f "$fake_args"
+rm -f "$fake_args" "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
 unset -f fetch_failed_logs 2>/dev/null || true
 
 if [ -f "$DISCUSSION_AGENT" ]; then
@@ -685,6 +693,8 @@ else
 fi
 if [ -f "$DISCUSSION_AGENT" ] && \
    grep -Eq '"?\*"?: deny' "$DISCUSSION_AGENT" && \
+   grep -Eq 'external_directory: deny' "$DISCUSSION_AGENT" && \
+   grep -Eq 'webfetch: deny' "$DISCUSSION_AGENT" && \
    grep -q 'fixed.*invalid.*obsolete.*blocked' "$DISCUSSION_AGENT" && \
    grep -q '.mr-loop-discussion-result.json' "$DISCUSSION_AGENT"; then
   pass "discussion agent is restricted and structured"
@@ -701,6 +711,11 @@ if [ -f "$AGENT" ] && grep -Eq '"?\*"?: deny' "$AGENT" && grep -Eq '"?git push \
   pass "repair agent denies shell by default, commit, and push"
 else
   fail "repair agent denies shell by default, commit, and push"
+fi
+if [ -f "$AGENT" ] && grep -Eq 'external_directory: deny' "$AGENT" && grep -Eq 'webfetch: deny' "$AGENT"; then
+  pass "repair agent denies external directories and network fetches"
+else
+  fail "repair agent denies external directories and network fetches"
 fi
 if [ -f "$AGENT" ] && ! grep -Eq '"?(npm|pnpm|yarn|bun|pytest|go test|cargo test|make test)' "$AGENT"; then
   pass "repair agent cannot execute repository-controlled tests"

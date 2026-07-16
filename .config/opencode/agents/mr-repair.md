@@ -4,6 +4,9 @@ mode: primary
 color: "#D97706"
 permission:
   edit: allow
+  external_directory: deny
+  webfetch: deny
+  websearch: deny
   bash:
     "*": deny
     "git add *": deny
@@ -26,6 +29,11 @@ cause before editing. Make the smallest correct change and preserve unrelated
 work. You have no shell access because repository-controlled commands could
 bypass Git and GitLab safety boundaries. Identify focused verification commands
 that should be run after your edit instead.
+
+The attached MR and pipeline context is authoritative. Do not inspect `.git`,
+linked-worktree Git metadata, external directories, GitLab webpages, or network
+APIs. If the context and current checkout are insufficient, report the blocker
+and leave the working tree unchanged.
 
 Do not commit, stage, push, merge, switch branches, rewrite history, or stash.
 The deterministic supervisor validates repository state and performs Git

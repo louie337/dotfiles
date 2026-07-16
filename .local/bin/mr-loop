@@ -611,6 +611,10 @@ run_discussion_agent() {
     printf '# GitLab MR discussion repair context\n\n'
     printf 'MR: %s\n' "$MR_URL"
     printf 'MR SHA: %s\n' "$(printf '%s' "$mr_json" | jq -r .sha)"
+    printf 'MR title: %s\n' "$(printf '%s' "$mr_json" | jq -r '.title // ""')"
+    printf 'MR description:\n%s\n' "$(printf '%s' "$mr_json" | jq -r '.description // ""')"
+    printf 'Source branch: %s\n' "$(printf '%s' "$mr_json" | jq -r .source_branch)"
+    printf 'Target branch: %s\n' "$(printf '%s' "$mr_json" | jq -r .target_branch)"
     printf 'Generated repair attempt: %s of %s\n\n' "$((REPAIRS + 1))" "$MAX_REPAIRS"
     printf '## Discussion JSON\n\n```json\n%s\n```\n' "$discussion_json"
   } >"$DISCUSSION_CONTEXT_FILE"; then
