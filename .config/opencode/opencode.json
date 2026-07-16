@@ -22,11 +22,6 @@
       "type": "remote",
       "url": "https://mcp.linear.app/mcp",
       "enabled": true
-    },
-    "gitlab": {
-      "type": "remote",
-      "url": "https://gitlab.com/api/v4/mcp",
-      "enabled": true
     }
   },
   "permission": {
