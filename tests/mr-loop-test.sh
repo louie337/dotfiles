@@ -41,13 +41,13 @@ assert_eq() {
 
 assert_status() {
   name=$1
-  expected=$2
+  ASSERT_EXPECTED=$2
   shift 2
   set +e
   "$@" >/dev/null 2>&1
   actual=$?
   set -e
-  assert_eq "$name" "$expected" "$actual"
+  assert_eq "$name" "$ASSERT_EXPECTED" "$actual"
 }
 
 set -e
@@ -82,7 +82,7 @@ assert_eq "canceled pipeline repairs" "repair" "$(pipeline_action canceled)"
 assert_eq "manual pipeline stops" "stop" "$(pipeline_action manual)"
 assert_eq "skipped pipeline stops" "stop" "$(pipeline_action skipped)"
 
-mergeable='{"sha":"abc","has_conflicts":false,"detailed_merge_status":"mergeable","blocking_discussions_resolved":true,"approved":true}'
+mergeable='{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"has_conflicts":false,"detailed_merge_status":"mergeable","blocking_discussions_resolved":true,"approved":true}'
 assert_status "accept mergeable MR" 0 mr_is_mergeable "$mergeable" "abc"
 assert_status "reject changed MR SHA" 1 mr_is_mergeable "$mergeable" "def"
 assert_status "reject conflicts" 1 mr_is_mergeable \
@@ -110,9 +110,9 @@ fetch_pipelines() {
   printf '%s\n' '[{"id":9,"sha":"abc","status":"success"}]'
 }
 run_with_timeout() { printf 'merge:%s\n' "$*" >>"$merge_gate_calls"; }
-merge_mr abc
+merge_mr abc fix-ci 7
 assert_eq "merge refreshes all health inputs before mutation" \
-  "fetch-mr fetch-discussions fetch-pipelines merge:120 glab mr merge 17 --repo acme/widget --sha abc --auto-merge=false --yes" \
+  "fetch-mr fetch-discussions fetch-pipelines fetch-mr merge:120 glab mr merge 17 --repo acme/widget --sha abc --auto-merge=false --yes" \
   "$(paste -sd ' ' "$merge_gate_calls")"
 : >"$merge_gate_calls"
 fetch_discussions() {
@@ -120,9 +120,25 @@ fetch_discussions() {
   printf '%s\n' '[{"id":"thread","notes":[{"resolvable":true,"resolved":false}]}]'
 }
 merge_mr_in_subshell() { ( merge_mr "$@" ); }
-assert_status "fresh unresolved discussion prevents merge" 1 merge_mr_in_subshell abc
+assert_status "fresh unresolved discussion prevents merge" 1 merge_mr_in_subshell abc fix-ci 7
 assert_eq "rejected health gate prevents merge mutation" \
-  "fetch-mr fetch-discussions fetch-pipelines" "$(paste -sd ' ' "$merge_gate_calls")"
+  "fetch-mr fetch-discussions fetch-pipelines fetch-mr" "$(paste -sd ' ' "$merge_gate_calls")"
+: >"$merge_gate_calls"
+fresh_mr_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-health-state.XXXXXX")
+printf '0\n' >"$fresh_mr_state"
+fetch_mr() {
+  count=$(sed -n '1p' "$fresh_mr_state")
+  count=$((count + 1))
+  printf '%s\n' "$count" >"$fresh_mr_state"
+  if [ "$count" -eq 1 ]; then
+    printf '%s\n' "$mergeable"
+  else
+    printf '%s\n' "$(printf '%s' "$mergeable" | jq -c '.sha = "changed"')"
+  fi
+}
+assert_status "fresh health check rejects SHA changed during snapshot" 1 \
+  fresh_health_check abc fix-ci 7
+rm -f "$fresh_mr_state"
 rm -f "$merge_gate_calls"
 unset -f fetch_mr fetch_discussions fetch_pipelines run_with_timeout merge_mr_in_subshell 2>/dev/null || true
 . "$SCRIPT"
@@ -162,6 +178,14 @@ assert_eq "select oldest unresolved discussion" "older" \
 assert_eq "no unresolved discussion yields null" "null" \
   "$(printf '%s' '[{"id":"done","notes":[{"resolvable":true,"resolved":true}]}]' | next_unresolved_discussion)"
 
+evaluated_discussion='{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
+evaluated_snapshot=$(printf '%s' "$evaluated_discussion" | discussion_snapshot)
+assert_status "accept identical evaluated discussion snapshot" 0 discussion_matches_snapshot "$evaluated_snapshot" "$evaluated_discussion"
+assert_status "reject changed discussion note content" 1 discussion_matches_snapshot "$evaluated_snapshot" \
+  '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Changed","resolvable":true,"resolved":false}]}'
+assert_status "reject changed discussion position" 1 discussion_matches_snapshot "$evaluated_snapshot" \
+  '{"id":"thread-1","position":{"new_path":"src/b.c","new_line":9},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
+
 pagination_args=$(mktemp "${TMPDIR:-/tmp}/mr-loop-pagination.XXXXXX")
 api() {
   printf '%s\n' "$1" >"$pagination_args"
@@ -186,27 +210,66 @@ assert_eq "retain valid empty discussion array" "[]" "$(fetch_discussions)"
 unset -f api 2>/dev/null || true
 
 discussion_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-calls.XXXXXX")
+discussion_fetch_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-state.XXXXXX")
+printf '0\n' >"$discussion_fetch_state"
+git() {
+  case $* in
+    *branch*--show-current*) printf '%s\n' fix-ci ;;
+    *rev-parse*HEAD*) printf '%s\n' abc ;;
+    *) command git "$@" ;;
+  esac
+}
 fetch_mr() {
   printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
 }
 fetch_discussion() {
   printf 'fetch-discussion:%s\n' "$1" >>"$discussion_calls"
-  printf '%s\n' '{"id":"thread-1","notes":[{"resolvable":true,"resolved":false}]}'
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ "$discussion_fetches" -eq 1 ]; then
+    printf '%s\n' "$evaluated_discussion"
+  else
+    printf '%s' "$evaluated_discussion" | jq -c '.notes += [{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}]'
+  fi
 }
 api() {
   printf 'api-argc:%s\n' "$#" >>"$discussion_calls"
   for api_arg in "$@"; do
     printf 'api-arg:%s\n' "$api_arg" >>"$discussion_calls"
   done
-  printf '{}\n'
+  case $* in
+    *POST*) printf '%s\n' '{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}' ;;
+    *) printf '{}\n' ;;
+  esac
 }
-reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc
+reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
 assert_eq "re-fetch exact discussion before reply" "fetch-discussion:thread-1" \
   "$(sed -n '1p' "$discussion_calls")"
 assert_eq "reply text remains one glab argument" "api-arg:body=Fixed in the current MR head." \
   "$(sed -n '6p' "$discussion_calls")"
 assert_eq "reply discussion before resolve" "api-arg:POST" "$(sed -n '4p' "$discussion_calls")"
-assert_eq "resolve discussion second" "api-arg:PUT" "$(sed -n '10p' "$discussion_calls")"
+assert_eq "resolve discussion second" "api-arg:PUT" "$(grep 'api-arg:PUT' "$discussion_calls")"
+
+: >"$discussion_calls"
+printf '0\n' >"$discussion_fetch_state"
+fetch_discussion() {
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ "$discussion_fetches" -eq 1 ]; then
+    printf '%s\n' "$evaluated_discussion"
+  else
+    printf '%s' "$evaluated_discussion" | jq -c '.notes += [
+      {"id":99,"body":"Concurrent note","resolvable":false,"resolved":false},
+      {"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}
+    ]'
+  fi
+}
+assert_status "reject concurrent note before discussion resolution" 1 \
+  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+assert_eq "concurrent note prevents discussion resolution" "0" \
+  "$(grep -c -- 'api-arg:PUT' "$discussion_calls" || true)"
 
 : >"$discussion_calls"
 api() {
@@ -215,17 +278,17 @@ api() {
   printf '{}\n'
 }
 assert_status "propagate discussion reply failure" 1 \
-  reply_and_resolve_discussion thread-1 "Cannot post." abc
+  reply_and_resolve_discussion thread-1 "Cannot post." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
 assert_eq "do not resolve after reply failure" "0" \
   "$(grep -c -- '--method PUT' "$discussion_calls" || true)"
 
 : >"$discussion_calls"
 fetch_mr() { printf '%s\n' '{"sha":"changed"}'; }
 assert_status "reject changed MR before discussion reply" 1 \
-  reply_and_resolve_discussion thread-1 "Stale reply." abc
+  reply_and_resolve_discussion thread-1 "Stale reply." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
 assert_eq "changed MR prevents discussion API mutation" "0" "$(wc -l <"$discussion_calls" | tr -d ' ')"
-rm -f "$discussion_calls"
-unset -f fetch_mr fetch_discussion api 2>/dev/null || true
+rm -f "$discussion_calls" "$discussion_fetch_state"
+unset -f fetch_mr fetch_discussion api git 2>/dev/null || true
 
 process_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-process.XXXXXX")
 REPO_ROOT=$process_root
@@ -237,6 +300,8 @@ run_discussion_agent() {
 }
 git() {
   case $* in
+    *branch*--show-current*) printf '%s\n' "${TEST_BRANCH:-fix-ci}" ;;
+    *rev-parse*HEAD*) printf '%s\n' "${TEST_HEAD:-abc}" ;;
     *status*porcelain*) [ ! -e "$process_root/change" ] || printf 'changed\n' ;;
     *) command git "$@" ;;
   esac
@@ -256,7 +321,7 @@ rm -f "$process_root/commit"
 REPAIRS=4
 process_discussion "$mr" '{"id":"fixed"}' fix-ci 7
 assert_eq "fixed discussion uses review commit message" \
-  "fix-ci abc 7 fix(review): resolve MR feedback" "$(sed -n '1p' "$process_root/commit")"
+  "fix-ci abc 7 fix(review): resolve MR feedback fix-ci abc" "$(sed -n '1p' "$process_root/commit")"
 assert_eq "fixed discussion replies only after converged push" \
   "fixed|Reply with spaces.|def" "$(sed -n '1p' "$process_root/reply")"
 assert_eq "fixed discussion shares repair budget" "5" "$REPAIRS"
@@ -274,6 +339,15 @@ rm -f "$process_root/change" "$process_root/reply"
 assert_status "blocked discussion requires human intervention" 2 \
   process_discussion "$mr" '{"id":"blocked"}' fix-ci 7
 assert_status "blocked discussion remains unresolved" 1 test -e "$process_root/reply"
+TEST_HEAD=changed
+assert_status "discussion agent HEAD change stops all mutations" 1 \
+  process_discussion "$mr" '{"id":"invalid","notes":[]}' fix-ci 7
+assert_status "changed discussion-agent HEAD prevents reply" 1 test -e "$process_root/reply"
+TEST_HEAD=abc
+TEST_BRANCH=other
+assert_status "discussion agent branch change stops all mutations" 1 \
+  process_discussion "$mr" '{"id":"invalid","notes":[]}' fix-ci 7
+TEST_BRANCH=fix-ci
 unset -f run_discussion_agent commit_generated_repair reply_and_resolve_discussion git 2>/dev/null || true
 rm -rf "$process_root"
 . "$SCRIPT"
@@ -291,6 +365,17 @@ assert_eq "parse discussion reply" "The current code already validates this stat
 assert_status "reject unknown discussion disposition" 1 sh -c \
   'printf "%s\n" '\''{"disposition":"maybe","reply":"x"}'\'' >"$1"; . "$2"; REPO_ROOT=$(dirname "$1"); DISCUSSION_RESULT_FILE=$1; parse_discussion_result' \
   sh "$DISCUSSION_RESULT_FILE" "$SCRIPT"
+for invalid_result in \
+  '{' \
+  '{"disposition":"invalid","reply":"x","extra":true}' \
+  '{"disposition":"invalid"}' \
+  '{"disposition":1,"reply":"x"}' \
+  '{"disposition":"invalid","reply":false}' \
+  '{"disposition":"invalid","reply":"  \n\t"}'
+do
+  printf '%s\n' "$invalid_result" >"$DISCUSSION_RESULT_FILE"
+  assert_status "reject malformed or non-contract discussion result: $invalid_result" 1 parse_discussion_result
+done
 rm -rf "$result_root"
 REPO_ROOT=$ROOT
 
@@ -331,18 +416,32 @@ fetch_mr() {
   active_rebase_fetches=$((active_rebase_fetches + 1))
   printf '%s\n' "$active_rebase_fetches" >"$active_rebase_state"
   case $active_rebase_fetches in
-    1) printf '%s\n' '{"sha":"old","rebase_in_progress":true,"merge_error":null}' ;;
-    2) printf '%s\n' '{"sha":"old","rebase_in_progress":false,"merge_error":null}' ;;
-    *) printf '%s\n' '{"sha":"new","rebase_in_progress":false,"merge_error":null}' ;;
+    1) printf '%s\n' '{"state":"opened","sha":"old","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":true,"merge_error":null}' ;;
+    *) printf '%s\n' '{"state":"opened","sha":"new","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":false,"merge_error":null}' ;;
   esac
 }
 align_after_gitlab_rebase() { printf 'align %s %s %s\n' "$@" >>"$active_rebase_calls"; }
-wait_for_gitlab_rebase old fix-ci
+wait_for_gitlab_rebase old fix-ci 7
 assert_eq "active rebase waits for new SHA before alignment" "align fix-ci old new" \
   "$(sed -n '1p' "$active_rebase_calls")"
-assert_eq "active rebase polls past unchanged completed SHA" "3" \
+assert_eq "active rebase requires direct active-to-new transition" "2" \
   "$(sed -n '1p' "$active_rebase_state")"
 rm -f "$active_rebase_calls" "$active_rebase_state"
+unset -f fetch_mr align_after_gitlab_rebase 2>/dev/null || true
+
+fetch_mr() {
+  printf '%s\n' '{"state":"opened","sha":"other","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":true,"merge_error":null}'
+}
+align_after_gitlab_rebase() { return 0; }
+assert_status "reject unrelated SHA change during active rebase" 1 wait_for_gitlab_rebase old fix-ci 7
+fetch_mr() {
+  printf '%s\n' '{"state":"closed","sha":"new","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":false,"merge_error":null}'
+}
+assert_status "reject closed MR while rebase converges" 1 wait_for_gitlab_rebase old fix-ci 7
+fetch_mr() {
+  printf '%s\n' '{"state":"opened","sha":"old","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"rebase_in_progress":false,"merge_error":null}'
+}
+assert_status "reject ambiguous inactive rebase without new SHA" 1 wait_for_gitlab_rebase old fix-ci 7
 unset -f fetch_mr align_after_gitlab_rebase 2>/dev/null || true
 
 ancestry_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-ancestry.XXXXXX")
@@ -473,6 +572,20 @@ assert_eq "discussion agent disposition retained after cleanup" "obsolete" "$DIS
 assert_eq "discussion agent reply retained after cleanup" "The referenced code has already been removed." "$DISCUSSION_REPLY"
 assert_status "discussion result removed before repository inspection" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"
 assert_eq "discussion context cleared after invocation" "" "$DISCUSSION_CONTEXT_FILE"
+printf '%s\n' '#!/bin/sh' \
+  'printf "%s\n" '\''{"disposition":"invalid","reply":"   "}'\'' >"$MR_LOOP_FAKE_DISCUSSION_RESULT"' \
+  >"$fake_bin/opencode"
+assert_status "discussion agent rejects invalid result" 1 \
+  run_discussion_agent '{"sha":"abc"}' '{"id":"discussion-1"}'
+assert_status "failed discussion agent cleans result file" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"
+assert_eq "failed discussion agent clears context path" "" "$DISCUSSION_CONTEXT_FILE"
+assert_eq "failed discussion agent clears result path" "" "$DISCUSSION_RESULT_FILE"
+printf '%s\n' '#!/bin/sh' 'exit 1' >"$fake_bin/opencode"
+assert_status "discussion agent propagates invocation failure" 1 \
+  run_discussion_agent '{"sha":"abc"}' '{"id":"discussion-1"}'
+assert_status "invocation failure cleans discussion result" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"
+assert_eq "invocation failure clears context path" "" "$DISCUSSION_CONTEXT_FILE"
+assert_eq "invocation failure clears result path" "" "$DISCUSSION_RESULT_FILE"
 PATH=$original_path
 export PATH
 rm -rf "$fake_bin"
@@ -523,6 +636,32 @@ if [ -f "$COMMAND" ] && grep -qi 'synchronize, repair discussions' "$COMMAND"; t
 else
   fail "slash command describes expanded supervisor"
 fi
+
+fixture_events=$(mktemp "${TMPDIR:-/tmp}/mr-loop-fixture.XXXXXX")
+fixture_step() { printf '%s\n' "$1" >>"$fixture_events"; }
+fixture_step descendant-sync
+fixture_step rebase-request
+fixture_step rebase-active
+fixture_step rebase-aligned
+fixture_step discussion-repair
+fixture_step discussion-push
+fixture_step discussion-reply-resolve
+fixture_step pipeline-failed
+fixture_step pipeline-repair-push
+fixture_step pipeline-success
+fixture_mr='{"state":"opened","sha":"final","source_branch":"fix-ci","source_project_id":7,"target_project_id":7,"has_conflicts":false,"detailed_merge_status":"mergeable","blocking_discussions_resolved":true,"approved":true}'
+fetch_mr() { printf '%s\n' "$fixture_mr"; }
+fetch_discussions() { printf '%s\n' '[]'; }
+fetch_pipelines() { printf '%s\n' '[{"id":44,"sha":"final","status":"success"}]'; }
+assert_status "dry-run fixture reaches notify health gate" 0 fresh_health_check final fix-ci 7
+fixture_step notify-ready
+run_with_timeout() { fixture_step merge; }
+merge_mr final fix-ci 7
+assert_eq "dry-run fixture covers approved state sequence" \
+  "descendant-sync rebase-request rebase-active rebase-aligned discussion-repair discussion-push discussion-reply-resolve pipeline-failed pipeline-repair-push pipeline-success notify-ready merge" \
+  "$(paste -sd ' ' "$fixture_events")"
+rm -f "$fixture_events"
+unset -f fixture_step fetch_mr fetch_discussions fetch_pipelines run_with_timeout 2>/dev/null || true
 
 printf '1..%s\n' "$((PASS + FAIL))"
 [ "$FAIL" -eq 0 ]
