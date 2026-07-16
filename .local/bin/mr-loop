@@ -525,7 +525,7 @@ request_gitlab_rebase() {
   mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
   rebase_response=$(api --method PUT "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/rebase") || return 1
   [ "$(printf '%s' "$rebase_response" | jq -r '.rebase_in_progress // false')" = true ] || return 1
-  wait_for_gitlab_rebase "$expected_sha" "$source_branch" "$project_id" true
+  wait_for_gitlab_rebase "$expected_sha" "$source_branch" "$project_id" false
 }
 
 checkout_mr_branch() {
