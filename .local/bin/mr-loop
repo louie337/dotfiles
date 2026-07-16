@@ -1,0 +1,473 @@
+#!/bin/sh
+
+set -u
+
+PROGRAM=${0##*/}
+POLL_INTERVAL=${MR_LOOP_POLL_INTERVAL:-30}
+MAX_REPAIRS=${MR_LOOP_MAX_REPAIRS:-3}
+MAX_RUNTIME=${MR_LOOP_MAX_RUNTIME:-14400}
+MAX_LOG_LINES=${MR_LOOP_MAX_LOG_LINES:-400}
+NETWORK_RETRIES=${MR_LOOP_NETWORK_RETRIES:-3}
+COMMAND_TIMEOUT=${MR_LOOP_COMMAND_TIMEOUT:-120}
+AGENT_TIMEOUT=${MR_LOOP_AGENT_TIMEOUT:-1800}
+ON_SUCCESS=notify
+MR_URL=
+MR_HOST=
+MR_PROJECT=
+MR_IID=
+MR_PROJECT_ENCODED=
+REPO_ROOT=
+LOCK_DIR=
+REPAIRS=0
+LAST_MR_SHA=
+LAST_PIPELINE_SHA=
+LAST_PIPELINE_STATUS=unknown
+LAST_MERGE_STATUS=unknown
+LAST_FAILED_JOBS=
+STOP_REASON=
+EXPECTED_LOCAL_SHA=
+CONTEXT_FILE=
+TRACE_FILE=
+
+usage() {
+  printf 'Usage: %s <MR URL> [--on-success notify|merge]\n' "$PROGRAM" >&2
+}
+
+parse_mr_url() {
+  url=$1
+  parsed=$(printf '%s\n' "$url" | sed -n 's#^https://\([^/]*\)/\(.*/[^/]*\)/-/merge_requests/\([0-9][0-9]*\)/*$#\1|\2|\3#p')
+  [ -n "$parsed" ] || return 1
+  MR_HOST=${parsed%%|*}
+  rest=${parsed#*|}
+  MR_PROJECT=${rest%|*}
+  MR_IID=${rest##*|}
+  MR_PROJECT_ENCODED=$(printf '%s' "$MR_PROJECT" | jq -sRr @uri)
+}
+
+parse_args() {
+  ON_SUCCESS=notify
+  MR_URL=
+  [ "$#" -ge 1 ] || {
+    usage
+    return 2
+  }
+  MR_URL=$1
+  shift
+  parse_mr_url "$MR_URL" || {
+    printf 'Invalid GitLab merge request URL: %s\n' "$MR_URL" >&2
+    return 2
+  }
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      --on-success)
+        [ "$#" -ge 2 ] || {
+          usage
+          return 2
+        }
+        ON_SUCCESS=$2
+        shift 2
+        ;;
+      *)
+        printf 'Unknown argument: %s\n' "$1" >&2
+        return 2
+        ;;
+    esac
+  done
+  case $ON_SUCCESS in
+    notify|merge) ;;
+    *)
+      printf 'Invalid success action: %s\n' "$ON_SUCCESS" >&2
+      return 2
+      ;;
+  esac
+}
+
+pipeline_for_sha() {
+  sha=$1
+  jq -c --arg sha "$sha" '[.[] | select(.sha == $sha)] | sort_by(.id) | last // null'
+}
+
+pipeline_action() {
+  case $1 in
+    created|waiting_for_resource|preparing|pending|running|scheduled) printf 'wait\n' ;;
+    success) printf 'check-merge\n' ;;
+    failed|canceled) printf 'repair\n' ;;
+    *) printf 'stop\n' ;;
+  esac
+}
+
+merge_status_action() {
+  case $1 in
+    mergeable) printf 'ready\n' ;;
+    checking|preparing|approvals_syncing|unchecked) printf 'wait\n' ;;
+    *) printf 'stop\n' ;;
+  esac
+}
+
+mr_is_mergeable() {
+  mr_json=$1
+  expected_sha=$2
+  printf '%s' "$mr_json" | jq -e --arg sha "$expected_sha" '
+    .sha == $sha and
+    .has_conflicts == false and
+    .detailed_merge_status == "mergeable" and
+    .blocking_discussions_resolved == true and
+    .approved == true
+  ' >/dev/null
+}
+
+repair_allowed() {
+  [ "$1" -lt "$2" ]
+}
+
+mr_matches_expected() {
+  mr_json=$1
+  expected_sha=$2
+  expected_branch=$3
+  expected_project_id=$4
+  printf '%s' "$mr_json" | jq -e \
+    --arg sha "$expected_sha" \
+    --arg branch "$expected_branch" \
+    --argjson project_id "$expected_project_id" '
+      .state == "opened" and
+      .sha == $sha and
+      .source_branch == $branch and
+      .source_project_id == $project_id and
+      .target_project_id == $project_id
+    ' >/dev/null
+}
+
+run_with_timeout() {
+  seconds=$1
+  shift
+  perl -e 'setpgrp(0, 0); exec @ARGV' -- "$@" &
+  command_pid=$!
+  timeout_marker="${TMPDIR:-/tmp}/mr-loop-timeout.$$.$command_pid"
+  rm -f "$timeout_marker"
+  (
+    sleep "$seconds"
+    : >"$timeout_marker"
+    kill -TERM -"$command_pid" 2>/dev/null || true
+    sleep 2
+    kill -KILL -"$command_pid" 2>/dev/null || true
+  ) &
+  timer_pid=$!
+  wait "$command_pid"
+  status=$?
+  kill "$timer_pid" 2>/dev/null || true
+  wait "$timer_pid" 2>/dev/null || true
+  if [ -f "$timeout_marker" ]; then
+    rm -f "$timeout_marker"
+    return 142
+  fi
+  return "$status"
+}
+
+redact_log() {
+  sed -E \
+    -e 's/((token|password|secret)[=:])[[:space:]]*[^[:space:]]+/\1[REDACTED]/Ig' \
+    -e 's/(Authorization:[[:space:]]*Bearer)[[:space:]]+[^[:space:]]+/\1 [REDACTED]/Ig' \
+    -e 's/(PRIVATE-TOKEN:)[[:space:]]*[^[:space:]]+/\1 [REDACTED]/Ig'
+}
+
+log() {
+  printf '[mr-loop] %s\n' "$*"
+}
+
+die() {
+  STOP_REASON=$1
+  printf '[mr-loop] ERROR: %s\n' "$STOP_REASON" >&2
+  exit 1
+}
+
+require_commands() {
+  missing=
+  for command_name in git glab jq opencode perl sed tail; do
+    command -v "$command_name" >/dev/null 2>&1 || missing="$missing $command_name"
+  done
+  [ -z "$missing" ] || die "Missing required commands:$missing"
+}
+
+retry() {
+  attempt=1
+  while ! "$@"; do
+    [ "$attempt" -lt "$NETWORK_RETRIES" ] || return 1
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+}
+
+api() {
+  retry run_with_timeout "$COMMAND_TIMEOUT" glab api --hostname "$MR_HOST" "$@"
+}
+
+fetch_mr() {
+  mr=$(api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID") || return 1
+  approvals=$(api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/approvals") || return 1
+  printf '%s\n%s\n' "$mr" "$approvals" | jq -s '
+    .[0] + {
+      approved: (.[1].approved == true or (.[1].approvals_left // 1) == 0)
+    }
+  '
+}
+
+fetch_pipelines() {
+  api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/pipelines?per_page=100"
+}
+
+fetch_failed_logs() {
+  pipeline_id=$1
+  jobs=$(api "projects/$MR_PROJECT_ENCODED/pipelines/$pipeline_id/jobs?scope[]=failed&per_page=100") || return 1
+  LAST_FAILED_JOBS=$(printf '%s' "$jobs" | jq -r 'map(.name) | join(", ")')
+  printf '%s' "$jobs" | jq -r '.[] | [.id, .name] | @tsv' | while IFS="$(printf '\t')" read -r job_id job_name; do
+    printf '\n===== FAILED JOB: %s (id %s) =====\n' "$job_name" "$job_id"
+    fetch_job_trace "$job_id" || exit 1
+  done
+}
+
+fetch_job_trace() {
+  job_id=$1
+  TRACE_FILE=$(mktemp "${TMPDIR:-/tmp}/mr-loop-trace.XXXXXX") || return 1
+  if ! api "projects/$MR_PROJECT_ENCODED/jobs/$job_id/trace" >"$TRACE_FILE"; then
+    rm -f "$TRACE_FILE"
+    TRACE_FILE=
+    return 1
+  fi
+  tail -n "$MAX_LOG_LINES" "$TRACE_FILE" | redact_log
+  status=$?
+  rm -f "$TRACE_FILE"
+  TRACE_FILE=
+  return "$status"
+}
+
+remote_project_url() {
+  git remote get-url origin | sed -E \
+    -e 's#^git@([^:]+):#https://\1/#' \
+    -e 's#^ssh://git@([^/]+)/#https://\1/#' \
+    -e 's#\.git$##'
+}
+
+validate_repository() {
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+  remote_url=$(remote_project_url) || return 1
+  expected="https://$MR_HOST/$MR_PROJECT"
+  [ "$remote_url" = "$expected" ] || die "MR project $expected does not match origin $remote_url"
+  [ -z "$(git status --porcelain --untracked-files=normal)" ] || die "Working tree must be clean, including untracked files"
+}
+
+auth_check() {
+  run_with_timeout "$COMMAND_TIMEOUT" glab auth status --hostname "$MR_HOST" >/dev/null 2>&1 || die "glab is not authenticated for $MR_HOST"
+}
+
+acquire_lock() {
+  LOCK_DIR=$(git rev-parse --git-path mr-loop.lock)
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" >"$LOCK_DIR/pid"
+    printf '%s\n' "$MR_URL" >"$LOCK_DIR/mr-url"
+    return 0
+  fi
+  lock_pid=$(sed -n '1p' "$LOCK_DIR/pid" 2>/dev/null || true)
+  if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+    stale_lock="$LOCK_DIR.stale.$$"
+    if mv "$LOCK_DIR" "$stale_lock" 2>/dev/null; then
+      rm -rf "$stale_lock"
+      acquire_lock
+      return $?
+    fi
+  fi
+  die "Another MR repair loop holds $LOCK_DIR"
+}
+
+release_lock() {
+  [ -n "$LOCK_DIR" ] && [ -d "$LOCK_DIR" ] || return 0
+  lock_pid=$(sed -n '1p' "$LOCK_DIR/pid" 2>/dev/null || true)
+  [ "$lock_pid" = "$$" ] && rm -rf "$LOCK_DIR"
+}
+
+cleanup() {
+  [ -z "$CONTEXT_FILE" ] || rm -f "$CONTEXT_FILE"
+  [ -z "$TRACE_FILE" ] || rm -f "$TRACE_FILE"
+  CONTEXT_FILE=
+  TRACE_FILE=
+  release_lock
+}
+
+checkout_mr_branch() {
+  mr_json=$1
+  source_project_id=$(printf '%s' "$mr_json" | jq -r .source_project_id)
+  target_project_id=$(printf '%s' "$mr_json" | jq -r .target_project_id)
+  [ "$source_project_id" = "$target_project_id" ] || die "Fork merge requests are not supported"
+  source_branch=$(printf '%s' "$mr_json" | jq -r .source_branch)
+  remote_sha=$(printf '%s' "$mr_json" | jq -r .sha)
+  retry run_with_timeout "$COMMAND_TIMEOUT" git fetch origin "$source_branch" || die "Unable to fetch MR source branch"
+  if git show-ref --verify --quiet "refs/heads/$source_branch"; then
+    git switch "$source_branch" >/dev/null || die "Unable to switch to $source_branch"
+  else
+    git switch --track -c "$source_branch" "origin/$source_branch" >/dev/null || die "Unable to create $source_branch"
+  fi
+  local_sha=$(git rev-parse HEAD)
+  [ "$local_sha" = "$remote_sha" ] || die "Local branch HEAD $local_sha does not match MR SHA $remote_sha"
+  EXPECTED_LOCAL_SHA=$local_sha
+}
+
+assert_unchanged_head() {
+  expected_branch=$1
+  expected_sha=$2
+  [ "$(git branch --show-current)" = "$expected_branch" ] && [ "$(git rev-parse HEAD)" = "$expected_sha" ]
+}
+
+run_repair_agent() {
+  mr_json=$1
+  pipeline_json=$2
+  CONTEXT_FILE=$(mktemp "${TMPDIR:-/tmp}/mr-loop-context.XXXXXX") || return 1
+  pipeline_id=$(printf '%s' "$pipeline_json" | jq -r .id)
+  {
+    printf '# GitLab MR repair context\n\n'
+    printf 'MR: %s\n' "$MR_URL"
+    printf 'MR SHA: %s\n' "$LAST_MR_SHA"
+    printf 'Pipeline: %s\n' "$(printf '%s' "$pipeline_json" | jq -r .web_url)"
+    printf 'Repair attempt: %s of %s\n' "$((REPAIRS + 1))" "$MAX_REPAIRS"
+    fetch_failed_logs "$pipeline_id"
+  } >"$CONTEXT_FILE" || {
+    rm -f "$CONTEXT_FILE"
+    CONTEXT_FILE=
+    return 1
+  }
+  run_with_timeout "$AGENT_TIMEOUT" opencode run --agent mr-repair --dir "$REPO_ROOT" --file "$CONTEXT_FILE" \
+    "Diagnose the attached failed jobs, make the smallest correct repair, run relevant local verification, and leave all changes uncommitted."
+  status=$?
+  rm -f "$CONTEXT_FILE"
+  CONTEXT_FILE=
+  return "$status"
+}
+
+commit_and_push() {
+  source_branch=$1
+  expected_sha=$2
+  [ -n "$(git status --porcelain --untracked-files=normal)" ] || die "Repair agent made no changes"
+  latest_mr=$(fetch_mr) || die "Unable to refresh MR before commit"
+  project_id=$(printf '%s' "$latest_mr" | jq -r .target_project_id)
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || die "MR identity changed during repair"
+  git add --all || die "Unable to stage repair"
+  git commit -m "fix(ci): repair failed pipeline" || die "Unable to commit repair"
+  new_sha=$(git rev-parse HEAD)
+  latest_mr=$(fetch_mr) || die "Unable to refresh MR before push"
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || die "MR identity changed before push"
+  run_with_timeout "$COMMAND_TIMEOUT" git push origin "HEAD:$source_branch" || die "Push was rejected"
+  REPAIRS=$((REPAIRS + 1))
+  LAST_MR_SHA=$new_sha
+  EXPECTED_LOCAL_SHA=$new_sha
+}
+
+merge_mr() {
+  expected_sha=$1
+  latest_mr=$(fetch_mr) || die "Unable to refresh MR before merge"
+  mr_is_mergeable "$latest_mr" "$expected_sha" || die "MR is no longer mergeable"
+  latest_pipelines=$(fetch_pipelines) || die "Unable to refresh pipeline before merge"
+  latest_pipeline=$(printf '%s' "$latest_pipelines" | pipeline_for_sha "$expected_sha")
+  [ "$(printf '%s' "$latest_pipeline" | jq -r '.status // "missing"')" = success ] || die "Latest MR SHA no longer has a successful pipeline"
+  run_with_timeout "$COMMAND_TIMEOUT" glab mr merge "$MR_IID" --repo "$MR_PROJECT" --sha "$expected_sha" --auto-merge=false --yes || die "GitLab rejected the merge"
+}
+
+print_summary() {
+  status=$1
+  printf '\nMR loop %s\n' "$status"
+  printf 'MR: %s\n' "$MR_URL"
+  printf 'MR SHA: %s\n' "${LAST_MR_SHA:-unknown}"
+  printf 'Pipeline SHA: %s\n' "${LAST_PIPELINE_SHA:-unknown}"
+  printf 'Pipeline status: %s\n' "$LAST_PIPELINE_STATUS"
+  printf 'Merge status: %s\n' "$LAST_MERGE_STATUS"
+  printf 'Repair pushes: %s/%s\n' "$REPAIRS" "$MAX_REPAIRS"
+  [ -z "$LAST_FAILED_JOBS" ] || printf 'Last failed jobs: %s\n' "$LAST_FAILED_JOBS"
+  [ -z "$STOP_REASON" ] || printf 'Reason: %s\n' "$STOP_REASON"
+  if [ -n "$REPO_ROOT" ] && [ -d "$REPO_ROOT" ]; then
+    printf 'Local changes: %s\n' "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=normal | wc -l | tr -d ' ')"
+  fi
+}
+
+monitor() {
+  started=$(date +%s)
+  while :; do
+    now=$(date +%s)
+    [ $((now - started)) -lt "$MAX_RUNTIME" ] || die "Wall-clock timeout reached"
+    mr_json=$(fetch_mr) || die "Unable to fetch MR state"
+    LAST_MR_SHA=$(printf '%s' "$mr_json" | jq -r .sha)
+    LAST_MERGE_STATUS=$(printf '%s' "$mr_json" | jq -r .detailed_merge_status)
+    source_branch=$(printf '%s' "$mr_json" | jq -r .source_branch)
+    assert_unchanged_head "$source_branch" "$EXPECTED_LOCAL_SHA" || die "Current branch or HEAD changed unexpectedly"
+    [ -z "$(git status --porcelain --untracked-files=normal)" ] || die "Working tree changed outside the repair agent"
+    pipelines=$(fetch_pipelines) || die "Unable to fetch MR pipelines"
+    pipeline=$(printf '%s' "$pipelines" | pipeline_for_sha "$LAST_MR_SHA")
+    if [ "$pipeline" = null ]; then
+      LAST_PIPELINE_STATUS=missing
+      log "No pipeline for $LAST_MR_SHA; waiting ${POLL_INTERVAL}s"
+      sleep "$POLL_INTERVAL"
+      continue
+    fi
+    LAST_PIPELINE_SHA=$(printf '%s' "$pipeline" | jq -r .sha)
+    LAST_PIPELINE_STATUS=$(printf '%s' "$pipeline" | jq -r .status)
+    case $(pipeline_action "$LAST_PIPELINE_STATUS") in
+      wait)
+        log "Pipeline $LAST_PIPELINE_STATUS; waiting ${POLL_INTERVAL}s"
+        sleep "$POLL_INTERVAL"
+        ;;
+      check-merge)
+        if mr_is_mergeable "$mr_json" "$LAST_MR_SHA"; then
+          if [ "$ON_SUCCESS" = merge ]; then
+            merge_mr "$LAST_MR_SHA" || return 1
+            print_summary merged
+          else
+            print_summary ready
+          fi
+          return 0
+        fi
+        if [ "$(merge_status_action "$LAST_MERGE_STATUS")" = wait ]; then
+          log "Pipeline passed; merge status $LAST_MERGE_STATUS, waiting ${POLL_INTERVAL}s"
+          sleep "$POLL_INTERVAL"
+          continue
+        fi
+        die "Pipeline passed but GitLab merge checks are not satisfied"
+        ;;
+      repair)
+        repair_allowed "$REPAIRS" "$MAX_REPAIRS" || die "Repair push limit reached"
+        expected_sha=$LAST_MR_SHA
+        expected_branch=$source_branch
+        project_id=$(printf '%s' "$mr_json" | jq -r .target_project_id)
+        latest_mr=$(fetch_mr) || die "Unable to refresh MR before repair"
+        mr_matches_expected "$latest_mr" "$expected_sha" "$expected_branch" "$project_id" || die "MR identity changed before repair"
+        latest_pipelines=$(fetch_pipelines) || die "Unable to refresh pipeline before repair"
+        latest_pipeline=$(printf '%s' "$latest_pipelines" | pipeline_for_sha "$expected_sha")
+        [ "$(pipeline_action "$(printf '%s' "$latest_pipeline" | jq -r '.status // "missing"')")" = repair ] || die "Failed pipeline changed before repair"
+        assert_unchanged_head "$expected_branch" "$expected_sha" || die "Local HEAD changed before repair"
+        [ -z "$(git status --porcelain --untracked-files=normal)" ] || die "Working tree changed before repair"
+        run_repair_agent "$latest_mr" "$latest_pipeline" || die "Repair agent failed"
+        assert_unchanged_head "$expected_branch" "$expected_sha" || die "Repair agent changed branch or HEAD"
+        commit_and_push "$source_branch" "$expected_sha" || return 1
+        ;;
+      stop)
+        die "Pipeline state '$LAST_PIPELINE_STATUS' requires human intervention"
+        ;;
+    esac
+  done
+}
+
+main() {
+  parse_args "$@" || return $?
+  require_commands || return 1
+  validate_repository || return 1
+  auth_check || return 1
+  acquire_lock || return 1
+  trap 'STOP_REASON="Interrupted"; print_summary stopped; cleanup; exit 130' INT TERM HUP
+  trap 'cleanup' EXIT
+  mr_json=$(fetch_mr) || die "Unable to fetch MR" || return 1
+  [ "$(printf '%s' "$mr_json" | jq -r .state)" = opened ] || die "MR is not open" || return 1
+  checkout_mr_branch "$mr_json" || return 1
+  monitor
+  result=$?
+  [ "$result" -eq 0 ] || print_summary stopped
+  return "$result"
+}
+
+if [ "$PROGRAM" = mr-loop ]; then
+  main "$@"
+fi
