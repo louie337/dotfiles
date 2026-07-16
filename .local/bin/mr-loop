@@ -335,8 +335,9 @@ run_repair_agent() {
     CONTEXT_FILE=
     return 1
   }
-  run_with_timeout "$AGENT_TIMEOUT" opencode run --agent mr-repair --dir "$REPO_ROOT" --file "$CONTEXT_FILE" \
-    "Diagnose the attached failed jobs, make the smallest correct repair, run relevant local verification, and leave all changes uncommitted."
+  run_with_timeout "$AGENT_TIMEOUT" opencode run \
+    "Diagnose the attached failed jobs, make the smallest correct repair, recommend focused verification commands, and leave all changes uncommitted." \
+    --agent mr-repair --dir "$REPO_ROOT" --file "$CONTEXT_FILE"
   status=$?
   rm -f "$CONTEXT_FILE"
   CONTEXT_FILE=

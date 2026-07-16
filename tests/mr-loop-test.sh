@@ -134,6 +134,34 @@ assert_eq "redact bearer token" "Authorization: Bearer [REDACTED]" "$(printf '%s
 assert_eq "redact private token" "PRIVATE-TOKEN: [REDACTED]" "$(printf '%s' "$redacted" | sed -n '2p')"
 assert_eq "preserve normal log" "normal failure" "$(printf '%s' "$redacted" | sed -n '3p')"
 
+fake_bin=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-bin.XXXXXX")
+fake_args=$(mktemp "${TMPDIR:-/tmp}/mr-loop-args.XXXXXX")
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$@" >"$MR_LOOP_FAKE_ARGS"' >"$fake_bin/opencode"
+chmod +x "$fake_bin/opencode"
+original_path=$PATH
+PATH="$fake_bin:$PATH"
+export PATH
+MR_LOOP_FAKE_ARGS=$fake_args
+export MR_LOOP_FAKE_ARGS
+REPO_ROOT=$ROOT
+LAST_MR_SHA=abc
+REPAIRS=0
+MAX_REPAIRS=3
+fetch_failed_logs() { printf 'failed log\n'; }
+run_repair_agent '{}' '{"id":7,"web_url":"pipeline-url"}'
+prompt_line=$(grep -n '^Diagnose the attached failed jobs' "$fake_args" | cut -d: -f1)
+file_line=$(grep -n '^--file$' "$fake_args" | cut -d: -f1)
+if [ -n "$prompt_line" ] && [ -n "$file_line" ] && [ "$prompt_line" -lt "$file_line" ]; then
+  pass "repair prompt precedes array-valued file option"
+else
+  fail "repair prompt precedes array-valued file option"
+fi
+PATH=$original_path
+export PATH
+rm -rf "$fake_bin"
+rm -f "$fake_args"
+unset -f fetch_failed_logs 2>/dev/null || true
+
 if [ -f "$AGENT" ]; then
   pass "repair agent exists"
 else
