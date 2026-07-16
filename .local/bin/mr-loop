@@ -276,7 +276,11 @@ next_unresolved_discussion() {
 }
 
 discussion_snapshot() {
-  jq -cS '{id, position: (.position // null), notes}'
+  jq -cS '{
+    id,
+    position: ((.position // null) | if type == "object" then del(.base_sha, .start_sha, .head_sha) else . end),
+    notes
+  }'
 }
 
 discussion_matches_snapshot() {

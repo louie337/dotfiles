@@ -181,6 +181,8 @@ assert_eq "no unresolved discussion yields null" "null" \
 evaluated_discussion='{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
 evaluated_snapshot=$(printf '%s' "$evaluated_discussion" | discussion_snapshot)
 assert_status "accept identical evaluated discussion snapshot" 0 discussion_matches_snapshot "$evaluated_snapshot" "$evaluated_discussion"
+assert_status "accept GitLab-managed position SHA refresh" 0 discussion_matches_snapshot "$evaluated_snapshot" \
+  '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9,"base_sha":"base","start_sha":"start","head_sha":"new-head"},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
 assert_status "reject changed discussion note content" 1 discussion_matches_snapshot "$evaluated_snapshot" \
   '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Changed","resolvable":true,"resolved":false}]}'
 assert_status "reject changed discussion position" 1 discussion_matches_snapshot "$evaluated_snapshot" \
