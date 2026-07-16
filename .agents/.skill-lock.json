@@ -90,6 +90,15 @@
       "skillFolderHash": "6de7a0603cc81f224ddf55cf736e39b7b64d418c",
       "installedAt": "2026-07-07T02:20:40.118Z",
       "updatedAt": "2026-07-07T02:21:03.564Z"
+    },
+    "glab": {
+      "source": "nikiforovall/claude-code-rules",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/nikiforovall/claude-code-rules.git",
+      "skillPath": "plugins/handbook-glab/skills/glab/SKILL.md",
+      "skillFolderHash": "eb872a4c7ea829d88b2299d353cc691f8c3240e3",
+      "installedAt": "2026-07-16T08:44:59.040Z",
+      "updatedAt": "2026-07-16T08:44:59.040Z"
     }
   },
   "dismissed": {
