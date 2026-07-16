@@ -228,8 +228,45 @@ fetch_mr() {
   '
 }
 
+fetch_discussions() {
+  api --paginate "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/discussions?per_page=100" | jq -s 'add // []'
+}
+
+fetch_discussion() {
+  api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/discussions/$1"
+}
+
 fetch_pipelines() {
   api "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/pipelines?per_page=100"
+}
+
+next_unresolved_discussion() {
+  jq -c '
+    [.[] | select(any(.notes[]; .resolvable == true and .resolved == false))]
+    | sort_by([.notes[] | select(.resolvable == true and .resolved == false) | .created_at] | min)
+    | first // null
+  '
+}
+
+discussion_is_unresolved() {
+  expected_id=$1
+  jq -e --arg id "$expected_id" '
+    .id == $id and any(.notes[]; .resolvable == true and .resolved == false)
+  ' >/dev/null
+}
+
+reply_and_resolve_discussion() {
+  discussion_id=$1
+  reply=$2
+  expected_sha=$3
+  latest_mr=$(fetch_mr) || return 1
+  [ "$(printf '%s' "$latest_mr" | jq -r .sha)" = "$expected_sha" ] || return 1
+  latest_discussion=$(fetch_discussion "$discussion_id") || return 1
+  printf '%s' "$latest_discussion" | discussion_is_unresolved "$discussion_id" || return 1
+  api --method POST --field "body=$reply" \
+    "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/discussions/$discussion_id/notes" >/dev/null || return 1
+  api --method PUT --field resolved=true \
+    "projects/$MR_PROJECT_ENCODED/merge_requests/$MR_IID/discussions/$discussion_id" >/dev/null
 }
 
 fetch_failed_logs() {
@@ -517,22 +554,56 @@ run_discussion_agent() {
   return "$status"
 }
 
-commit_and_push() {
+commit_generated_repair() {
   source_branch=$1
   expected_sha=$2
-  [ -n "$(git status --porcelain --untracked-files=normal)" ] || die "Repair agent made no changes"
-  latest_mr=$(fetch_mr) || die "Unable to refresh MR before commit"
-  project_id=$(printf '%s' "$latest_mr" | jq -r .target_project_id)
-  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || die "MR identity changed during repair"
-  git add --all || die "Unable to stage repair"
-  git commit -m "fix(ci): repair failed pipeline" || die "Unable to commit repair"
-  new_sha=$(git rev-parse HEAD)
-  latest_mr=$(fetch_mr) || die "Unable to refresh MR before push"
-  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || die "MR identity changed before push"
-  run_with_timeout "$COMMAND_TIMEOUT" git push origin "HEAD:$source_branch" || die "Push was rejected"
+  project_id=$3
+  message=$4
+  repair_allowed "$REPAIRS" "$MAX_REPAIRS" || return 1
+  [ -n "$(git status --porcelain --untracked-files=normal)" ] || return 1
+  latest_mr=$(fetch_mr) || return 1
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
+  git add --all || return 1
+  git commit -m "$message" || return 1
+  new_sha=$(git rev-parse HEAD) || return 1
+  latest_mr=$(fetch_mr) || return 1
+  mr_matches_expected "$latest_mr" "$expected_sha" "$source_branch" "$project_id" || return 1
+  run_with_timeout "$COMMAND_TIMEOUT" git push origin "HEAD:$source_branch" || return 1
+  wait_for_mr_sha "$new_sha" || return 1
   REPAIRS=$((REPAIRS + 1))
   LAST_MR_SHA=$new_sha
   EXPECTED_LOCAL_SHA=$new_sha
+}
+
+commit_and_push() {
+  source_branch=$1
+  expected_sha=$2
+  project_id=$3
+  commit_generated_repair "$source_branch" "$expected_sha" "$project_id" \
+    "fix(ci): repair failed pipeline" || die "Unable to commit, push, or converge repair"
+}
+
+process_discussion() {
+  mr_json=$1
+  discussion_json=$2
+  source_branch=$3
+  project_id=$4
+  expected_sha=$(printf '%s' "$mr_json" | jq -r .sha)
+  discussion_id=$(printf '%s' "$discussion_json" | jq -r .id)
+  run_discussion_agent "$mr_json" "$discussion_json" || return 1
+  case $DISCUSSION_DISPOSITION in
+    fixed)
+      commit_generated_repair "$source_branch" "$expected_sha" "$project_id" \
+        "fix(review): resolve MR feedback" || return 1
+      reply_and_resolve_discussion "$discussion_id" "$DISCUSSION_REPLY" "$LAST_MR_SHA"
+      ;;
+    invalid|obsolete)
+      [ -z "$(git status --porcelain --untracked-files=normal)" ] || return 1
+      reply_and_resolve_discussion "$discussion_id" "$DISCUSSION_REPLY" "$expected_sha"
+      ;;
+    blocked) return 2 ;;
+    *) return 1 ;;
+  esac
 }
 
 merge_mr() {
@@ -588,6 +659,18 @@ monitor() {
         ;;
       error) die "GitLab rebase reported an error" ;;
     esac
+    discussions=$(fetch_discussions) || die "Unable to fetch MR discussions"
+    discussion=$(printf '%s' "$discussions" | next_unresolved_discussion)
+    if [ "$discussion" != null ]; then
+      project_id=$(printf '%s' "$mr_json" | jq -r .target_project_id)
+      process_discussion "$mr_json" "$discussion" "$source_branch" "$project_id"
+      discussion_status=$?
+      [ "$discussion_status" -eq 0 ] || {
+        [ "$discussion_status" -eq 2 ] && die "Discussion repair requires human intervention"
+        die "Unable to repair and resolve discussion"
+      }
+      continue
+    fi
     pipelines=$(fetch_pipelines) || die "Unable to fetch MR pipelines"
     pipeline=$(printf '%s' "$pipelines" | pipeline_for_sha "$LAST_MR_SHA")
     if [ "$pipeline" = null ]; then
@@ -634,7 +717,7 @@ monitor() {
         [ -z "$(git status --porcelain --untracked-files=normal)" ] || die "Working tree changed before repair"
         run_repair_agent "$latest_mr" "$latest_pipeline" || die "Repair agent failed"
         assert_unchanged_head "$expected_branch" "$expected_sha" || die "Repair agent changed branch or HEAD"
-        commit_and_push "$source_branch" "$expected_sha" || return 1
+        commit_and_push "$source_branch" "$expected_sha" "$project_id" || return 1
         ;;
       stop)
         die "Pipeline state '$LAST_PIPELINE_STATUS' requires human intervention"

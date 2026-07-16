@@ -115,6 +115,123 @@ assert_status "reject changed source branch" 1 mr_matches_expected "$expected_mr
 
 assert_eq "default generated repair limit" "12" "$MAX_REPAIRS"
 
+discussions='[
+  {"id":"newer","notes":[{"created_at":"2026-07-16T11:00:00Z","resolvable":true,"resolved":false}]},
+  {"id":"resolved","notes":[{"created_at":"2026-07-16T09:00:00Z","resolvable":true,"resolved":true}]},
+  {"id":"older","notes":[{"created_at":"2026-07-16T10:00:00Z","resolvable":true,"resolved":false}]}
+]'
+assert_eq "select oldest unresolved discussion" "older" \
+  "$(printf '%s' "$discussions" | next_unresolved_discussion | jq -r .id)"
+assert_eq "no unresolved discussion yields null" "null" \
+  "$(printf '%s' '[{"id":"done","notes":[{"resolvable":true,"resolved":true}]}]' | next_unresolved_discussion)"
+
+pagination_args=$(mktemp "${TMPDIR:-/tmp}/mr-loop-pagination.XXXXXX")
+api() {
+  printf '%s\n' "$1" >"$pagination_args"
+  printf '%s\n' '[{"id":"page-1"}]' '[{"id":"page-2"}]'
+}
+assert_eq "merge paginated discussion arrays" "page-1 page-2" \
+  "$(fetch_discussions | jq -r 'map(.id) | join(" ")')"
+assert_eq "fetch discussions requests pagination" "--paginate" "$(sed -n '1p' "$pagination_args")"
+rm -f "$pagination_args"
+unset -f api 2>/dev/null || true
+
+discussion_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-calls.XXXXXX")
+fetch_mr() {
+  printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
+}
+fetch_discussion() {
+  printf 'fetch-discussion:%s\n' "$1" >>"$discussion_calls"
+  printf '%s\n' '{"id":"thread-1","notes":[{"resolvable":true,"resolved":false}]}'
+}
+api() {
+  printf 'api-argc:%s\n' "$#" >>"$discussion_calls"
+  for api_arg in "$@"; do
+    printf 'api-arg:%s\n' "$api_arg" >>"$discussion_calls"
+  done
+  printf '{}\n'
+}
+reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc
+assert_eq "re-fetch exact discussion before reply" "fetch-discussion:thread-1" \
+  "$(sed -n '1p' "$discussion_calls")"
+assert_eq "reply text remains one glab argument" "api-arg:body=Fixed in the current MR head." \
+  "$(sed -n '6p' "$discussion_calls")"
+assert_eq "reply discussion before resolve" "api-arg:POST" "$(sed -n '4p' "$discussion_calls")"
+assert_eq "resolve discussion second" "api-arg:PUT" "$(sed -n '10p' "$discussion_calls")"
+
+: >"$discussion_calls"
+api() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  case $* in *POST*) return 1 ;; esac
+  printf '{}\n'
+}
+assert_status "propagate discussion reply failure" 1 \
+  reply_and_resolve_discussion thread-1 "Cannot post." abc
+assert_eq "do not resolve after reply failure" "0" \
+  "$(grep -c -- '--method PUT' "$discussion_calls" || true)"
+
+: >"$discussion_calls"
+fetch_mr() { printf '%s\n' '{"sha":"changed"}'; }
+assert_status "reject changed MR before discussion reply" 1 \
+  reply_and_resolve_discussion thread-1 "Stale reply." abc
+assert_eq "changed MR prevents discussion API mutation" "0" "$(wc -l <"$discussion_calls" | tr -d ' ')"
+rm -f "$discussion_calls"
+unset -f fetch_mr fetch_discussion api 2>/dev/null || true
+
+process_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-process.XXXXXX")
+REPO_ROOT=$process_root
+REPAIRS=4
+LAST_MR_SHA=abc
+run_discussion_agent() {
+  DISCUSSION_DISPOSITION=$(printf '%s' "$2" | jq -r .id)
+  DISCUSSION_REPLY="Reply with spaces."
+}
+git() {
+  case $* in
+    *status*porcelain*) [ ! -e "$process_root/change" ] || printf 'changed\n' ;;
+    *) command git "$@" ;;
+  esac
+}
+commit_generated_repair() {
+  printf '%s\n' "$*" >"$process_root/commit"
+  REPAIRS=$((REPAIRS + 1))
+  LAST_MR_SHA=def
+}
+reply_and_resolve_discussion() { printf '%s|%s|%s\n' "$1" "$2" "$3" >"$process_root/reply"; }
+mr='{"sha":"abc"}'
+commit_and_push fix-ci abc 7
+assert_eq "pipeline repair preserves validated project identity" \
+  "fix-ci abc 7 fix(ci): repair failed pipeline" "$(sed -n '1p' "$process_root/commit")"
+
+rm -f "$process_root/commit"
+REPAIRS=4
+process_discussion "$mr" '{"id":"fixed"}' fix-ci 7
+assert_eq "fixed discussion uses review commit message" \
+  "fix-ci abc 7 fix(review): resolve MR feedback" "$(sed -n '1p' "$process_root/commit")"
+assert_eq "fixed discussion replies only after converged push" \
+  "fixed|Reply with spaces.|def" "$(sed -n '1p' "$process_root/reply")"
+assert_eq "fixed discussion shares repair budget" "5" "$REPAIRS"
+
+rm -f "$process_root/commit" "$process_root/reply"
+process_discussion "$mr" '{"id":"invalid"}' fix-ci 7
+assert_status "invalid discussion rejects code changes" 1 test -e "$process_root/commit"
+assert_eq "invalid discussion replies without push" \
+  "invalid|Reply with spaces.|abc" "$(sed -n '1p' "$process_root/reply")"
+
+printf 'changed\n' >"$process_root/change"
+assert_status "obsolete discussion rejects agent code changes" 1 \
+  process_discussion "$mr" '{"id":"obsolete"}' fix-ci 7
+rm -f "$process_root/change" "$process_root/reply"
+assert_status "blocked discussion requires human intervention" 2 \
+  process_discussion "$mr" '{"id":"blocked"}' fix-ci 7
+assert_status "blocked discussion remains unresolved" 1 test -e "$process_root/reply"
+unset -f run_discussion_agent commit_generated_repair reply_and_resolve_discussion git 2>/dev/null || true
+rm -rf "$process_root"
+. "$SCRIPT"
+parse_args "https://gitlab.com/acme/widget/-/merge_requests/17"
+REPO_ROOT=$ROOT
+REPAIRS=0
+
 result_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-result.XXXXXX")
 REPO_ROOT=$result_root
 DISCUSSION_RESULT_FILE="$REPO_ROOT/.mr-loop-discussion-result.json"
