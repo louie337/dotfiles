@@ -4,6 +4,9 @@
   "compaction": {
     "auto": true
   },
+  "instructions": [
+    "PRIVATE.md"
+  ],
   "mcp": {
     "chrome-devtools": {
       "type": "local",
