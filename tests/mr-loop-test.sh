@@ -634,6 +634,11 @@ if [ -n "$prompt_line" ] && [ -n "$file_line" ] && [ "$prompt_line" -lt "$file_l
 else
   fail "repair prompt precedes array-valued file option"
 fi
+repair_context_path=$(sed -n "$((file_line + 1))p" "$fake_args")
+case $repair_context_path in
+  "$ROOT"/.mr-loop-context.*) pass "repair context stays inside repository" ;;
+  *) fail "repair context stays inside repository (got '$repair_context_path')" ;;
+esac
 printf '%s\n' '#!/bin/sh' \
   'printf "%s\n" "$@" >"$MR_LOOP_FAKE_ARGS"' \
   'printf "%s\n" '\''{"disposition":"obsolete","reply":"The referenced code has already been removed."}'\'' >"$MR_LOOP_FAKE_DISCUSSION_RESULT"' \
@@ -641,6 +646,12 @@ printf '%s\n' '#!/bin/sh' \
 MR_LOOP_FAKE_DISCUSSION_RESULT="$ROOT/.mr-loop-discussion-result.json"
 export MR_LOOP_FAKE_DISCUSSION_RESULT
 run_discussion_agent '{"sha":"abc"}' '{"id":"discussion-1"}'
+discussion_file_line=$(grep -n '^--file$' "$fake_args" | cut -d: -f1)
+discussion_context_path=$(sed -n "$((discussion_file_line + 1))p" "$fake_args")
+case $discussion_context_path in
+  "$ROOT"/.mr-loop-discussion.*) pass "discussion context stays inside repository" ;;
+  *) fail "discussion context stays inside repository (got '$discussion_context_path')" ;;
+esac
 assert_eq "discussion agent disposition retained after cleanup" "obsolete" "$DISCUSSION_DISPOSITION"
 assert_eq "discussion agent reply retained after cleanup" "The referenced code has already been removed." "$DISCUSSION_REPLY"
 assert_status "discussion result removed before repository inspection" 1 test -e "$MR_LOOP_FAKE_DISCUSSION_RESULT"

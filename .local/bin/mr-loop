@@ -563,7 +563,7 @@ assert_unchanged_head() {
 run_repair_agent() {
   mr_json=$1
   pipeline_json=$2
-  CONTEXT_FILE=$(mktemp "${TMPDIR:-/tmp}/mr-loop-context.XXXXXX") || return 1
+  CONTEXT_FILE=$(mktemp "$REPO_ROOT/.mr-loop-context.XXXXXX") || return 1
   pipeline_id=$(printf '%s' "$pipeline_json" | jq -r .id)
   {
     printf '# GitLab MR repair context\n\n'
@@ -600,7 +600,7 @@ parse_discussion_result() {
 run_discussion_agent() {
   mr_json=$1
   discussion_json=$2
-  DISCUSSION_CONTEXT_FILE=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion.XXXXXX") || return 1
+  DISCUSSION_CONTEXT_FILE=$(mktemp "$REPO_ROOT/.mr-loop-discussion.XXXXXX") || return 1
   DISCUSSION_RESULT_FILE="$REPO_ROOT/.mr-loop-discussion-result.json"
   rm -f "$DISCUSSION_RESULT_FILE"
   if ! {
