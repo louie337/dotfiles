@@ -12,7 +12,9 @@ permission:
     "*": deny
     gitlab-cli-skills: allow
     glab: allow
-  task: deny
+  task:
+    "*": deny
+    explore: allow
   bash:
     "*": ask
     "git reset *": deny
@@ -107,6 +109,27 @@ Each iteration starts from a fresh same-SHA snapshot:
 
 If the MR SHA or identity changes while collecting the snapshot, discard the
 partial snapshot and restart the iteration.
+
+## Parallel Work
+
+Use parallelism when it is safe and useful:
+
+- Batch independent read-only tool calls in the same step when the results do
+  not depend on each other, such as MR metadata, discussions, pipeline/jobs,
+  approvals, and diff retrieval for the same expected MR SHA.
+- Use the read-only `explore` subagent for independent local-code investigation
+  and diff review, especially when multiple files or unrelated discussion
+  threads can be inspected in parallel.
+- Give every subagent the MR URL, expected MR SHA, source branch, target branch,
+  and a narrow read-only question. Require file/line findings and concise
+  evidence, not mutations.
+- Discard all subagent results if the MR SHA or identity changes before you act
+  on them.
+- Keep the main agent as the sole state-machine owner. Do not delegate checkout,
+  branch realignment, GitLab writes, commits, pushes, discussion replies,
+  discussion resolution, rebase requests, retries, or merges.
+- Do not wait for subagents before polling an already-running CI pipeline unless
+  their results are needed to decide a concrete repair.
 
 Useful commands, adjusted as needed after checking `--help`:
 
