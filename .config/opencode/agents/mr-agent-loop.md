@@ -58,8 +58,8 @@ logic into a shell script, or delegate the loop to another script.
 ## Non-Negotiable Safety
 
 - Never force-push, locally rebase, reset, clean, stash, or discard local work.
-  A clean branch-pointer realignment after an observed GitLab-side MR rebase is
-  allowed only under the exact safeguards in Safe Synchronization.
+  Clean branch-pointer realignment is allowed only under the exact safeguards in
+  Safe Synchronization, and must preserve the previous local tip first.
 - Never approve an MR, close an MR, delete an MR, change draft/readiness, cancel
   pipelines, delete pipelines, or bypass GitLab merge requirements.
 - Stop instead of guessing when product judgment, reviewer intent, permissions,
@@ -131,43 +131,56 @@ Use safe dual sync:
 4. If local is ahead of the MR source SHA, re-fetch the MR and push normally
    with `git push origin HEAD:<source-branch>` only if the MR still points to
    the expected SHA and branch. Wait until the MR reports the new SHA.
-5. If local and remote diverged outside the GitLab-side rebase path below,
-   stop. Do not locally rebase and do not force-push.
+5. If local and remote diverged, first classify it. Do not locally rebase and do
+   not force-push. If the working tree is clean, the MR still identifies the
+   same source branch/project, and the remote MR SHA is authoritative, preserve
+   the previous local tip and realign as described below. Stop only when those
+   guards fail or the tree is dirty.
 6. If GitLab reports the MR source is behind its target, request a GitLab-side
    rebase with `glab mr rebase <iid> --repo <project>` or the equivalent MR
    rebase API. Poll until GitLab publishes the new MR SHA, then fast-forward the
    local checkout to that SHA. Stop on conflicts, merge_error, timeout-like
    non-progress, or unexpected identity changes.
 
-After a GitLab-side MR rebase succeeds, GitLab rewrites the source branch. The
-local branch will normally diverge from the new remote branch even though no
-human action is required. Do not stop for that expected divergence. Instead,
-realign the clean local branch to the rebased MR SHA only if every guard below
-passes:
+When a clean local branch diverges from the remote MR source branch, human
+involvement is not required just because local `HEAD` differs from the MR SHA.
+The remote MR branch is the authoritative branch under review. Preserve the old
+local tip, then realign the local branch pointer to the authoritative MR SHA if
+every guard below passes:
 
-1. You requested the GitLab-side rebase in this loop iteration or observed
-   `rebase_in_progress=true` for the old MR SHA before GitLab published the new
+1. The local branch name equals the MR source branch.
+2. `git status --porcelain --untracked-files=normal` is empty.
+3. A fresh MR fetch still reports the same IID, project, source branch, target
+   branch, source project, target project, no `merge_error`, and the MR SHA that
+   should become local `HEAD`.
+4. `git fetch origin <source-branch>` succeeds and `FETCH_HEAD` equals the MR
    SHA.
-2. The pre-rebase local branch name equals the MR source branch.
-3. The pre-rebase local `HEAD` equals the old MR SHA that GitLab rebased.
-4. `git status --porcelain --untracked-files=normal` is empty.
-5. A fresh MR fetch still reports the same IID, project, source branch, target
-   branch, source project, target project, no `merge_error`, and the new MR SHA.
-6. `git fetch origin <source-branch>` succeeds and `FETCH_HEAD` equals the new
-   MR SHA.
+5. The existing local `HEAD` can be preserved under a unique local backup branch
+   or ref before moving the source branch pointer.
+
+Use a descriptive backup name such as
+`mr-agent-loop-backup/<source-branch>/<yyyymmdd-hhmmss>-<short-local-sha>`.
+Sanitize slashes in `<source-branch>` if needed. Create the backup with
+`git branch <backup-name> <old-local-sha>` or an equivalent local ref creation.
+Do not push the backup branch.
 
 If every guard passes, realign without reset, local rebase, or force-push:
 
 ```sh
-git switch --detach <new-mr-sha>
-git branch -f <source-branch> <new-mr-sha>
+git switch --detach <mr-sha>
+git branch -f <source-branch> <mr-sha>
 git switch <source-branch>
 ```
 
 After realignment, verify the current branch is `<source-branch>`, local `HEAD`
-equals the new MR SHA, and the working tree is still clean. Then restart the
-loop from a fresh MR snapshot. If any guard fails, stop and report the exact
-failed guard.
+equals the MR SHA, the working tree is still clean, and the backup ref points to
+the old local SHA. Then restart the loop from a fresh MR snapshot. If any guard
+fails, stop and report the exact failed guard.
+
+Special case: after a GitLab-side MR rebase succeeds, GitLab rewrites the source
+branch. This commonly produces local/remote divergence even when local `HEAD`
+was the old MR SHA. Treat it as the same preserve-and-realign flow above; do not
+stop merely because the divergence was not fast-forwardable.
 
 ## MR Review And Discussion Repair
 
