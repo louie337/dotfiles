@@ -39,6 +39,7 @@ permission:
     "glab mr update *--draft*": deny
     "glab mr update *--ready*": deny
     "glab ci cancel *": deny
+    "glab ci cancel pipeline *": ask
     "glab ci delete *": deny
 ---
 
@@ -62,8 +63,9 @@ logic into a shell script, or delegate the loop to another script.
 - Never force-push, locally rebase, reset, clean, stash, or discard local work.
   Clean branch-pointer realignment is allowed only under the exact safeguards in
   Safe Synchronization, and must preserve the previous local tip first.
-- Never approve an MR, close an MR, delete an MR, change draft/readiness, cancel
-  pipelines, delete pipelines, or bypass GitLab merge requirements.
+- Never approve an MR, close an MR, delete an MR, change draft/readiness, delete
+  pipelines, or bypass GitLab merge requirements. Cancel pipelines only under
+  Known-Failure Pipeline Cancellation.
 - Stop instead of guessing when product judgment, reviewer intent, permissions,
   deployment approvals, manual jobs, merge conflicts, divergence, or missing
   context blocks progress.
@@ -244,12 +246,43 @@ For the exact current MR SHA:
   pipelines. Retry only when the evidence is clearly transient infrastructure;
   if the same unchanged failure remains, treat it as a blocker.
 - For code failures, make the smallest repair, run focused verification when
-  safe, re-fetch MR and pipeline, commit, normally push, wait for the MR to
-  report the pushed SHA, then restart the loop.
+  safe, cancel active pipelines for the known-failure SHA under Known-Failure
+  Pipeline Cancellation, re-fetch MR and pipeline, commit, normally push, wait
+  for the MR to report the pushed SHA, then restart the loop.
 - Manual, skipped, blocked deployment, or unknown terminal states require human
   intervention. Stop and report the exact job or pipeline blocker.
 
 Never decide from a branch pipeline whose SHA differs from the current MR SHA.
+
+## Known-Failure Pipeline Cancellation
+
+Cancel pipelines only to stop wasted CI for code that is already known to be
+bad. A known-failure SHA is an MR source SHA where you have already inspected a
+failed MR pipeline or job trace and classified the failure as a deterministic
+code failure, not transient infrastructure, missing permissions, manual jobs, or
+an unknown failure.
+
+Before each cancellation, run the normal GitLab write identity preflight and
+re-fetch the MR, the pipeline, and the jobs. Cancel only if every guard passes:
+
+- The pipeline belongs to the MR project, MR source branch, and known-failure
+  SHA.
+- The pipeline is an MR/source-branch pipeline, not a target-branch, tag,
+  schedule, deployment, merge-train, or unrelated pipeline.
+- The pipeline status is still active or queued: `created`, `preparing`,
+  `pending`, `running`, `scheduled`, `waiting_for_resource`, or equivalent.
+- You have already created a local repair commit, are about to commit the repair,
+  or another pipeline/job for the same SHA already proved the deterministic code
+  failure.
+- The current MR SHA has not changed unexpectedly unless the pipeline being
+  canceled is for the older known-failure SHA from this same loop.
+
+Use `glab ci cancel pipeline <pipeline-id> --repo <project>` or the equivalent
+pipeline cancel API. Prefer canceling whole pipelines over individual
+jobs. Never cancel pipelines for a SHA that might still become mergeable, for
+manual deployment approval states, or for evidence you have not inspected.
+Record canceled pipeline IDs in progress output, then continue the loop from a
+fresh snapshot.
 
 ## Mergeability And Merge
 
@@ -288,6 +321,7 @@ sequence you already started:
 
 - commit -> push -> MR SHA convergence;
 - discussion reply -> discussion resolve;
+- known-failure pipeline cancel -> cancellation-state confirmation;
 - merge request -> merged-state confirmation.
 
 Only emit a checkpoint after there is no pending local commit, push, GitLab
@@ -317,6 +351,7 @@ Print concise progress for every state transition:
 - Synchronization action taken.
 - Discussion processed, if any.
 - Pipeline ID/status for the exact SHA.
+- Known-failure pipeline IDs canceled, if any.
 - Repair commit and push SHA, if any.
 - Mergeability blockers or success.
 
