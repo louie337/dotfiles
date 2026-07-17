@@ -67,8 +67,10 @@ logic into a shell script, or delegate the loop to another script.
   pipelines, or bypass GitLab merge requirements. Cancel pipelines only under
   Known-Failure Pipeline Cancellation.
 - Stop instead of guessing when product judgment, reviewer intent, permissions,
-  deployment approvals, manual jobs, merge conflicts, divergence, or missing
-  context blocks progress.
+  deployment approvals, manual jobs, merge conflicts, unsafe divergence, or
+  missing context blocks progress. Do not stop for bounded engineering design
+  tradeoffs when you can implement a safe recommended repair under Autonomous
+  Engineering Decisions.
 - Keep the working tree and index clean outside your active repair. If local
   changes appear that you did not create for the current repair, stop and report
   the blocker.
@@ -220,6 +222,9 @@ iteration:
    author IDs, resolvable/resolved flags, suggestions, and stable position fields
    excluding GitLab-managed base/start/head SHAs.
 2. Decide whether the feedback is valid, invalid, obsolete, or blocked.
+   Engineering design tradeoffs are not blocked merely because there are multiple
+   plausible implementations; use Autonomous Engineering Decisions when the
+   review comment identifies a real defect and enough code context exists.
 3. For valid feedback, make the smallest code change, run focused local
    verification when safe, re-fetch MR and discussion, commit, normally push,
    wait for MR SHA convergence, then reply and resolve.
@@ -234,6 +239,34 @@ Use `glab mr note create <iid> --repo <project> --reply <discussion-id> -m <repl
 or the discussion notes API for replies. Use `glab mr note resolve <discussion-id>
 <iid> --repo <project>` or the discussion resolve API for resolution. Reply
 must succeed before resolving.
+
+## Autonomous Engineering Decisions
+
+When a repair requires choosing among implementation strategies, choose and
+implement the option you judge safest for making the MR mergeable instead of
+stopping for user input, if every guard below passes:
+
+- The issue is an engineering design or implementation tradeoff, not product
+  behavior, reviewer intent, deployment approval, data migration policy, security
+  acceptance, or permission scope.
+- The review comment, failing test, job trace, or current code gives enough
+  context to identify the defect and a bounded fix.
+- The chosen approach is race-safe, deterministic, bounded in resource usage,
+  and consistent with nearby project patterns.
+- The change can be kept focused and verified with local tests, static checks,
+  or CI.
+
+Prefer the smallest safe approach that fixes the defect class, not just the
+single failing example. For concurrency or reconciliation bugs, prefer bounded
+batching, durable pagination/checkpointing, explicit partial-settlement
+semantics, idempotency, and clear retry behavior over unbounded N+1 loops or
+fresh per-item queries that can miss concurrent updates.
+
+Record every autonomous engineering decision in a decision log during the loop:
+the problem, chosen approach, reason, rejected alternatives, verification, and
+residual risk. Include this decision log in the final output for human review.
+If no safe bounded option exists after investigation, then stop and report the
+missing information or product decision needed.
 
 ## Pipeline Repair
 
@@ -328,7 +361,8 @@ Only emit a checkpoint after there is no pending local commit, push, GitLab
 write, reply, resolve, merge request, or state convergence check. A checkpoint is
 not final output and must not use terminal state `stopped`; include the MR URL,
 current MR SHA, local branch and HEAD, pipeline status, unresolved discussion
-count, the last completed action, and the next safe action to resume.
+count, autonomous engineering decisions made so far, the last completed action,
+and the next safe action to resume.
 
 When resuming from a checkpoint or prior interrupted run, first run Startup
 Checks and a fresh Loop Snapshot. If local `HEAD` is ahead of the MR source SHA
@@ -340,8 +374,10 @@ continue the loop.
 Hard blockers include auth failure, dirty worktree not created by this repair,
 local/remote divergence that fails Safe Synchronization guards, GitLab rebase
 conflict, missing permissions, manual jobs, approval requirements not satisfied
-by existing reviewers, deployment decisions, ambiguous discussion feedback,
-failed push, failed merge mutation, or concurrent MR identity changes.
+by existing reviewers, deployment decisions, product behavior ambiguity,
+reviewer intent ambiguity, ambiguous discussion feedback that cannot be resolved
+with code evidence, failed push, failed merge mutation, or concurrent MR
+identity changes.
 
 ## Output
 
@@ -357,4 +393,6 @@ Print concise progress for every state transition:
 
 Final output must include the terminal state (`mergeable`, `merged`, or
 `stopped`), final MR SHA, final pipeline status, unresolved discussion count,
-approval/merge status, and any required human next action.
+approval/merge status, autonomous engineering decisions made with reasons,
+alternatives considered, verification, residual risks, and any required human
+next action.
