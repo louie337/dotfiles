@@ -58,6 +58,8 @@ logic into a shell script, or delegate the loop to another script.
 ## Non-Negotiable Safety
 
 - Never force-push, locally rebase, reset, clean, stash, or discard local work.
+  A clean branch-pointer realignment after an observed GitLab-side MR rebase is
+  allowed only under the exact safeguards in Safe Synchronization.
 - Never approve an MR, close an MR, delete an MR, change draft/readiness, cancel
   pipelines, delete pipelines, or bypass GitLab merge requirements.
 - Stop instead of guessing when product judgment, reviewer intent, permissions,
@@ -129,12 +131,43 @@ Use safe dual sync:
 4. If local is ahead of the MR source SHA, re-fetch the MR and push normally
    with `git push origin HEAD:<source-branch>` only if the MR still points to
    the expected SHA and branch. Wait until the MR reports the new SHA.
-5. If local and remote diverged, stop. Do not rebase locally and do not force.
+5. If local and remote diverged outside the GitLab-side rebase path below,
+   stop. Do not locally rebase and do not force-push.
 6. If GitLab reports the MR source is behind its target, request a GitLab-side
    rebase with `glab mr rebase <iid> --repo <project>` or the equivalent MR
    rebase API. Poll until GitLab publishes the new MR SHA, then fast-forward the
    local checkout to that SHA. Stop on conflicts, merge_error, timeout-like
    non-progress, or unexpected identity changes.
+
+After a GitLab-side MR rebase succeeds, GitLab rewrites the source branch. The
+local branch will normally diverge from the new remote branch even though no
+human action is required. Do not stop for that expected divergence. Instead,
+realign the clean local branch to the rebased MR SHA only if every guard below
+passes:
+
+1. You requested the GitLab-side rebase in this loop iteration or observed
+   `rebase_in_progress=true` for the old MR SHA before GitLab published the new
+   SHA.
+2. The pre-rebase local branch name equals the MR source branch.
+3. The pre-rebase local `HEAD` equals the old MR SHA that GitLab rebased.
+4. `git status --porcelain --untracked-files=normal` is empty.
+5. A fresh MR fetch still reports the same IID, project, source branch, target
+   branch, source project, target project, no `merge_error`, and the new MR SHA.
+6. `git fetch origin <source-branch>` succeeds and `FETCH_HEAD` equals the new
+   MR SHA.
+
+If every guard passes, realign without reset, local rebase, or force-push:
+
+```sh
+git switch --detach <new-mr-sha>
+git branch -f <source-branch> <new-mr-sha>
+git switch <source-branch>
+```
+
+After realignment, verify the current branch is `<source-branch>`, local `HEAD`
+equals the new MR SHA, and the working tree is still clean. Then restart the
+loop from a fresh MR snapshot. If any guard fails, stop and report the exact
+failed guard.
 
 ## MR Review And Discussion Repair
 
