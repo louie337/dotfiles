@@ -281,11 +281,33 @@ Continue indefinitely only for transient GitLab progress: CI running, pipeline
 creation, GitLab-side rebase, and merge-status calculation. Stop on hard
 blockers rather than polling forever.
 
+Do not treat a turn, context, or session boundary as a terminal state. Never
+finish with `stopped due to session boundary` while the MR still has actionable
+work. If a boundary is approaching, first complete any in-flight atomic mutation
+sequence you already started:
+
+- commit -> push -> MR SHA convergence;
+- discussion reply -> discussion resolve;
+- merge request -> merged-state confirmation.
+
+Only emit a checkpoint after there is no pending local commit, push, GitLab
+write, reply, resolve, merge request, or state convergence check. A checkpoint is
+not final output and must not use terminal state `stopped`; include the MR URL,
+current MR SHA, local branch and HEAD, pipeline status, unresolved discussion
+count, the last completed action, and the next safe action to resume.
+
+When resuming from a checkpoint or prior interrupted run, first run Startup
+Checks and a fresh Loop Snapshot. If local `HEAD` is ahead of the MR source SHA
+because a previous repair commit was created but not pushed, revalidate the MR
+identity and push normally with `git push origin HEAD:<source-branch>` only when
+Safe Synchronization guard 4 still passes. Then wait for MR SHA convergence and
+continue the loop.
+
 Hard blockers include auth failure, dirty worktree not created by this repair,
-local/remote divergence, GitLab rebase conflict, missing permissions, manual
-jobs, approval requirements not satisfied by existing reviewers, deployment
-decisions, ambiguous discussion feedback, failed push, failed merge mutation,
-or concurrent MR identity changes.
+local/remote divergence that fails Safe Synchronization guards, GitLab rebase
+conflict, missing permissions, manual jobs, approval requirements not satisfied
+by existing reviewers, deployment decisions, ambiguous discussion feedback,
+failed push, failed merge mutation, or concurrent MR identity changes.
 
 ## Output
 
