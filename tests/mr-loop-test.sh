@@ -180,6 +180,7 @@ assert_eq "no unresolved discussion yields null" "null" \
 
 evaluated_discussion='{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
 evaluated_snapshot=$(printf '%s' "$evaluated_discussion" | discussion_snapshot)
+evaluated_content_snapshot=$(printf '%s' "$evaluated_discussion" | discussion_content_snapshot)
 assert_status "accept identical evaluated discussion snapshot" 0 discussion_matches_snapshot "$evaluated_snapshot" "$evaluated_discussion"
 assert_status "accept GitLab-managed position SHA refresh" 0 discussion_matches_snapshot "$evaluated_snapshot" \
   '{"id":"thread-1","position":{"new_path":"src/a.c","new_line":9,"base_sha":"base","start_sha":"start","head_sha":"new-head"},"notes":[{"id":11,"body":"Fix this","resolvable":true,"resolved":false}]}'
@@ -187,6 +188,8 @@ positioned_discussion='{"id":"thread-2","notes":[{"id":21,"body":"Fix this","res
 positioned_snapshot=$(printf '%s' "$positioned_discussion" | discussion_snapshot)
 assert_status "accept post-push note position SHA refresh" 0 discussion_matches_snapshot "$positioned_snapshot" \
   '{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/a.c","new_line":9,"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head"}}]}'
+assert_status "ignore push-generated system note" 0 discussion_matches_snapshot "$positioned_snapshot" \
+  '{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/a.c","new_line":9,"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head"}},{"id":22,"body":"changed this line in version 2","system":true,"resolvable":false,"resolved":null,"position":{"new_path":"src/a.c","new_line":9}}]}'
 assert_status "reject changed note position after push" 1 discussion_matches_snapshot "$positioned_snapshot" \
   '{"id":"thread-2","notes":[{"id":21,"body":"Fix this","resolvable":true,"resolved":false,"position":{"new_path":"src/b.c","new_line":9,"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head"}}]}'
 assert_status "reject changed discussion note content" 1 discussion_matches_snapshot "$evaluated_snapshot" \
@@ -220,6 +223,14 @@ unset -f api 2>/dev/null || true
 discussion_calls=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-calls.XXXXXX")
 discussion_fetch_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-state.XXXXXX")
 discussion_local_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-local.XXXXXX")
+discussion_request_body=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-body.XXXXXX")
+discussion_request_path=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-path.XXXXXX")
+discussion_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-discussion-repo.XXXXXX")
+REPO_ROOT=$discussion_repo
+reply_note='{"id":12,"body":"Fixed in the current MR head.","author":{"id":2,"username":"louie"},"type":"DiffNote","resolvable":true,"resolved":false,"system":false,"position":{"base_sha":"old-base","start_sha":"old-start","head_sha":"old-head","new_path":"src/a.c","new_line":9}}'
+fetched_reply_note='{"id":12,"body":"Fixed in the current MR head.","author":{"id":2,"username":"louie","name":"Louie"},"type":"DiffNote","resolvable":true,"resolved":false,"resolved_at":null,"system":false,"position":{"base_sha":"new-base","start_sha":"new-start","head_sha":"new-head","new_path":"src/renamed.c","new_line":14}}'
+system_note='{"id":10,"body":"changed this line in version 2","system":true,"resolvable":false,"resolved":null,"position":{"new_path":"src/a.c","new_line":9}}'
+GITLAB_USER_ID=2
 printf '0\n' >"$discussion_fetch_state"
 printf 'fix-ci abc\n' >"$discussion_local_state"
 git() {
@@ -238,10 +249,34 @@ fetch_discussion() {
   discussion_fetches=$((discussion_fetches + 1))
   printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
   if [ "$discussion_fetches" -eq 1 ]; then
-    printf '%s\n' "$evaluated_discussion"
+    printf '%s' "$evaluated_discussion" | jq -c --argjson system_note "$system_note" '.notes += [$system_note]'
+  elif [ "$discussion_fetches" -eq 2 ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson system_note "$system_note" --argjson reply_note "$fetched_reply_note" \
+      '.notes += [$system_note, $reply_note]'
   else
-    printf '%s' "$evaluated_discussion" | jq -c '.notes += [{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}]'
+    printf '%s' "$evaluated_discussion" | jq -c --argjson system_note "$system_note" --argjson reply_note "$fetched_reply_note" \
+      '.notes = ((.notes | map(.resolved = true)) + [$system_note, ($reply_note | .resolved = true)])'
   fi
+}
+api_once() {
+  printf 'api-argc:%s\n' "$#" >>"$discussion_calls"
+  for api_arg in "$@"; do
+    printf 'api-arg:%s\n' "$api_arg" >>"$discussion_calls"
+  done
+  case $* in
+    *--method\ POST*)
+      previous_arg=
+      for api_arg in "$@"; do
+        [ "$previous_arg" = --input ] && {
+          printf '%s\n' "$api_arg" >"$discussion_request_path"
+          jq -c . "$api_arg" >"$discussion_request_body"
+        }
+        previous_arg=$api_arg
+      done
+      printf '%s\n' "$reply_note"
+      ;;
+    *) printf '{}\n' ;;
+  esac
 }
 api() {
   printf 'api-argc:%s\n' "$#" >>"$discussion_calls"
@@ -249,17 +284,143 @@ api() {
     printf 'api-arg:%s\n' "$api_arg" >>"$discussion_calls"
   done
   case $* in
-    *POST*) printf '%s\n' '{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}' ;;
+    *PUT*) printf '{}\n' ;;
     *) printf '{}\n' ;;
   esac
 }
-reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
 assert_eq "re-fetch exact discussion before reply" "fetch-discussion:thread-1" \
   "$(sed -n '1p' "$discussion_calls")"
-assert_eq "reply text remains one glab argument" "api-arg:body=Fixed in the current MR head." \
-  "$(sed -n '6p' "$discussion_calls")"
+assert_eq "discussion reply uses JSON input" "api-arg:--input" "$(sed -n '5p' "$discussion_calls")"
+assert_eq "discussion reply JSON preserves text" '{"body":"Fixed in the current MR head."}' \
+  "$(sed -n '1p' "$discussion_request_body")"
+assert_status "discussion reply request file is cleaned" 1 test -e "$(sed -n '1p' "$discussion_request_path")"
 assert_eq "reply discussion before resolve" "api-arg:POST" "$(sed -n '4p' "$discussion_calls")"
 assert_eq "resolve discussion second" "api-arg:PUT" "$(grep 'api-arg:PUT' "$discussion_calls")"
+
+special_reply_body=$(mktemp "${TMPDIR:-/tmp}/mr-loop-special-reply.XXXXXX")
+api_once() {
+  previous_arg=
+  for api_arg in "$@"; do
+    [ "$previous_arg" = --input ] && jq -c . "$api_arg" >"$special_reply_body"
+    previous_arg=$api_arg
+  done
+  printf '%s\n' "$reply_note"
+}
+post_discussion_reply thread-1 '[fixed]' >/dev/null
+assert_eq "discussion JSON preserves bracketed reply" '{"body":"[fixed]"}' "$(sed -n '1p' "$special_reply_body")"
+rm -f "$special_reply_body"
+
+GITLAB_USER_ID=
+api() { printf '%s\n' '{"id":null}'; }
+assert_status "reject missing authenticated GitLab user id" 1 ensure_gitlab_user
+api() { printf '%s\n' '{"id":1.5}'; }
+assert_status "reject fractional authenticated GitLab user id" 1 ensure_gitlab_user
+api() { printf '%s\n' '{"id":2}'; }
+assert_status "accept numeric authenticated GitLab user id" 0 ensure_gitlab_user
+assert_eq "retain authenticated GitLab user id" "2" "$GITLAB_USER_ID"
+
+: >"$discussion_calls"
+printf '0\n' >"$discussion_fetch_state"
+fetch_discussion() {
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ "$discussion_fetches" -eq 1 ]; then
+    printf '%s\n' "$evaluated_discussion"
+  elif [ "$discussion_fetches" -lt 4 ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]'
+  else
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" \
+      '.notes = ((.notes | map(.resolved = true)) + [($reply_note | .resolved = true)])'
+  fi
+}
+api_once() {
+  case $* in
+    *--method\ POST*) printf 'post-once\n' >>"$discussion_calls"; return 1 ;;
+    *) printf 'resolve-once\n' >>"$discussion_calls"; return 1 ;;
+  esac
+}
+api() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  printf '{}\n'
+}
+assert_status "recover ambiguous discussion reply without retry" 0 \
+  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
+assert_eq "ambiguous reply uses one POST attempt" "1" "$(grep -c '^post-once$' "$discussion_calls")"
+assert_eq "ambiguous reply recovery resolves once" "1" "$(grep -c '^resolve-once$' "$discussion_calls")"
+
+: >"$discussion_calls"
+printf '0\n' >"$discussion_fetch_state"
+resolution_reopen_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-resolution-reopen.XXXXXX")
+: >"$resolution_reopen_state"
+fetch_discussion() {
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ -s "$resolution_reopen_state" ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note, {"id":99,"body":"Concurrent note","author":{"id":3,"username":"reviewer"},"type":"DiscussionNote","resolvable":true,"resolved":false,"system":false}]'
+  else
+    case $discussion_fetches in
+      1) printf '%s\n' "$evaluated_discussion" ;;
+      2) printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]' ;;
+      *) printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes = ((.notes | map(.resolved = true)) + [($reply_note | .resolved = true), {"id":99,"body":"Concurrent note","author":{"id":3,"username":"reviewer"},"type":"DiscussionNote","resolvable":true,"resolved":true,"system":false}])' ;;
+    esac
+  fi
+}
+api_once() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  case $* in
+    *--method\ POST*) printf '%s\n' "$reply_note" ;;
+    *resolved=false*) printf 'reopened\n' >"$resolution_reopen_state"; printf '{}\n' ;;
+    *) printf '{}\n' ;;
+  esac
+}
+assert_status "reopen discussion changed during resolution" 1 \
+  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
+assert_eq "resolution race reopens discussion" "1" "$(grep -c -- '--field resolved=false' "$discussion_calls")"
+assert_eq "resolution race reports reopened thread" \
+  "discussion thread-1 changed during resolution and was reopened" "$DISCUSSION_ERROR"
+rm -f "$resolution_reopen_state"
+
+: >"$discussion_calls"
+printf '0\n' >"$discussion_fetch_state"
+unresolved_reopen_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-unresolved-reopen.XXXXXX")
+: >"$unresolved_reopen_state"
+fetch_discussion() {
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ "$discussion_fetches" -eq 1 ]; then
+    printf '%s\n' "$evaluated_discussion"
+  else
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]'
+  fi
+}
+api_once() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  case $* in
+    *--method\ POST*) printf '%s\n' "$reply_note" ;;
+    *resolved=false*) printf 'reopened\n' >"$unresolved_reopen_state"; printf '{}\n' ;;
+    *) printf '{}\n' ;;
+  esac
+}
+assert_status "reopen unresolved resolution confirmation" 1 \
+  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
+assert_eq "unresolved confirmation triggers reopen" "1" "$(grep -c -- '--field resolved=false' "$discussion_calls")"
+assert_eq "unresolved confirmation reports reopen" \
+  "GitLab did not confirm resolution of discussion thread-1 and it was reopened" "$DISCUSSION_ERROR"
+rm -f "$unresolved_reopen_state"
+
+: >"$discussion_calls"
+fetch_discussion() {
+  printf '%s' "$evaluated_discussion" | jq -c '.notes |= map(.resolved = true)'
+}
+api() { printf '%s\n' "$*" >>"$discussion_calls"; }
+assert_status "accept discussion resolved concurrently after repair" 0 \
+  reply_and_resolve_discussion thread-1 "Already resolved." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
+assert_eq "concurrent resolution needs no API mutation" "0" "$(wc -l <"$discussion_calls" | tr -d ' ')"
+assert_eq "concurrent resolution leaves no discussion error" "" "$DISCUSSION_ERROR"
 
 : >"$discussion_calls"
 printf '0\n' >"$discussion_fetch_state"
@@ -270,18 +431,94 @@ fetch_discussion() {
   if [ "$discussion_fetches" -eq 1 ]; then
     printf '%s\n' "$evaluated_discussion"
   else
-    printf '%s' "$evaluated_discussion" | jq -c '.notes += [
-      {"id":99,"body":"Concurrent note","resolvable":false,"resolved":false},
-      {"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$reply_note" '.notes += [
+      {"id":99,"body":"Concurrent note","author":{"id":3,"username":"reviewer"},"type":"DiscussionNote","resolvable":false,"resolved":false},
+      $reply_note
     ]'
   fi
 }
+api_once() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  printf '%s\n' "$reply_note"
+}
 assert_status "reject concurrent note before discussion resolution" 1 \
-  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+  reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
 assert_eq "concurrent note prevents discussion resolution" "0" \
-  "$(grep -c -- 'api-arg:PUT' "$discussion_calls" || true)"
+  "$(grep -c -- '--method PUT' "$discussion_calls" || true)"
+assert_eq "concurrent note reports precise failure" \
+  "discussion thread-1 changed while its reply was posted" "$DISCUSSION_ERROR"
+
+: >"$discussion_calls"
+fetch_mr() {
+  printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
+}
+fetch_discussion() {
+  printf '%s' "$evaluated_discussion" | jq -c '.position.new_line = 10'
+}
+assert_status "reject no-push position change before reply" 1 \
+  reply_and_resolve_discussion thread-1 "Stale position." abc fix-ci 7 \
+    "$evaluated_content_snapshot" fix-ci abc "$evaluated_snapshot"
+assert_eq "no-push position change prevents API mutation" "0" "$(wc -l <"$discussion_calls" | tr -d ' ')"
+assert_eq "no-push position change reports stale discussion" \
+  "discussion thread-1 changed after evaluation" "$DISCUSSION_ERROR"
+
+: >"$discussion_calls"
+printf '0\n' >"$discussion_fetch_state"
+resolution_guard_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-resolution-guard.XXXXXX")
+resolution_guard_case=
+printf 'before\n' >"$resolution_guard_state"
+fetch_mr() {
+  case $(sed -n '1p' "$resolution_guard_state") in
+    after-sha) printf '%s\n' '{"state":"opened","sha":"changed","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}' ;;
+    *) printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}' ;;
+  esac
+}
+fetch_discussion() {
+  discussion_fetches=$(sed -n '1p' "$discussion_fetch_state")
+  discussion_fetches=$((discussion_fetches + 1))
+  printf '%s\n' "$discussion_fetches" >"$discussion_fetch_state"
+  if [ "$discussion_fetches" -eq 1 ]; then
+    printf '%s\n' "$evaluated_discussion"
+  elif [ "$(sed -n '1p' "$resolution_guard_state")" = reopened ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]'
+  elif [ "$discussion_fetches" -eq 2 ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]'
+  else
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" \
+      '.notes = ((.notes | map(.resolved = true)) + [($reply_note | .resolved = true)])'
+  fi
+}
+api_once() {
+  printf '%s\n' "$*" >>"$discussion_calls"
+  case $* in
+    *--method\ POST*) printf '%s\n' "$reply_note" ;;
+    *resolved=true*)
+      case $resolution_guard_case in
+        sha) printf 'after-sha\n' >"$resolution_guard_state" ;;
+        head) printf 'fix-ci changed\n' >"$discussion_local_state" ;;
+      esac
+      printf '{}\n'
+      ;;
+    *resolved=false*) printf 'reopened\n' >"$resolution_guard_state"; printf '{}\n' ;;
+  esac
+}
+for resolution_guard_case in sha head; do
+  : >"$discussion_calls"
+  printf '0\n' >"$discussion_fetch_state"
+  printf 'before\n' >"$resolution_guard_state"
+  printf 'fix-ci abc\n' >"$discussion_local_state"
+  assert_status "reject $resolution_guard_case change during resolution" 1 \
+    reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 \
+      "$evaluated_content_snapshot" fix-ci abc
+  assert_eq "$resolution_guard_case resolution race reopens discussion" "1" \
+    "$(grep -c -- '--field resolved=false' "$discussion_calls")"
+  assert_eq "$resolution_guard_case resolution race reports reopen" \
+    "MR, branch, or HEAD changed during resolution of discussion thread-1 and it was reopened" "$DISCUSSION_ERROR"
+done
+rm -f "$resolution_guard_state"
 
 post_guard_mr_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-post-mr.XXXXXX")
+post_guard_reply_state=$(mktemp "${TMPDIR:-/tmp}/mr-loop-post-reply.XXXXXX")
 post_guard_case=
 fetch_mr() {
   case $(sed -n '1p' "$post_guard_mr_state") in
@@ -291,55 +528,68 @@ fetch_mr() {
   esac
 }
 fetch_discussion() {
-  if [ "$(sed -n '1p' "$post_guard_mr_state")" = before ]; then
+  if [ -s "$post_guard_reply_state" ]; then
+    printf '%s' "$evaluated_discussion" | jq -c --argjson reply_note "$fetched_reply_note" '.notes += [$reply_note]'
+  elif [ "$(sed -n '1p' "$post_guard_mr_state")" = before ]; then
     printf '%s\n' "$evaluated_discussion"
   else
     printf '%s' "$evaluated_discussion" | jq -c '.notes += [{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}]'
   fi
 }
-api() {
+api_once() {
   printf '%s\n' "$*" >>"$discussion_calls"
-  case $* in
-    *POST*)
-      case $post_guard_case in
-        sha|identity) printf 'after-%s\n' "$post_guard_case" >"$post_guard_mr_state" ;;
-        branch) printf 'other abc\n' >"$discussion_local_state" ;;
-        head) printf 'fix-ci changed\n' >"$discussion_local_state" ;;
-      esac
-      printf '%s\n' '{"id":12,"body":"Fixed in the current MR head.","resolvable":false,"resolved":false}'
-      ;;
-    *) printf '{}\n' ;;
+  printf 'posted\n' >"$post_guard_reply_state"
+  case $post_guard_case in
+    sha|identity) printf 'after-%s\n' "$post_guard_case" >"$post_guard_mr_state" ;;
+    branch) printf 'other abc\n' >"$discussion_local_state" ;;
+    head) printf 'fix-ci changed\n' >"$discussion_local_state" ;;
   esac
+  printf '%s\n' "$reply_note"
 }
 for post_guard_case in sha identity branch head; do
   : >"$discussion_calls"
+  : >"$post_guard_reply_state"
   printf 'before\n' >"$post_guard_mr_state"
   printf 'fix-ci abc\n' >"$discussion_local_state"
   assert_status "reject $post_guard_case change between reply and resolve" 1 \
-    reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+    reply_and_resolve_discussion thread-1 "Fixed in the current MR head." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
   assert_eq "$post_guard_case change prevents discussion resolution" "0" \
     "$(grep -c -- '--method PUT' "$discussion_calls" || true)"
+  case $post_guard_case in
+    sha|identity) expected_guard_error="MR changed after replying to discussion thread-1" ;;
+    branch|head) expected_guard_error="local branch or HEAD changed before resolving discussion thread-1" ;;
+  esac
+  assert_eq "$post_guard_case change reports exact guard" "$expected_guard_error" "$DISCUSSION_ERROR"
 done
-rm -f "$post_guard_mr_state"
+rm -f "$post_guard_mr_state" "$post_guard_reply_state"
 
 : >"$discussion_calls"
-api() {
+printf 'fix-ci abc\n' >"$discussion_local_state"
+fetch_mr() {
+  printf '%s\n' '{"state":"opened","sha":"abc","source_branch":"fix-ci","source_project_id":7,"target_project_id":7}'
+}
+fetch_discussion() { printf '%s\n' "$evaluated_discussion"; }
+api_once() {
   printf '%s\n' "$*" >>"$discussion_calls"
-  case $* in *POST*) return 1 ;; esac
-  printf '{}\n'
+  return 1
 }
 assert_status "propagate discussion reply failure" 1 \
-  reply_and_resolve_discussion thread-1 "Cannot post." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+  reply_and_resolve_discussion thread-1 "Cannot post." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
 assert_eq "do not resolve after reply failure" "0" \
   "$(grep -c -- '--method PUT' "$discussion_calls" || true)"
+assert_eq "reply failure reaches one POST" "1" "$(grep -c -- '--method POST' "$discussion_calls")"
 
 : >"$discussion_calls"
 fetch_mr() { printf '%s\n' '{"sha":"changed"}'; }
 assert_status "reject changed MR before discussion reply" 1 \
-  reply_and_resolve_discussion thread-1 "Stale reply." abc fix-ci 7 "$evaluated_snapshot" fix-ci abc
+  reply_and_resolve_discussion thread-1 "Stale reply." abc fix-ci 7 "$evaluated_content_snapshot" fix-ci abc
 assert_eq "changed MR prevents discussion API mutation" "0" "$(wc -l <"$discussion_calls" | tr -d ' ')"
-rm -f "$discussion_calls" "$discussion_fetch_state" "$discussion_local_state"
-unset -f fetch_mr fetch_discussion api git 2>/dev/null || true
+rm -f "$discussion_calls" "$discussion_fetch_state" "$discussion_local_state" \
+  "$discussion_request_body" "$discussion_request_path"
+rm -rf "$discussion_repo"
+unset -f fetch_mr fetch_discussion api api_once git 2>/dev/null || true
+GITLAB_USER_ID=
+REPO_ROOT=
 
 process_root=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-process.XXXXXX")
 REPO_ROOT=$process_root
@@ -351,6 +601,10 @@ run_discussion_agent() {
   [ -z "${AGENT_MUTATION_BRANCH:-}" ] || printf '%s\n' "$AGENT_MUTATION_BRANCH" >"$process_root/test-branch"
   [ -z "${AGENT_MUTATION_HEAD:-}" ] || printf '%s\n' "$AGENT_MUTATION_HEAD" >"$process_root/test-head"
 }
+process_discussion_json() {
+  jq -cn --arg id "$1" '{id: $id, notes: [{id: 1, body: "Feedback", resolvable: true, resolved: false}]}'
+}
+fetch_discussion() { process_discussion_json "$1"; }
 git() {
   case $* in
     *branch*--show-current*) sed -n '1p' "$process_root/test-branch" 2>/dev/null || printf '%s\n' fix-ci ;;
@@ -372,7 +626,7 @@ assert_eq "pipeline repair preserves validated project identity" \
 
 rm -f "$process_root/commit"
 REPAIRS=4
-process_discussion "$mr" '{"id":"fixed"}' fix-ci 7
+process_discussion "$mr" "$(process_discussion_json fixed)" fix-ci 7
 assert_eq "fixed discussion uses review commit message" \
   "fix-ci abc 7 fix(review): resolve MR feedback fix-ci abc" "$(sed -n '1p' "$process_root/commit")"
 assert_eq "fixed discussion replies only after converged push" \
@@ -380,33 +634,44 @@ assert_eq "fixed discussion replies only after converged push" \
 assert_eq "fixed discussion shares repair budget" "5" "$REPAIRS"
 
 rm -f "$process_root/commit" "$process_root/reply"
-process_discussion "$mr" '{"id":"invalid"}' fix-ci 7
+fetch_discussion() {
+  process_discussion_json "$1" | jq -c '.notes[0].body = "Edited feedback"'
+}
+assert_status "stale feedback blocks fixed repair commit" 1 \
+  process_discussion "$mr" "$(process_discussion_json fixed)" fix-ci 7
+assert_status "stale feedback prevents repair commit" 1 test -e "$process_root/commit"
+assert_eq "stale feedback reports evaluation race" \
+  "discussion fixed changed during evaluation" "$DISCUSSION_ERROR"
+fetch_discussion() { process_discussion_json "$1"; }
+
+rm -f "$process_root/commit" "$process_root/reply"
+process_discussion "$mr" "$(process_discussion_json invalid)" fix-ci 7
 assert_status "invalid discussion rejects code changes" 1 test -e "$process_root/commit"
 assert_eq "invalid discussion replies without push" \
   "invalid|Reply with spaces.|abc" "$(sed -n '1p' "$process_root/reply")"
 
 printf 'changed\n' >"$process_root/change"
 assert_status "obsolete discussion rejects agent code changes" 1 \
-  process_discussion "$mr" '{"id":"obsolete"}' fix-ci 7
+  process_discussion "$mr" "$(process_discussion_json obsolete)" fix-ci 7
 rm -f "$process_root/change" "$process_root/reply"
 assert_status "blocked discussion requires human intervention" 2 \
-  process_discussion "$mr" '{"id":"blocked"}' fix-ci 7
+  process_discussion "$mr" "$(process_discussion_json blocked)" fix-ci 7
 assert_status "blocked discussion remains unresolved" 1 test -e "$process_root/reply"
 rm -f "$process_root/commit" "$process_root/reply"
 AGENT_MUTATION_HEAD=changed
 assert_status "discussion agent HEAD change stops all mutations" 1 \
-  process_discussion "$mr" '{"id":"invalid","notes":[]}' fix-ci 7
+  process_discussion "$mr" "$(process_discussion_json invalid)" fix-ci 7
 assert_status "changed discussion-agent HEAD prevents reply" 1 test -e "$process_root/reply"
 assert_status "changed discussion-agent HEAD prevents commit" 1 test -e "$process_root/commit"
 unset AGENT_MUTATION_HEAD
 rm -f "$process_root/test-head"
 AGENT_MUTATION_BRANCH=other
 assert_status "discussion agent branch change stops all mutations" 1 \
-  process_discussion "$mr" '{"id":"invalid","notes":[]}' fix-ci 7
+  process_discussion "$mr" "$(process_discussion_json invalid)" fix-ci 7
 assert_status "changed discussion-agent branch prevents reply" 1 test -e "$process_root/reply"
 assert_status "changed discussion-agent branch prevents commit" 1 test -e "$process_root/commit"
 unset AGENT_MUTATION_BRANCH
-unset -f run_discussion_agent commit_generated_repair reply_and_resolve_discussion git 2>/dev/null || true
+unset -f run_discussion_agent process_discussion_json fetch_discussion commit_generated_repair reply_and_resolve_discussion git 2>/dev/null || true
 rm -rf "$process_root"
 . "$SCRIPT"
 parse_args "https://gitlab.com/acme/widget/-/merge_requests/17"
@@ -589,6 +854,13 @@ fi
 assert_status "bounded command times out" 142 run_with_timeout 1 sleep 2
 assert_status "bounded command kills TERM-resistant process" 142 run_with_timeout 1 sh -c \
   'trap "" TERM; while :; do sleep 1; done'
+leader_exit_child_file=$(mktemp "${TMPDIR:-/tmp}/mr-loop-leader-exit.XXXXXX")
+assert_status "bounded command kills child after leader exits on TERM" 142 run_with_timeout 1 sh -c \
+  'trap "exit 0" TERM; sh -c '\''trap "" TERM; while :; do sleep 1; done'\'' & printf "%s\n" "$!" >"$1"; wait' \
+  sh "$leader_exit_child_file"
+leader_exit_child_pid=$(sed -n '1p' "$leader_exit_child_file")
+rm -f "$leader_exit_child_file"
+assert_status "leader-exit child is terminated" 1 kill -0 "$leader_exit_child_pid"
 pid_file=$(mktemp "${TMPDIR:-/tmp}/mr-loop-timeout.XXXXXX")
 assert_status "bounded command times out process tree" 142 run_with_timeout 1 sh -c \
   'sleep 20 & echo $! >"$1"; wait' sh "$pid_file"
@@ -597,6 +869,66 @@ rm -f "$pid_file"
 assert_status "timed out child is terminated" 1 kill -0 "$child_pid"
 assert_status "fatal guard terminates caller" 1 sh -c \
   '. "$1"; die "stop"; exit 0' sh "$SCRIPT"
+
+interrupt_child_file=$(mktemp "${TMPDIR:-/tmp}/mr-loop-interrupt-child.XXXXXX")
+interrupt_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-interrupt-repo.XXXXXX")
+sh -c '
+  . "$1"
+  REPO_ROOT=$2
+  print_summary() { :; }
+  initialize_active_command_file || exit 1
+  trap "handle_interrupt" INT TERM HUP
+  trap "cleanup" EXIT
+  run_with_timeout 30 sh -c '\''trap "" TERM; printf "%s\n" "$$" >"$1"; while :; do sleep 1; done'\'' sh "$3"
+' sh "$SCRIPT" "$interrupt_repo" "$interrupt_child_file" &
+interrupt_supervisor_pid=$!
+interrupt_wait=0
+while [ ! -s "$interrupt_child_file" ] && [ "$interrupt_wait" -lt 50 ]; do
+  sleep 0.1
+  interrupt_wait=$((interrupt_wait + 1))
+done
+interrupt_child_pid=$(sed -n '1p' "$interrupt_child_file")
+kill -TERM "$interrupt_supervisor_pid"
+set +e
+wait "$interrupt_supervisor_pid"
+interrupt_status=$?
+set -e
+assert_eq "interrupt exits supervisor with 130" "130" "$interrupt_status"
+assert_status "interrupt terminates active child" 1 kill -0 "$interrupt_child_pid"
+rm -f "$interrupt_child_file"
+rm -rf "$interrupt_repo"
+
+transport_bin=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-transport-bin.XXXXXX")
+transport_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-transport-repo.XXXXXX")
+transport_body=$(mktemp "${TMPDIR:-/tmp}/mr-loop-transport-body.XXXXXX")
+printf '%s\n' '#!/bin/sh' \
+  'previous_arg=' \
+  'for arg do' \
+  '  if [ "$previous_arg" = --input ]; then cp "$arg" "$MR_LOOP_TRANSPORT_BODY"; fi' \
+  '  previous_arg=$arg' \
+  'done' \
+  'printf '\''%s\n'\'' '\''{"id":12,"body":"[fixed]","author":{"id":2},"type":"DiffNote"}'\''' \
+  >"$transport_bin/glab"
+chmod +x "$transport_bin/glab"
+transport_path=$PATH
+PATH="$transport_bin:$PATH"
+export PATH
+MR_LOOP_TRANSPORT_BODY=$transport_body
+export MR_LOOP_TRANSPORT_BODY
+REPO_ROOT=$transport_repo
+COMMAND_TIMEOUT=5
+post_discussion_reply thread-1 '[fixed]'
+assert_eq "timeout wrapper preserves discussion JSON file" '{"body":"[fixed]"}' \
+  "$(jq -c . "$transport_body")"
+assert_eq "timeout wrapper returns posted discussion note" "[fixed]" \
+  "$(printf '%s' "$POSTED_NOTE" | jq -r .body)"
+assert_eq "discussion request path clears after real transport" "" "$DISCUSSION_REQUEST_FILE"
+assert_eq "discussion response path clears after real transport" "" "$DISCUSSION_RESPONSE_FILE"
+PATH=$transport_path
+export PATH
+rm -rf "$transport_bin" "$transport_repo"
+rm -f "$transport_body"
+REPO_ROOT=
 
 api() { return 1; }
 assert_status "trace download failure is propagated" 1 fetch_job_trace 99
@@ -622,6 +954,7 @@ assert_eq "preserve normal log" "normal failure" "$(printf '%s' "$redacted" | se
 
 fake_bin=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-bin.XXXXXX")
 fake_args=$(mktemp "${TMPDIR:-/tmp}/mr-loop-args.XXXXXX")
+agent_repo=$(mktemp -d "${TMPDIR:-/tmp}/mr-loop-agent-repo.XXXXXX")
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$@" >"$MR_LOOP_FAKE_ARGS"' >"$fake_bin/opencode"
 chmod +x "$fake_bin/opencode"
 original_path=$PATH
@@ -629,7 +962,7 @@ PATH="$fake_bin:$PATH"
 export PATH
 MR_LOOP_FAKE_ARGS=$fake_args
 export MR_LOOP_FAKE_ARGS
-REPO_ROOT=$ROOT
+REPO_ROOT=$agent_repo
 LAST_MR_SHA=abc
 REPAIRS=0
 MAX_REPAIRS=3
@@ -644,7 +977,7 @@ else
 fi
 repair_context_path=$(sed -n "$((file_line + 1))p" "$fake_args")
 case $repair_context_path in
-  "$ROOT"/.mr-loop-context.*) pass "repair context stays inside repository" ;;
+  "$agent_repo"/.mr-loop-context.*) pass "repair context stays inside repository" ;;
   *) fail "repair context stays inside repository (got '$repair_context_path')" ;;
 esac
 printf '%s\n' '#!/bin/sh' \
@@ -653,7 +986,7 @@ printf '%s\n' '#!/bin/sh' \
   'cp "$context_path" "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"' \
   'printf "%s\n" '\''{"disposition":"obsolete","reply":"The referenced code has already been removed."}'\'' >"$MR_LOOP_FAKE_DISCUSSION_RESULT"' \
   >"$fake_bin/opencode"
-MR_LOOP_FAKE_DISCUSSION_RESULT="$ROOT/.mr-loop-discussion-result.json"
+MR_LOOP_FAKE_DISCUSSION_RESULT="$agent_repo/.mr-loop-discussion-result.json"
 MR_LOOP_FAKE_DISCUSSION_CONTEXT=$(mktemp "${TMPDIR:-/tmp}/mr-loop-discussion-context.XXXXXX")
 export MR_LOOP_FAKE_DISCUSSION_RESULT
 export MR_LOOP_FAKE_DISCUSSION_CONTEXT
@@ -661,7 +994,7 @@ run_discussion_agent '{"sha":"abc","title":"Fix project names","description":"SU
 discussion_file_line=$(grep -n '^--file$' "$fake_args" | cut -d: -f1)
 discussion_context_path=$(sed -n "$((discussion_file_line + 1))p" "$fake_args")
 case $discussion_context_path in
-  "$ROOT"/.mr-loop-discussion.*) pass "discussion context stays inside repository" ;;
+  "$agent_repo"/.mr-loop-discussion.*) pass "discussion context stays inside repository" ;;
   *) fail "discussion context stays inside repository (got '$discussion_context_path')" ;;
 esac
 assert_status "discussion context includes MR title" 0 grep -q '^MR title: Fix project names$' "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
@@ -688,9 +1021,10 @@ assert_eq "invocation failure clears context path" "" "$DISCUSSION_CONTEXT_FILE"
 assert_eq "invocation failure clears result path" "" "$DISCUSSION_RESULT_FILE"
 PATH=$original_path
 export PATH
-rm -rf "$fake_bin"
+rm -rf "$fake_bin" "$agent_repo"
 rm -f "$fake_args" "$MR_LOOP_FAKE_DISCUSSION_CONTEXT"
 unset -f fetch_failed_logs 2>/dev/null || true
+REPO_ROOT=$ROOT
 
 if [ -f "$DISCUSSION_AGENT" ]; then
   pass "discussion repair agent exists"
