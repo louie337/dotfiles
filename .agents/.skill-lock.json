@@ -99,6 +99,15 @@
       "skillFolderHash": "eb872a4c7ea829d88b2299d353cc691f8c3240e3",
       "installedAt": "2026-07-16T08:44:59.040Z",
       "updatedAt": "2026-07-16T08:44:59.040Z"
+    },
+    "gitlab-cli-skills": {
+      "source": "vince-winkintel/gitlab-cli-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vince-winkintel/gitlab-cli-skills.git",
+      "skillPath": "gitlab-cli-skills/SKILL.md",
+      "skillFolderHash": "c33b272f0fa1cebcdea737e162c5e08cbf1400fd",
+      "installedAt": "2026-07-16T18:51:30.162Z",
+      "updatedAt": "2026-07-16T18:51:30.162Z"
     }
   },
   "dismissed": {
@@ -106,13 +115,17 @@
   },
   "lastSelectedAgents": [
     "amp",
+    "antigravity",
+    "antigravity-cli",
     "cline",
     "codex",
     "cursor",
+    "deepagents",
     "gemini-cli",
     "github-copilot",
-    "kimi-cli",
+    "kimi-code-cli",
     "opencode",
-    "warp"
+    "warp",
+    "zed"
   ]
 }
