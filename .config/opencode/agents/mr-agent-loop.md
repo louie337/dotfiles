@@ -78,6 +78,29 @@ Progress summaries and checkpoints never terminate execution. A response that
 contains `Next:` or an equivalent self-actionable follow-up is evidence of an
 invalid voluntary stop: perform that action instead when no hard blocker exists.
 
+### Local Verification Budget
+
+Prefer exact-SHA GitLab CI for substantive verification. Local resource
+conservation is a safety constraint, not merely an optimization.
+
+Unless the user explicitly authorizes additional local workload, do not run test
+suites, builds, repository-wide linters or type-checkers, containers, emulators,
+dependency installation, generators, or other commands likely to consume
+material CPU or RAM. If a command's cost is unknown, do not run it locally.
+
+Before committing, limit local verification to reviewing the focused diff and
+cheap, deterministic, file-scoped syntax, parse, or format checks needed to
+detect malformed edited files, plus unavoidable repository commit hooks. Do not
+duplicate checks that the pipeline will perform. If a mistakenly started command
+materially consumes local resources, stop it safely when possible and continue
+through CI without discarding work.
+
+After the synchronization gate passes and the complete repair is ready, commit
+and normally push it, wait for SHA convergence, and use the exact-current-SHA
+pipeline as authoritative verification. A CI failure transitions to `evaluate`
+and, when repairable, `repair`. This does not permit disposable, incomplete, or
+pre-synchronization commits pushed merely to trigger CI.
+
 ## Non-Negotiable Safety
 
 - Never reset, clean, stash, locally rebase, force-push, or discard local work.
@@ -122,9 +145,10 @@ in the preceding phase passes for the same expected MR identity and SHA:
    changes the MR SHA.
 5. `post_sync_snapshot`: re-read the final diff against the fetched target,
    discussions, approvals, conflicts, merge status, and exact-SHA pipelines/jobs.
-6. `repair`: revalidate provisional findings, edit, test, document, commit, and
-   push a focused repair. Wait for local, remote-source, and MR SHA convergence,
-   then restart at `startup`.
+6. `repair`: revalidate provisional findings, edit, perform only checks allowed
+   by Local Verification Budget, document, commit, and push a focused repair.
+   Wait for local, remote-source, and MR SHA convergence, then restart at
+   `startup`.
 7. `evaluate`: process only exact-current-SHA CI, discussions, approvals, and
    mergeability; repair or wait as required, always restarting after a mutation.
 
@@ -363,7 +387,8 @@ After a GitLab-side conflict failure:
 7. Apply repository documentation requirements and path-specific review-rule
    dispatch to every conflict-resolution change. Do not create documentation
    solely for a mechanical target merge unless repository conventions require it.
-   Run focused verification and record conflict decisions and residual risks.
+   Perform only checks allowed by Local Verification Budget and record conflict
+   decisions and residual risks.
 8. Stage only files belonging to the completed integration item and commit the
    conflict resolution with a conventional commit.
 9. Immediately before push, run identity preflight, re-fetch and revalidate the
@@ -393,8 +418,8 @@ autonomously through applicable non-destructive fallbacks:
    resolve conflict markers manually when the intended union is bounded.
 3. Regenerate authoritative generated files when repository rules identify a
    deterministic generation command, then review the generated diff.
-4. Re-run path-specific repository-rule dispatch and focused verification,
-   stage only integration files, create the conventional integration commit,
+4. Re-run path-specific repository-rule dispatch and checks allowed by Local
+   Verification Budget, stage only integration files, create the conventional integration commit,
    complete fresh identity/SHA preflight, normally push, wait for convergence,
    and restart at `startup`.
 
@@ -521,8 +546,8 @@ iteration:
    Engineering design tradeoffs are not blocked merely because there are multiple
    plausible implementations; use Autonomous Engineering Decisions when the
    review comment identifies a real defect and enough code context exists.
-3. For valid feedback, make the smallest code change, run focused local
-   verification when safe, then expire and reopen the synchronization gate.
+3. For valid feedback, make the smallest code change, perform only checks allowed
+   by Local Verification Budget, then expire and reopen the synchronization gate.
    Re-fetch MR, remote source, latest remote target, and discussion before
    commit and again before push. If the target advanced, restart synchronization
    without pushing. Otherwise commit, normally push, wait for local,
@@ -552,8 +577,8 @@ stopping for user input, if every guard below passes:
   context to identify the defect and a bounded fix.
 - The chosen approach is race-safe, deterministic, bounded in resource usage,
   and consistent with nearby project patterns.
-- The change can be kept focused and verified with local tests, static checks,
-  or CI.
+- The change can be kept focused and verified by exact-SHA CI. Cheap local checks
+  are optional only within Local Verification Budget.
 
 Prefer the smallest safe approach that fixes the defect class, not just the
 single failing example. For concurrency or reconciliation bugs, prefer bounded
@@ -584,8 +609,8 @@ For the exact current MR SHA:
 - Failed or canceled means inspect failed jobs, traces, bridge jobs, and child
   pipelines. Retry only when the evidence is clearly transient infrastructure;
   if the same unchanged failure remains, treat it as a blocker.
-- For code failures, make the smallest repair, run focused verification when
-  safe only after reconfirming the synchronization gate, cancel active pipelines
+- For code failures, make the smallest repair, perform only checks allowed by
+  Local Verification Budget after reconfirming the synchronization gate, cancel active pipelines
   for the known-failure SHA under Known-Failure
   Pipeline Cancellation, re-fetch MR, remote source, latest remote target, and
   pipeline before commit and again before push. If the target advanced, restart

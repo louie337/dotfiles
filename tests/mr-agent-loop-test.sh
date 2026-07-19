@@ -159,6 +159,13 @@ assert_contains "checkpoints require forced suspension" "$AGENT" "voluntarily, a
 assert_contains "awaiting pipeline requires imposed suspension" "$AGENT" "permitted only when the"
 assert_contains "final guard performs executable next state" "$AGENT" "perform it instead of describing it"
 assert_contains "next response proves invalid stop" "$AGENT" 'contains `Next:`'
+assert_contains "pipeline verification is preferred" "$AGENT" "Prefer exact-SHA GitLab CI for substantive verification"
+assert_contains "local suites prohibited by default" "$AGENT" "do not run test"
+assert_contains "unknown local cost defers to CI" "$AGENT" "If a command's cost is unknown, do not run it locally"
+assert_contains "cheap file checks remain allowed" "$AGENT" "file-scoped syntax, parse, or format checks"
+assert_contains "complete repair is normally pushed" "$AGENT" "complete repair is ready, commit"
+assert_contains "exact SHA CI is authoritative" "$AGENT" "pipeline as authoritative verification"
+assert_contains "disposable CI commits remain prohibited" "$AGENT" "disposable, incomplete, or"
 assert_contains "terminal failed job is defined" "$AGENT" '`failed_required_job`'
 assert_contains "already merged result is consistent" "$AGENT" 'return `merged` for either requested'
 assert_contains "final report includes fetched target" "$AGENT" "latest fetched target SHA"
