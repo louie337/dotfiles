@@ -150,6 +150,15 @@ assert_contains "ahead local commit is not pushed before sync" "$AGENT" "If loca
 assert_contains "interrupted repair is reapplied after sync" "$AGENT" "never push the pre-synchronization commit"
 assert_contains "terminal awaiting pipeline is defined" "$AGENT" '`awaiting_pipeline`'
 assert_contains "awaiting pipeline remains non-success" "$AGENT" "observational non-success state"
+assert_contains "continuation invariant prohibits checkpoint stop" "$AGENT" "completed push, SHA convergence"
+assert_contains "push convergence restarts startup" "$AGENT" 'convergence -> `startup`'
+assert_contains "discussion reply transitions to resolution" "$AGENT" "discussion reply -> discussion resolution"
+assert_contains "transient pipeline polls" "$AGENT" "transient exact-SHA pipeline state -> sleep and poll"
+assert_contains "watchdog controls returns" "$AGENT" '`external_return_required` is set by the'
+assert_contains "checkpoints require forced suspension" "$AGENT" "voluntarily, and never treat one as a terminal result"
+assert_contains "awaiting pipeline requires imposed suspension" "$AGENT" "permitted only when the"
+assert_contains "final guard performs executable next state" "$AGENT" "perform it instead of describing it"
+assert_contains "next response proves invalid stop" "$AGENT" 'contains `Next:`'
 assert_contains "terminal failed job is defined" "$AGENT" '`failed_required_job`'
 assert_contains "already merged result is consistent" "$AGENT" 'return `merged` for either requested'
 assert_contains "final report includes fetched target" "$AGENT" "latest fetched target SHA"

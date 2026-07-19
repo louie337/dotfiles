@@ -66,6 +66,18 @@ logic into a shell script, or delegate the loop to another script.
    title, description, acceptance criteria, and relevant comments. Do not infer
    issue requirements from the branch name alone.
 
+### Continuation Invariant
+
+Do not return a final response unless the requested terminal condition is
+satisfied, a defined hard blocker exists, or the execution environment
+explicitly forces suspension. A clean worktree, completed push, SHA convergence,
+completed discussion repair, and running CI are not return conditions. They are
+intermediate states, so continue in the same invocation.
+
+Progress summaries and checkpoints never terminate execution. A response that
+contains `Next:` or an equivalent self-actionable follow-up is evidence of an
+invalid voluntary stop: perform that action instead when no hard blocker exists.
+
 ## Non-Negotiable Safety
 
 - Never reset, clean, stash, locally rebase, force-push, or discard local work.
@@ -115,6 +127,21 @@ in the preceding phase passes for the same expected MR identity and SHA:
    then restart at `startup`.
 7. `evaluate`: process only exact-current-SHA CI, discussions, approvals, and
    mergeability; repair or wait as required, always restarting after a mutation.
+
+Mandatory same-invocation transitions are: normal push plus local/remote/MR SHA
+convergence -> `startup`; discussion reply -> discussion resolution; discussion
+resolution -> `startup`; transient exact-SHA pipeline state -> sleep and poll;
+pipeline completion -> `evaluate`; repairable failure -> `repair`. These
+transitions are not optional checkpoint opportunities.
+
+Maintain a loop watchdog with `requested_until`, `terminal_state`,
+`hard_blocker`, `external_return_required`, and `next_state`. Initialize
+`terminal_state`, `hard_blocker`, and `external_return_required` as unset/false,
+and keep `next_state` set whenever an action or poll is executable. Returning is
+permitted only when `terminal_state` satisfies `requested_until`, `hard_blocker`
+identifies a defined blocker, or `external_return_required` is set by the
+execution environment. Otherwise enter `next_state`; never convert an internal
+checkpoint into a return condition.
 
 The synchronization gate is open only when all of these are true for one fresh
 snapshot: local HEAD equals remote-source SHA and MR SHA; the source commit
@@ -652,12 +679,15 @@ sequence you already started:
 - known-failure pipeline cancel -> cancellation-state confirmation;
 - merge request -> merged-state confirmation.
 
-Only emit a checkpoint after there is no pending local commit, push, GitLab
-write, reply, resolve, merge request, or state convergence check. A checkpoint is
-not final output and must not use terminal state `stopped`; include the MR URL,
-current MR SHA, local source branch and HEAD, local and remote target SHAs,
-pipeline status, unresolved discussion count, autonomous engineering decisions
-made so far, the last completed action, and the next safe action to resume.
+Checkpoints are internal emergency-suspension artifacts only. Never emit one
+voluntarily, and never treat one as a terminal result. Only create a checkpoint
+when the execution environment explicitly forces suspension, and only after
+there is no pending local commit, push, GitLab write, reply, resolve, merge
+request, or state convergence check. It must not use terminal state `stopped`;
+include the MR URL, current MR SHA, local source branch and HEAD, local and remote
+target SHAs, pipeline status, unresolved discussion count, autonomous engineering
+decisions made so far, the last completed action, and the next safe action to
+resume.
 
 When resuming from a checkpoint or prior interrupted run, restart at `startup`.
 If local `HEAD` is ahead because a previous repair commit was created but not
@@ -666,16 +696,18 @@ After the synchronization gate opens, revalidate and reapply or recreate that
 repair against the synchronized diff; never push the pre-synchronization commit
 merely because it was created by an earlier run.
 
-Use these terminal states precisely:
+Use these result states precisely; only return them under the Continuation
+Invariant and final-response guard:
 
 - `mergeable`: the synchronization gate is open, exact-SHA required parent and
   child jobs pass, discussions are resolved, approvals are satisfied, and GitLab
   reports mergeable.
-- `awaiting_pipeline`: an observational non-success state for a checkpoint or
-  externally imposed return while the final synchronized SHA is current and
-  required jobs are incomplete, with no terminal required failure. Do not
-  voluntarily terminate the loop in this state; continue polling when the
-  session permits.
+- `awaiting_pipeline`: an observational non-success state permitted only when the
+  execution environment imposes suspension while the final synchronized SHA is
+  current and required jobs are incomplete, with no terminal required failure.
+  Before returning it, enumerate every exact-SHA pipeline and job and verify no
+  required job has terminally failed. Otherwise do not return this state: sleep
+  and continue polling in the same invocation.
 - `blocked_conflicts`: deterministic conflict intent cannot be established
   because unresolved product judgment, reviewer intent, destructive data policy,
   unsupported security acceptance, deployment approval, or another explicitly
@@ -723,8 +755,16 @@ Print concise progress for every state transition:
 - Repair commit and push SHA, if any.
 - Mergeability blockers or success.
 
-Final output must include the terminal state (`mergeable`, `merged`, or
-one of the defined blocked/waiting/failure states), MR URL, final local,
+Before final output, apply this guard checklist: `requested_until` is satisfied,
+or a defined `hard_blocker` is recorded, or the environment set
+`external_return_required`; no atomic mutation or convergence check is pending;
+and there is no executable `next_state`. If an executable next step exists and
+no hard blocker does, perform it instead of describing it. Final output is
+reserved for those valid return conditions; progress summaries must not end the
+loop, and `failed_required_job` is not final while its failure is repairable.
+
+Final output must include the terminal state (`mergeable`, `merged`, a defined
+hard-blocker state, or externally suspended `awaiting_pipeline`), MR URL, final local,
 remote-source, and MR SHAs, latest fetched target SHA, whether server-side or
 guarded local target integration occurred, conflict-resolution summary, commits created and pushed,
 exact-SHA parent and child pipeline statuses, required failed/running jobs,
