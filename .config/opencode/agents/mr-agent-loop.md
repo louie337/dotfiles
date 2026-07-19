@@ -151,23 +151,50 @@ glab api --hostname <host> --paginate "projects/<encoded-project>/merge_requests
 
 Use safe dual sync:
 
-1. Fetch the MR source branch from `origin`.
-2. Check out or switch to the local source branch only when the working tree is
+1. Synchronize the local target branch under Local Target Synchronization.
+2. Fetch the MR source branch from `origin`.
+3. Check out or switch to the local source branch only when the working tree is
    clean.
-3. If local is behind the MR source branch, fast-forward only.
-4. If local is ahead of the MR source SHA, re-fetch the MR and push normally
+4. If local is behind the MR source branch, fast-forward only.
+5. If local is ahead of the MR source SHA, re-fetch the MR and push normally
    with `git push origin HEAD:<source-branch>` only if the MR still points to
    the expected SHA and branch. Wait until the MR reports the new SHA.
-5. If local and remote diverged, first classify it. Do not locally rebase and do
+6. If local and remote diverged, first classify it. Do not locally rebase and do
    not force-push. If the working tree is clean, the MR still identifies the
    same source branch/project, and the remote MR SHA is authoritative, preserve
    the previous local tip and realign as described below. Stop only when those
    guards fail or the tree is dirty.
-6. If GitLab reports the MR source is behind its target, request a GitLab-side
+7. If GitLab reports the MR source is behind its target, request a GitLab-side
    rebase with `glab mr rebase <iid> --repo <project>` or the equivalent MR
    rebase API. Poll until GitLab publishes the new MR SHA, then fast-forward the
    local checkout to that SHA. Stop on conflicts, merge_error, timeout-like
    non-progress, or unexpected identity changes.
+
+### Local Target Synchronization
+
+Keep the local MR target branch, usually `master` or `main`, current when this
+can be done without switching branches, rewriting history, or disturbing another
+worktree:
+
+1. From a fresh MR snapshot, capture `<target-branch>`, then run
+   `git fetch origin <target-branch>` and verify `FETCH_HEAD` is the fetched
+   remote target tip.
+2. If no local `<target-branch>` exists, create it at `FETCH_HEAD` with
+   `git branch <target-branch> FETCH_HEAD` only if that branch name is still
+   absent immediately before creation.
+3. If the local target equals `FETCH_HEAD`, record it as current.
+4. If the local target is an ancestor of `FETCH_HEAD`, fast-forward its branch
+   pointer with `git branch -f <target-branch> FETCH_HEAD` only when the target
+   branch is not checked out in any worktree. Re-check the local target SHA and
+   worktree occupancy immediately before moving it, then verify the new pointer.
+5. If the local target is checked out in the current or another worktree, has
+   unique commits, diverged, or changed concurrently, leave it intact and record
+   the exact reason. Do not switch to it, reset it, merge it, rebase it, delete
+   it, or create a backup solely to update it.
+
+An unchanged local target is not an MR blocker. MR comparison and GitLab-side
+rebase must always use GitLab's freshly fetched remote target state, never a
+possibly stale local target branch.
 
 When a clean local branch diverges from the remote MR source branch, human
 involvement is not required just because local `HEAD` differs from the MR SHA.
@@ -360,16 +387,16 @@ sequence you already started:
 Only emit a checkpoint after there is no pending local commit, push, GitLab
 write, reply, resolve, merge request, or state convergence check. A checkpoint is
 not final output and must not use terminal state `stopped`; include the MR URL,
-current MR SHA, local branch and HEAD, pipeline status, unresolved discussion
-count, autonomous engineering decisions made so far, the last completed action,
-and the next safe action to resume.
+current MR SHA, local source branch and HEAD, local and remote target SHAs,
+pipeline status, unresolved discussion count, autonomous engineering decisions
+made so far, the last completed action, and the next safe action to resume.
 
 When resuming from a checkpoint or prior interrupted run, first run Startup
-Checks and a fresh Loop Snapshot. If local `HEAD` is ahead of the MR source SHA
-because a previous repair commit was created but not pushed, revalidate the MR
-identity and push normally with `git push origin HEAD:<source-branch>` only when
-Safe Synchronization guard 4 still passes. Then wait for MR SHA convergence and
-continue the loop.
+Checks, Local Target Synchronization, and a fresh Loop Snapshot. If local `HEAD`
+is ahead of the MR source SHA because a previous repair commit was created but
+not pushed, revalidate the MR identity and push normally with
+`git push origin HEAD:<source-branch>` only when Safe Synchronization guard 5
+still passes. Then wait for MR SHA convergence and continue the loop.
 
 Hard blockers include auth failure, dirty worktree not created by this repair,
 local/remote divergence that fails Safe Synchronization guards, GitLab rebase
@@ -385,6 +412,8 @@ Print concise progress for every state transition:
 
 - MR URL and current SHA.
 - Synchronization action taken.
+- Local target branch and remote target SHA, including why a safe fast-forward
+  was skipped, if applicable.
 - Discussion processed, if any.
 - Pipeline ID/status for the exact SHA.
 - Known-failure pipeline IDs canceled, if any.
