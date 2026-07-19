@@ -21,7 +21,7 @@
     "linear": {
       "type": "remote",
       "url": "https://mcp.linear.app/mcp",
-      "enabled": false
+      "enabled": true
     }
   },
   "permission": {

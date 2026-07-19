@@ -60,6 +60,11 @@ logic into a shell script, or delegate the loop to another script.
    to `mergeable`.
 5. Reject missing MR URL, non-GitLab MR URLs, unknown flags, and invalid
    `--until` values before making any Git or GitLab mutation.
+6. Match the MR source branch case-insensitively for a Linear issue key of the
+   form `SUB-[0-9]+`. When present, use the globally configured Linear MCP to
+   fetch that exact issue before conflict resolution. Capture its identifier,
+   title, description, acceptance criteria, and relevant comments. Do not infer
+   issue requirements from the branch name alone.
 
 ## Non-Negotiable Safety
 
@@ -155,6 +160,10 @@ From the current repository:
 9. Stop for fork MRs unless source remote and push permission are unambiguous.
 10. Confirm the checked-out branch is the MR source branch after Safe
     Synchronization and before any repair edit.
+11. If the source branch contains a `SUB-[0-9]+` key, require a successful exact
+    Linear issue lookup before resolving domain or business conflicts. If Linear
+    MCP is unavailable or the issue cannot be found, stop with
+    `manual_action_required` rather than guessing ticket intent.
 
 ## Loop Snapshot
 
@@ -166,6 +175,8 @@ conflict, and convergence fields needed to open that gate.
   head SHA, title, description, detailed merge status, conflicts, approvals,
   blocking discussions, and merge error.
 - MR diff and commits for the current head SHA.
+- Linear issue details for the source-branch `SUB-[0-9]+` key, when present,
+  including relevant comments and acceptance criteria.
 - Activities and discussions, including all paginated discussion pages.
 - Every pipeline for the exact current MR head SHA, with pipeline ID, SHA, ref,
   source, status, timestamps, and all paginated jobs including job ID, name,
@@ -312,23 +323,27 @@ After a GitLab-side conflict failure:
    clear-contract test expectations, safely combinable independent changes, and
    implementation conflicts where repository patterns and tests establish one
    bounded correct result.
-5. Stop without committing or pushing for product behavior ambiguity,
-   incompatible migrations or data-loss policy, security acceptance or
-   permission scope, deployment configuration or approval decisions, reviewer
-   intent that cannot be inferred, deleted-versus-modified behavior without a
-   clear source of truth, or broad architectural alternatives without adequate
-   verification.
-6. Apply repository documentation requirements and path-specific review-rule
+5. For domain or business behavior conflicts, apply Domain Conflict Precedence.
+   These conflicts are autonomously resolvable when the fetched Linear issue or
+   exact fetched target behavior establishes the result. Do not stop merely
+   because the conflict concerns authorization or permission scope when that
+   precedence yields one supported result.
+6. Stop without committing or pushing for incompatible migrations or data-loss
+   policy, security acceptance not established by the ticket or target behavior,
+   deployment configuration or approval decisions, reviewer intent that cannot
+   be inferred, deleted-versus-modified behavior without a clear source of truth,
+   or broad architectural alternatives without adequate verification.
+7. Apply repository documentation requirements and path-specific review-rule
    dispatch to every conflict-resolution change. Do not create documentation
    solely for a mechanical target merge unless repository conventions require it.
    Run focused verification and record conflict decisions and residual risks.
-7. Stage only files belonging to the completed integration item and commit the
+8. Stage only files belonging to the completed integration item and commit the
    conflict resolution with a conventional commit.
-8. Immediately before push, run identity preflight, re-fetch and revalidate the
+9. Immediately before push, run identity preflight, re-fetch and revalidate the
    complete MR identity, expected MR head SHA, remote source SHA, and target SHA.
    Require the remote source and MR SHA still equal the original source tip and
    the target still equals the integrated fetched-target SHA.
-9. Push normally without force, wait until remote-source SHA and MR SHA equal
+10. Push normally without force, wait until remote-source SHA and MR SHA equal
    local HEAD, then restart at `startup` with a fresh snapshot. A non-fast-forward
    push reports `blocked_remote_changed`; never retry by rewriting history.
 
@@ -343,6 +358,34 @@ If an unexpected local change appears during conflict handling, stop mutation,
 preserve diagnostics, and abort only the current loop's merge when safe. Verify
 the original clean state is restored and report the blocker; never absorb the
 unexpected change into the integration commit.
+
+### Domain Conflict Precedence
+
+For domain, business, authorization, and permission-scope conflicts, use this
+deterministic precedence:
+
+1. If the source branch contains a `SUB-[0-9]+` key, fetch the exact Linear issue
+   through Linear MCP. An explicit ticket requirement that addresses the
+   conflicting behavior wins.
+2. Otherwise, or when the ticket does not explicitly address that behavior,
+   preserve the behavior at the exact freshly fetched target SHA. Absence of a
+   ticket requirement means target behavior wins; it is not permission to infer
+   a new product policy.
+3. Use acceptance criteria, relevant Linear comments, repository rules, tests,
+   and nearby code to interpret and implement the selected behavior. MR
+   discussions may clarify implementation but must not silently override an
+   explicit ticket requirement.
+4. Add or update focused tests proving either the preserved target behavior or
+   the ticket-directed behavior, including authorization boundaries when relevant.
+5. Record the issue key, evidence used, selected behavior, rejected alternative,
+   and verification in the autonomous decision log.
+
+Stop only when the exact Linear issue cannot be retrieved, explicit ticket
+requirements are internally incompatible, the ticket explicitly conflicts with
+target behavior but leaves the migration or rollout semantics unclear, or an
+existing non-autonomous category such as destructive data policy or deployment
+approval remains. Never use a stale local target branch as evidence; "target
+behavior" always means the recorded freshly fetched `origin/<target>` SHA.
 
 When a clean local branch diverges from the remote MR source branch, human
 involvement is not required just because local `HEAD` differs from the MR SHA.
@@ -429,9 +472,9 @@ When a repair requires choosing among implementation strategies, choose and
 implement the option you judge safest for making the MR mergeable instead of
 stopping for user input, if every guard below passes:
 
-- The issue is an engineering design or implementation tradeoff, not product
-  behavior, reviewer intent, deployment approval, data migration policy, security
-  acceptance, or permission scope.
+- The issue is an engineering tradeoff, or a domain/business conflict resolved
+  by Domain Conflict Precedence; it is not unresolved reviewer intent, deployment
+  approval, destructive data policy, or unsupported security acceptance.
 - The review comment, failing test, job trace, or current code gives enough
   context to identify the defect and a bounded fix.
 - The chosen approach is race-safe, deterministic, bounded in resource usage,
@@ -601,11 +644,12 @@ If startup finds the MR already merged, return `merged` for either requested
 target. Report the merge commit/current MR SHA and available final pipeline data,
 but do not require an open-MR `detailed_merge_status=mergeable` check.
 
-Hard blockers include auth failure, dirty worktree not created by this repair,
+Hard blockers include auth failure, required Linear issue lookup failure, dirty worktree not created by this repair,
 local/remote divergence that fails Safe Synchronization guards, a conflict that
 fails the guarded deterministic-resolution criteria, missing permissions, manual
 jobs, approval requirements not satisfied
-by existing reviewers, deployment decisions, product behavior ambiguity,
+by existing reviewers, deployment decisions, product behavior ambiguity not
+resolved by Domain Conflict Precedence,
 reviewer intent ambiguity, ambiguous discussion feedback that cannot be resolved
 with code evidence, failed push, failed merge mutation, or concurrent MR
 identity changes.
@@ -632,3 +676,6 @@ exact-SHA parent and child pipeline statuses, required failed/running jobs,
 unresolved discussion count, approval state, GitLab merge/conflict/rebase status
 and merge error, autonomous decisions with rejected alternatives and residual
 risks, and the exact human action required when blocked.
+When a Linear issue key was present, also report the issue key and whether the
+resolution preserved fetched-target behavior or implemented an explicit ticket
+requirement.

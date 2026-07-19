@@ -21,7 +21,9 @@ Synchronize the source branch with the latest fetched remote target and wait for
 SHA convergence before review fixes, repair commits, pushes, or CI evaluation.
 If GitLab-side rebase encounters bounded deterministic conflicts, integrate the
 exact fetched remote target with a guarded normal merge and normal push. Never
-locally rebase or force-push.
+locally rebase or force-push. For source branches containing a `SUB-XXXX` Linear
+issue key, fetch the issue through Linear MCP. Explicit ticket requirements win;
+otherwise preserve the exact freshly fetched target-branch behavior.
 
 Examples:
 

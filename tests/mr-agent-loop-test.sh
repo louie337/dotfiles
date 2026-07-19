@@ -5,6 +5,7 @@ set -u
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 AGENT="$ROOT/.config/opencode/agents/mr-agent-loop.md"
 COMMAND="$ROOT/.config/opencode/commands/mr-agent-loop.md"
+CONFIG="$ROOT/.config/opencode/opencode.json"
 PASS=0
 FAIL=0
 
@@ -55,9 +56,11 @@ assert_order() {
 
 assert_file "active MR agent exists" "$AGENT"
 assert_file "active MR command exists" "$COMMAND"
+assert_file "global OpenCode config exists" "$CONFIG"
 
 assert_contains "command selects active agent" "$COMMAND" "agent: mr-agent-loop"
 assert_contains "command prohibits history rewriting" "$COMMAND" "locally rebase or force-push"
+assert_contains "command requires Linear lookup" "$COMMAND" "fetch the issue through Linear MCP"
 
 assert_order "state machine precedes snapshot" "$AGENT" "## Synchronization-First State Machine" "## Loop Snapshot"
 assert_order "safe synchronization precedes repair" "$AGENT" "## Safe Synchronization" "## MR Review And Discussion Repair"
@@ -99,6 +102,20 @@ assert_contains "scenario 8 creates backup ref" "$AGENT" "unique local backup re
 assert_contains "scenario 8 permits bounded conflicts" "$AGENT" "additive imports"
 assert_contains "scenario 8 pushes normally" "$AGENT" "Push normally without force"
 assert_contains "scenario 8 permits safe merge abort" "$AGENT" '`git merge --abort` is permitted only'
+
+# Scenario 9: domain conflicts use explicit ticket scope, then fetched target behavior.
+assert_contains "scenario 9 detects Linear issue key" "$AGENT" '`SUB-[0-9]+`'
+assert_contains "scenario 9 requires exact Linear lookup" "$AGENT" "fetch that exact issue"
+assert_contains "scenario 9 gives explicit ticket priority" "$AGENT" "explicit ticket requirement"
+assert_contains "scenario 9 defaults to target behavior" "$AGENT" "ticket requirement means target behavior wins"
+assert_contains "scenario 9 uses fetched target evidence" "$AGENT" 'freshly fetched `origin/<target>` SHA'
+assert_contains "scenario 9 verifies authorization boundaries" "$AGENT" "including authorization boundaries"
+
+if jq -e '.mcp.linear.type == "remote" and .mcp.linear.url == "https://mcp.linear.app/mcp" and .mcp.linear.enabled == true' "$CONFIG" >/dev/null; then
+  pass "Linear MCP is globally enabled"
+else
+  fail "Linear MCP is globally enabled"
+fi
 
 assert_contains "invariant forbids disposable repair pipeline" "$AGENT" "No repair commit should be pushed merely to trigger verification"
 assert_contains "ahead local commit is not pushed before sync" "$AGENT" "If local is ahead of the MR source SHA during"
