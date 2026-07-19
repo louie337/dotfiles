@@ -109,10 +109,19 @@ Each iteration starts from a fresh same-SHA snapshot:
   blocking discussions, and merge error.
 - MR diff and commits for the current head SHA.
 - Activities and discussions, including all paginated discussion pages.
-- Head pipeline and jobs for the exact current MR head SHA.
+- Every pipeline for the exact current MR head SHA, with pipeline ID, SHA, ref,
+  source, status, timestamps, and all paginated jobs including job ID, name,
+  stage, status, allow_failure, timestamps, web URL, runner failure reason, and
+  downstream/bridge relationship.
 
 If the MR SHA or identity changes while collecting the snapshot, discard the
 partial snapshot and restart the iteration.
+
+Do not trust the MR API's embedded `head_pipeline` object as the sole CI source;
+it may be partial, stale, or contain null status fields. Resolve the pipeline ID
+and status through `glab ci get`, `glab ci list --sha <sha>`, or the pipelines API,
+then fetch all jobs for that pipeline. Treat missing/null pipeline fields as
+unknown requiring another CI API query, never as transient evidence.
 
 ## Parallel Work
 
@@ -143,6 +152,7 @@ glab mr diff <iid> --repo <project>
 glab mr note list <iid> --repo <project> --output json --state all
 glab ci get --repo <project> --merge-request <iid> --output json --with-job-details
 glab ci list --repo <project> --sha <sha> --output json
+glab api --hostname <host> --paginate "projects/<encoded-project>/pipelines/<pipeline-id>/jobs?per_page=100&include_retried=true"
 glab api --hostname <host> "projects/<encoded-project>/merge_requests/<iid>?include_rebase_in_progress=true&include_diverged_commits_count=true"
 glab api --hostname <host> --paginate "projects/<encoded-project>/merge_requests/<iid>/discussions?per_page=100"
 ```
@@ -299,8 +309,15 @@ missing information or product decision needed.
 
 For the exact current MR SHA:
 
-- Missing, created, waiting_for_resource, preparing, pending, running, and
-  scheduled pipelines are transient. Sleep 30 seconds, then restart the loop.
+- Evaluate jobs before the aggregate pipeline status. A required job with status
+  `failed` or `canceled` is terminal evidence and immediately preempts waiting,
+  even when its pipeline still reports `created`, `pending`, or `running` because
+  other jobs continue. Inspect that job's trace, bridges, and child pipelines and
+  enter failed-job repair in the same iteration.
+- Only after confirming that no required job is terminally failed or canceled,
+  treat missing, created, waiting_for_resource, preparing, pending, running, and
+  scheduled pipeline/job states as transient. Sleep 30 seconds, then collect a
+  complete fresh pipeline-and-jobs snapshot.
 - Success means evaluate mergeability using a fresh same-SHA snapshot.
 - Failed or canceled means inspect failed jobs, traces, bridge jobs, and child
   pipelines. Retry only when the evidence is clearly transient infrastructure;
@@ -313,6 +330,16 @@ For the exact current MR SHA:
   intervention. Stop and report the exact job or pipeline blocker.
 
 Never decide from a branch pipeline whose SHA differs from the current MR SHA.
+Never sleep or wait solely from aggregate pipeline status, MR
+`detailed_merge_status`, or an embedded `head_pipeline` projection. Before every
+sleep, enumerate all exact-SHA pipeline jobs and assert that none is a terminal
+required failure. `allow_failure: true` jobs do not trigger repair unless GitLab
+still treats them as merge-blocking.
+
+When a user or discussion provides a job URL, parse the numeric job ID strictly
+from the URL path segment and query that exact job through the jobs API. Do not
+silently alter, trim, or guess malformed IDs; re-fetch the linked discussion or
+pipeline metadata to resolve the canonical job ID.
 
 ## Known-Failure Pipeline Cancellation
 
