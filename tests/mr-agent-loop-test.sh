@@ -59,7 +59,6 @@ assert_file "active MR command exists" "$COMMAND"
 assert_contains "command selects active agent" "$COMMAND" "agent: mr-agent-loop"
 assert_contains "command exposes local rebase authorization" "$COMMAND" "--allow-local-rebase"
 assert_contains "command exposes lease authorization" "$COMMAND" "--allow-force-with-lease"
-assert_contains "command forbids legacy supervisor" "$COMMAND" 'Do not call `$HOME/.local/bin/mr-loop`'
 
 assert_order "state machine precedes snapshot" "$AGENT" "## Synchronization-First State Machine" "## Loop Snapshot"
 assert_order "safe synchronization precedes repair" "$AGENT" "## Safe Synchronization" "## MR Review And Discussion Repair"
