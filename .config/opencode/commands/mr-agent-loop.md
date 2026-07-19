@@ -24,6 +24,11 @@ exact fetched remote target with a guarded normal merge and normal push. Never
 locally rebase or force-push. For source branches containing a `SUB-XXXX` Linear
 issue key, fetch the issue through Linear MCP. Explicit ticket requirements win;
 otherwise preserve the exact freshly fetched target-branch behavior.
+Treat deterministic conflict intent separately from tool availability. If one
+mechanical command is denied, exhaust safe stage/blob inspection, repository
+file-editing, conflict-marker, and deterministic regeneration fallbacks without
+asking for implementation approval. Use `blocked_conflicts` only for unresolved
+intent; use `manual_action_required` only after every safe mechanism is exhausted.
 
 Examples:
 

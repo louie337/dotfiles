@@ -61,6 +61,7 @@ assert_file "global OpenCode config exists" "$CONFIG"
 assert_contains "command selects active agent" "$COMMAND" "agent: mr-agent-loop"
 assert_contains "command prohibits history rewriting" "$COMMAND" "locally rebase or force-push"
 assert_contains "command requires Linear lookup" "$COMMAND" "fetch the issue through Linear MCP"
+assert_contains "command separates intent from tooling" "$COMMAND" "Treat deterministic conflict intent separately from tool availability"
 
 assert_order "state machine precedes snapshot" "$AGENT" "## Synchronization-First State Machine" "## Loop Snapshot"
 assert_order "safe synchronization precedes repair" "$AGENT" "## Safe Synchronization" "## MR Review And Discussion Repair"
@@ -101,7 +102,7 @@ assert_contains "scenario 7 revalidates rebased findings" "$AGENT" "collected ea
 assert_contains "scenario 8 creates backup ref" "$AGENT" "unique local backup ref for the original source tip"
 assert_contains "scenario 8 permits bounded conflicts" "$AGENT" "additive imports"
 assert_contains "scenario 8 pushes normally" "$AGENT" "Push normally without force"
-assert_contains "scenario 8 permits safe merge abort" "$AGENT" '`git merge --abort` is permitted only'
+assert_contains "scenario 8 permits safe merge abort" "$AGENT" "is permitted only to abort the merge started by the current loop"
 
 # Scenario 9: domain conflicts use explicit ticket scope, then fetched target behavior.
 assert_contains "scenario 9 detects Linear issue key" "$AGENT" '`SUB-[0-9]+`'
@@ -110,6 +111,33 @@ assert_contains "scenario 9 gives explicit ticket priority" "$AGENT" "explicit t
 assert_contains "scenario 9 defaults to target behavior" "$AGENT" "ticket requirement means target behavior wins"
 assert_contains "scenario 9 uses fetched target evidence" "$AGENT" 'freshly fetched `origin/<target>` SHA'
 assert_contains "scenario 9 verifies authorization boundaries" "$AGENT" "including authorization boundaries"
+
+# Scenario A: a denied convenience command falls back to allowed file editing.
+assert_contains "scenario A denied checkout is not ambiguity" "$AGENT" 'If `git checkout --ours`'
+assert_contains "scenario A inspects index stages" "$AGENT" 'git show :1:<path>'
+assert_contains "scenario A inspects exact blobs" "$AGENT" "source/target blobs using the recorded exact"
+assert_contains "scenario A uses repository edit tools" "$AGENT" "Use repository read and edit tools"
+assert_contains "scenario A resolves markers directly" "$AGENT" "resolve conflict markers manually"
+assert_contains "scenario A avoids mechanism approval" "$AGENT" "Do not ask the user to approve a low-level resolution mechanism"
+assert_contains "scenario A continues through commit and push" "$AGENT" "create the conventional integration commit"
+
+# Scenario B: abort diagnostics distinguish a clean tree from compatibility.
+assert_contains "scenario B preserves machine-readable report" "$AGENT" "preserve a machine-readable conflict"
+assert_contains "scenario B records conflict SHAs" "$AGENT" "Include source SHA, target SHA"
+assert_contains "scenario B explains aborted clean tree" "$AGENT" "working tree is clean because the temporary merge was aborted"
+assert_contains "scenario B reports remaining conflict" "$AGENT" "State that they still conflict"
+assert_contains "scenario B gives reproduction command" "$AGENT" 'git merge --no-commit --no-ff <exact-fetched-target-sha>'
+
+# Scenario C: deterministic conflict with no write mechanism needs environment help.
+assert_contains "scenario C exhausts safe mechanisms" "$AGENT" "Try every applicable safe mechanism"
+assert_contains "scenario C reports attempted mechanisms" "$AGENT" "every mechanism attempted"
+assert_contains "scenario C uses manual action state" "$AGENT" 'return
+`manual_action_required`, not `blocked_conflicts`'
+
+# Scenario D: genuine intent ambiguity remains a conflict blocker.
+assert_contains "scenario D reserves blocked conflicts for intent" "$AGENT" "deterministic conflict intent cannot be established"
+assert_contains "scenario D lists product ambiguity" "$AGENT" "unresolved product judgment"
+assert_contains "scenario D excludes denied commands" "$AGENT" "Never use this state solely because a command"
 
 if jq -e '.mcp.linear.type == "remote" and .mcp.linear.url == "https://mcp.linear.app/mcp" and .mcp.linear.enabled == true' "$CONFIG" >/dev/null; then
   pass "Linear MCP is globally enabled"

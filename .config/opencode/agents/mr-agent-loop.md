@@ -347,10 +347,56 @@ After a GitLab-side conflict failure:
    local HEAD, then restart at `startup` with a fresh snapshot. A non-fast-forward
    push reports `blocked_remote_changed`; never retry by rewriting history.
 
-If any conflict cannot be resolved under these criteria, stop mutation and
-preserve diagnostics. `git merge --abort` is permitted only to abort the merge
-started by the current loop, after verifying the original source tip and backup
-ref. Verify the branch and working tree return to their original clean state.
+#### Conflict Resolution Mechanism Fallbacks
+
+Conflict intent and mechanism availability are separate decisions. Once a
+bounded deterministic result is established, the main agent owns applying it;
+a denied command, missing convenience tool, or failed mechanical strategy does
+not make the conflict ambiguous and must not produce `blocked_conflicts`.
+
+Do not ask the user to approve a low-level resolution mechanism when another
+safe mechanism is available. If `git checkout --ours`, `git restore`, a merge
+helper, or a preferred generator path is denied or unavailable, continue
+autonomously through applicable non-destructive fallbacks:
+
+1. Inspect index stages with `git show :1:<path>`, `git show :2:<path>`, and
+   `git show :3:<path>` and inspect source/target blobs using the recorded exact
+   source and target SHAs.
+2. Use repository read and edit tools to construct the reviewed result directly;
+   resolve conflict markers manually when the intended union is bounded.
+3. Regenerate authoritative generated files when repository rules identify a
+   deterministic generation command, then review the generated diff.
+4. Re-run path-specific repository-rule dispatch and focused verification,
+   stage only integration files, create the conventional integration commit,
+   complete fresh identity/SHA preflight, normally push, wait for convergence,
+   and restart at `startup`.
+
+Try every applicable safe mechanism available in the environment before asking
+the user or terminating. User involvement is appropriate only for an external
+permission or capability that the agent cannot obtain, exhaustion of every safe
+resolution mechanism, or genuine non-autonomous intent ambiguity. If all safe
+write paths are unavailable after deterministic analysis, return
+`manual_action_required`, not `blocked_conflicts`, and report the established
+resolution, every mechanism attempted, why each was unavailable, and why no
+allowed file-editing path remains.
+
+Before aborting a loop-created merge, preserve a machine-readable conflict
+report when an allowed write path exists. Include source SHA, target SHA,
+conflicted paths and statuses, deterministic resolution when established,
+attempted mechanisms and failures, and safe reproduction command. Do not commit
+or push this diagnostic artifact. After a safe abort, explicitly report that the
+working tree is clean because the temporary merge was aborted, not because the
+source and target are conflict-free. State that they still conflict, include the
+exact source and target SHAs and conflicted file list, and provide a safe
+reproduction such as
+`git merge --no-commit --no-ff <exact-fetched-target-sha>` from the verified
+source SHA after recreating/verifying the backup ref.
+
+If conflict intent cannot be resolved under these criteria, or every safe write
+mechanism is unavailable, stop mutation and preserve diagnostics. `git merge
+--abort` is permitted only to abort the merge started by the current loop, after
+verifying the original source tip and backup ref. Verify the branch and working
+tree return to their original clean state.
 Continue prohibiting reset, clean, stash, local rebase, discarded work, and every
 force-push.
 
@@ -630,14 +676,20 @@ Use these terminal states precisely:
   required jobs are incomplete, with no terminal required failure. Do not
   voluntarily terminate the loop in this state; continue polling when the
   session permits.
-- `blocked_conflicts`: guarded local target integration found conflicts that
-  cannot be resolved safely under the bounded engineering criteria.
+- `blocked_conflicts`: deterministic conflict intent cannot be established
+  because unresolved product judgment, reviewer intent, destructive data policy,
+  unsupported security acceptance, deployment approval, or another explicitly
+  non-autonomous decision remains. Never use this state solely because a command
+  or tool was denied, missing, or failed.
 - `blocked_remote_changed`: source/MR identity or remote source SHA changed
   unexpectedly, or the guarded normal push was no longer fast-forwardable.
 - `blocked_permissions`: actor lacks permission for the required operation.
 - `failed_required_job`: an exact-current-SHA required job terminally failed and
   a repair has not yet been completed.
-- `manual_action_required`: authorization or context prevents safe continuation.
+- `manual_action_required`: a required external permission or environment
+  capability remains unavailable after every applicable safe mechanism and
+  allowed file-editing path was exhausted, or other authorization/context
+  prevents safe continuation.
 - `merged`: the `merged` target was requested and GitLab confirms merged.
 
 If startup finds the MR already merged, return `merged` for either requested
@@ -653,6 +705,9 @@ resolved by Domain Conflict Precedence,
 reviewer intent ambiguity, ambiguous discussion feedback that cannot be resolved
 with code evidence, failed push, failed merge mutation, or concurrent MR
 identity changes.
+
+A denied convenience command is not a hard blocker while any safe inspection,
+file-editing, marker-resolution, or deterministic regeneration path remains.
 
 ## Output
 
@@ -676,6 +731,11 @@ exact-SHA parent and child pipeline statuses, required failed/running jobs,
 unresolved discussion count, approval state, GitLab merge/conflict/rebase status
 and merge error, autonomous decisions with rejected alternatives and residual
 risks, and the exact human action required when blocked.
+For conflict-related terminal states, include whether intent was deterministic,
+all attempted resolution mechanisms, unavailable capabilities, remaining safe
+write paths, the preserved diagnostic report location if any, and abort and
+reproduction details. Never describe an aborted merge's clean worktree as
+conflict-free.
 When a Linear issue key was present, also report the issue key and whether the
 resolution preserved fetched-target behavior or implemented an explicit ticket
 requirement.
