@@ -1,96 +1,173 @@
 [
   {
     "scenario": "gitlab_rebase_succeeds",
-    "transition": "gitlab_rebase -> startup",
-    "localMerge": false,
-    "push": false
+    "from": "target_synchronization",
+    "event": "gitlab_rebase_succeeded",
+    "guards": ["identity_stable", "new_source_sha_fetched"],
+    "actions": ["restart_startup"],
+    "to": "startup",
+    "forbidden": ["local_merge", "push"]
   },
   {
     "scenario": "gitlab_rebase_conflicts",
-    "transition": "gitlab_rebase -> safe_merge_conflict_resolution -> pushed_awaiting_gitlab -> startup",
-    "localMerge": true,
-    "pushMode": "normal"
+    "from": "target_synchronization",
+    "event": "gitlab_rebase_requires_local_conflict_resolution",
+    "guards": ["exact_conflict_response", "identity_stable", "pipeline_serialization_gate_open"],
+    "actions": ["enter_safe_merge_conflict_resolution"],
+    "to": "safe_merge_conflict_resolution",
+    "forbidden": ["unrelated_repair", "force_push", "local_rebase"]
   },
   {
     "scenario": "clear_content_conflict",
-    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
-    "resolution": "combine_evidenced_behavior"
+    "from": "unresolved_merge",
+    "event": "deterministic_content_resolution_staged",
+    "guards": ["clear_contract", "both_parent_behavior_preserved", "focused_verification_passed"],
+    "actions": ["set_resolved_uncommitted"],
+    "to": "resolved_uncommitted",
+    "forbidden": ["drop_parent_behavior", "commit_before_checks"]
   },
   {
     "scenario": "compatible_add_add_conflict",
-    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
-    "resolution": "deduplicate_compatible_definitions"
+    "from": "unresolved_merge",
+    "event": "compatible_add_add_resolution_staged",
+    "guards": ["definitions_compatible", "deduplicated", "focused_verification_passed"],
+    "actions": ["set_resolved_uncommitted"],
+    "to": "resolved_uncommitted",
+    "forbidden": ["drop_definition", "commit_before_checks"]
   },
   {
     "scenario": "generated_file_conflict",
-    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
-    "resolution": "resolve_sources_then_regenerate"
+    "from": "unresolved_merge",
+    "event": "generated_outputs_regenerated",
+    "guards": ["source_definition_resolved", "canonical_generator_ran", "no_unrelated_generated_drift"],
+    "actions": ["stage_sources_and_generated_outputs", "set_resolved_uncommitted"],
+    "to": "resolved_uncommitted",
+    "forbidden": ["unsupported_generated_hand_edit", "commit_before_generator"]
+  },
+  {
+    "scenario": "resolved_uncommitted_commits",
+    "from": "resolved_uncommitted",
+    "event": "pre_commit_guards_passed",
+    "guards": ["identity_stable", "source_sha_unchanged", "target_sha_unchanged", "no_unrelated_changes"],
+    "actions": ["create_two_parent_merge_commit", "preserve_merge_ref", "set_committed_unpushed"],
+    "to": "committed_unpushed",
+    "forbidden": ["amend", "rewrite", "force_push"]
   },
   {
     "scenario": "target_changes_before_commit",
-    "transition": "resolved_uncommitted -> safe_owned_abort -> startup",
-    "push": false
+    "from": "resolved_uncommitted",
+    "event": "target_sha_changed_before_commit",
+    "guards": ["attempt_ownership_proven", "merge_commit_absent"],
+    "actions": ["safe_owned_abort", "remove_owned_worktree", "restart_startup"],
+    "to": "startup",
+    "forbidden": ["commit", "push", "reset", "force_push"]
   },
   {
     "scenario": "source_changes_before_commit",
-    "transition": "resolved_uncommitted -> safe_owned_abort -> startup_or_blocked_remote_changed",
-    "push": false
+    "from": "resolved_uncommitted",
+    "event": "source_sha_changed_before_commit",
+    "guards": ["merge_commit_absent"],
+    "actions": ["safe_owned_abort_when_proven", "restart_or_report_remote_changed"],
+    "to": "startup_or_blocked_remote_changed",
+    "forbidden": ["commit", "push", "reset", "force_push"]
   },
   {
     "scenario": "dirty_initial_worktree",
-    "transition": "startup -> manual_action_required",
-    "commit": false,
-    "push": false
+    "from": "startup",
+    "event": "dirty_initial_worktree_detected",
+    "guards": ["unrelated_user_work_present"],
+    "actions": ["report_manual_action_required"],
+    "to": "manual_action_required",
+    "forbidden": ["stash", "clean", "reset", "absorb_changes"]
   },
   {
     "scenario": "unrelated_change_appears",
-    "transition": "unresolved_merge -> safe_owned_abort_or_blocker",
-    "commit": false,
-    "push": false
+    "from": "unresolved_merge",
+    "event": "unrelated_change_detected",
+    "guards": ["path_outside_merge_manifest"],
+    "actions": ["safe_owned_abort_when_proven_or_block"],
+    "to": "startup_or_manual_action_required",
+    "forbidden": ["stage_unrelated", "commit", "push"]
   },
   {
     "scenario": "ambiguous_product_conflict",
-    "transition": "unresolved_merge -> blocked_conflicts",
-    "commit": false,
-    "push": false
+    "from": "unresolved_merge",
+    "event": "deterministic_intent_missing",
+    "guards": ["product_judgment_required"],
+    "actions": ["report_blocked_conflicts"],
+    "to": "blocked_conflicts",
+    "forbidden": ["guess", "commit", "push"]
   },
   {
     "scenario": "focused_verification_fails",
-    "transition": "resolved_uncommitted -> blocker",
-    "commit": false,
-    "push": false
+    "from": "resolved_uncommitted",
+    "event": "focused_verification_failed",
+    "guards": ["required_check_failed"],
+    "actions": ["report_manual_action_required_or_repairable_failure"],
+    "to": "manual_action_required_or_repair",
+    "forbidden": ["commit", "push", "weaken_tests"]
   },
   {
     "scenario": "normal_push_fails",
-    "transition": "committed_unpushed -> blocked_remote_changed",
-    "preserveMergeRef": true,
-    "historyRewrite": false
+    "from": "committed_unpushed",
+    "event": "normal_push_failed_or_non_fast_forward",
+    "guards": ["merge_ref_preserved"],
+    "actions": ["report_blocked_remote_changed"],
+    "to": "blocked_remote_changed",
+    "forbidden": ["amend", "rewrite", "force_push", "delete_merge_commit"]
   },
   {
     "scenario": "fork_permission_ambiguous",
-    "transition": "startup -> blocked_permissions",
-    "localMerge": false,
-    "push": false
+    "from": "startup",
+    "event": "fork_push_or_target_fetch_ambiguous",
+    "guards": ["permission_unproven"],
+    "actions": ["report_blocked_permissions"],
+    "to": "blocked_permissions",
+    "forbidden": ["local_merge", "push"]
   },
   {
     "scenario": "unresolved_index_or_markers",
-    "transition": "resolved_uncommitted -> blocker",
-    "commit": false,
-    "push": false
+    "from": "unresolved_merge",
+    "event": "unmerged_entries_or_markers_remain",
+    "guards": ["resolution_incomplete"],
+    "actions": ["continue_resolution_or_block"],
+    "to": "unresolved_merge_or_manual_action_required",
+    "forbidden": ["set_resolved_uncommitted", "commit", "push"]
   },
   {
     "scenario": "isolated_worktree_preserves_local_state",
-    "transition": "safe_merge_conflict_resolution -> startup",
-    "existingWorktreesChanged": false,
-    "branchPointersChanged": false
+    "from": "safe_merge_conflict_resolution",
+    "event": "attempt_created",
+    "guards": ["detached_worktree", "branch_pointers_recorded"],
+    "actions": ["merge_exact_target_sha"],
+    "to": "unresolved_merge",
+    "forbidden": ["move_existing_worktree", "move_branch_pointer"]
   },
   {
-    "scenario": "interruption_recovery",
-    "transition": "startup -> interruption_recovery",
-    "resumePhases": [
-      "unresolved_merge",
-      "committed_unpushed",
-      "pushed_awaiting_gitlab"
-    ]
+    "scenario": "interruption_recovery_unresolved",
+    "from": "startup",
+    "event": "phase_unresolved_merge_or_resolved_uncommitted_found",
+    "guards": ["worktree_owned", "merge_head_exact", "identity_stable"],
+    "actions": ["resume_or_safe_abort_on_changed_target"],
+    "to": "unresolved_merge_or_resolved_uncommitted_or_startup",
+    "forbidden": ["mutate_unowned_worktree", "force_cleanup"]
+  },
+  {
+    "scenario": "interruption_recovery_committed",
+    "from": "startup",
+    "event": "phase_committed_unpushed_found",
+    "guards": ["worktree_clean", "merge_ref_preserved", "two_parents_verified"],
+    "actions": ["rerun_pre_push_guards", "push_normally_or_preserve_blocker"],
+    "to": "pushed_awaiting_gitlab_or_blocked_remote_changed",
+    "forbidden": ["recreate_commit", "amend", "force_push"]
+  },
+  {
+    "scenario": "interruption_recovery_pushed",
+    "from": "startup",
+    "event": "phase_pushed_awaiting_gitlab_found",
+    "guards": ["pushed_merge_sha_recorded"],
+    "actions": ["poll_source_and_mr_convergence", "guarded_cleanup", "restart_startup"],
+    "to": "startup_or_blocked_remote_changed",
+    "forbidden": ["recreate_commit", "amend", "push_again"]
   }
 ]
