@@ -22,6 +22,17 @@
       "type": "remote",
       "url": "https://mcp.linear.app/mcp",
       "enabled": true
+    },
+    "artifact-drop": {
+      "type": "local",
+      "command": [
+        "node",
+        "/Users/louie/Documents/subanana/artifact-drop/server.mjs"
+      ],
+      "enabled": true,
+      "env": {
+        "ARTIFACT_DROP_TOKEN": "{env:ARTIFACT_DROP_TOKEN}"
+      }
     }
   },
   "permission": {
