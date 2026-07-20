@@ -1,6 +1,6 @@
 ---
 description: Run the GitLab MR agent loop until the MR is mergeable or merged.
-agent: mr-loop
+agent: mr-loop-mastermind
 ---
 
 Run the GitLab MR agent loop with these arguments:

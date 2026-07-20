@@ -3,7 +3,7 @@
 set -u
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-AGENT="$ROOT/.config/opencode/agents/mr-loop.md"
+AGENT="$ROOT/.config/opencode/agents/mr-loop-mastermind.md"
 COMMAND="$ROOT/.config/opencode/commands/mr-loop.md"
 CONFIG="$ROOT/.config/opencode/opencode.json"
 DOC="$ROOT/docs/mr-loop.md"
@@ -110,7 +110,7 @@ for agent in \
   golang-developer \
   react-native-expo-developer \
   typescript-developer \
-  mr-loop \
+  mr-loop-mastermind \
   patch \
   teach
 do
@@ -135,7 +135,7 @@ do
   assert_contains "agent $exec_agent returns reassignment signal" "$AGENT_DIR/$exec_agent.md" "needs_primary_reassignment"
 done
 
-assert_contains "command selects active agent" "$COMMAND" "agent: mr-loop"
+assert_contains "command selects active agent" "$COMMAND" "agent: mr-loop-mastermind"
 assert_contains "command documents invocation" "$COMMAND" "/mr-loop <MR URL> [--until mergeable|merged]"
 assert_contains "command defaults mergeable" "$COMMAND" 'Default `--until` to `mergeable`.'
 assert_not_contains "command does not duplicate history policy" "$COMMAND" "Never locally rebase"
@@ -229,7 +229,7 @@ assert_contains "review worker forbids writes" "$AGENT_DIR/mr-loop-review-invest
 assert_contains "conflict worker forbids Git mutation" "$AGENT_DIR/mr-loop-conflict-investigator.md" "Do not edit files, resolve markers"
 assert_contains "ci worker forbids retries" "$AGENT_DIR/mr-loop-ci-investigator.md" "Do not retry, cancel, create"
 
-assert_contains "docs identify authoritative agent" "$DOC" '.config/opencode/agents/mr-loop.md'
+assert_contains "docs identify authoritative agent" "$DOC" '.config/opencode/agents/mr-loop-mastermind.md'
 assert_contains "docs identify skill source" "$DOC" '.config/opencode/skills/mr-loop-*/SKILL.md'
 assert_contains "docs identify worker model" "$DOC" "## Worker Model"
 assert_contains "docs distinguish historical supervisor" "$DOC" 'removed `.local/bin/mr-loop` shell'

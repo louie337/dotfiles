@@ -3,7 +3,7 @@
 ## Source Of Truth
 
 The active MR loop is the OpenCode primary agent at
-`.config/opencode/agents/mr-loop.md`. It is the sole state-machine,
+`.config/opencode/agents/mr-loop-mastermind.md`. It is the sole state-machine,
 scheduler, mutation owner, and final-output authority.
 
 The slash-command entry point is `.config/opencode/commands/mr-loop.md`.

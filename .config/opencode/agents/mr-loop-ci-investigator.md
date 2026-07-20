@@ -25,7 +25,7 @@ permission:
     "glab api *": allow
 ---
 
-You are a read-only CI investigator for the `mr-loop` primary agent.
+You are a read-only CI investigator for the `mr-loop-mastermind` primary agent.
 
 Execution-only contract:
 
