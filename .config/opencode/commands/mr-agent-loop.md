@@ -29,6 +29,11 @@ mechanical command is denied, exhaust safe stage/blob inspection, repository
 file-editing, conflict-marker, and deterministic regeneration fallbacks without
 asking for implementation approval. Use `blocked_conflicts` only for unresolved
 intent; use `manual_action_required` only after every safe mechanism is exhausted.
+Batch all actionable discussion and failed-pipeline repairs locally before one
+push. Before every push or CI retry, require that every relevant pipeline is
+terminal; while one is active, fetch its jobs and status every 30 seconds without
+triggering another pipeline. Bind each pushed SHA to one canonical pipeline and
+wait for it to finish before the next pipeline-producing mutation.
 
 Examples:
 

@@ -145,17 +145,22 @@ in the preceding phase passes for the same expected MR identity and SHA:
    changes the MR SHA.
 5. `post_sync_snapshot`: re-read the final diff against the fetched target,
    discussions, approvals, conflicts, merge status, and exact-SHA pipelines/jobs.
-6. `repair`: revalidate provisional findings, edit, perform only checks allowed
-   by Local Verification Budget, document, commit, and push a focused repair.
-   Wait for local, remote-source, and MR SHA convergence, then restart at
-   `startup`.
+6. `repair`: revalidate provisional findings and accumulate every currently
+   actionable discussion and pipeline repair locally. Perform only checks allowed
+   by Local Verification Budget, then refresh discussions and pipeline evidence
+   before finalizing the batch. Commit the completed batch, but do not push until
+   the Pipeline Serialization Gate confirms that no relevant pipeline is active.
+   After one normal push, wait for local, remote-source, and MR SHA convergence,
+   bind the new SHA to one canonical pipeline, and restart at `startup`.
 7. `evaluate`: process only exact-current-SHA CI, discussions, approvals, and
    mergeability; repair or wait as required, always restarting after a mutation.
 
-Mandatory same-invocation transitions are: normal push plus local/remote/MR SHA
-convergence -> `startup`; discussion reply -> discussion resolution; discussion
-resolution -> `startup`; transient exact-SHA pipeline state -> sleep and poll;
-pipeline completion -> `evaluate`; repairable failure -> `repair`. These
+Mandatory same-invocation transitions are: completed local repair batch plus an
+open Pipeline Serialization Gate -> one normal push; normal push plus
+local/remote/MR SHA convergence -> bind one canonical pipeline and `startup`;
+discussion reply -> discussion resolution; transient exact-SHA pipeline state ->
+sleep and poll the same canonical pipeline; pipeline completion -> `evaluate`;
+repairable failure -> accumulate the repair locally. These
 transitions are not optional checkpoint opportunities.
 
 Maintain a loop watchdog with `requested_until`, `terminal_state`,
@@ -536,8 +541,8 @@ collected earlier are provisional: re-read the rebased diff against
 `<fetched-target-sha>`, re-evaluate locations and behavior, and discard or revise
 stale findings before editing.
 
-Process unresolved resolvable discussions oldest first, one discussion per
-iteration:
+Process unresolved resolvable discussions oldest first as one local repair batch.
+Do not commit or push after each discussion:
 
 1. Capture a stable snapshot of discussion ID, non-system notes, note bodies,
    author IDs, resolvable/resolved flags, suggestions, and stable position fields
@@ -546,18 +551,25 @@ iteration:
    Engineering design tradeoffs are not blocked merely because there are multiple
    plausible implementations; use Autonomous Engineering Decisions when the
    review comment identifies a real defect and enough code context exists.
-3. For valid feedback, make the smallest code change, perform only checks allowed
-   by Local Verification Budget, then expire and reopen the synchronization gate.
-   Re-fetch MR, remote source, latest remote target, and discussion before
-   commit and again before push. If the target advanced, restart synchronization
-   without pushing. Otherwise commit, normally push, wait for local,
-   remote-source, and MR SHA convergence, then reply and resolve.
+3. For valid feedback, make the smallest code change and retain it locally as
+   part of the current repair batch. Perform only checks allowed by Local
+   Verification Budget. Continue through every currently actionable discussion
+   without pushing an intermediate repair.
 4. For invalid or obsolete feedback, leave the tree clean, re-fetch the exact
    discussion, reply with a specific technical rationale, then resolve.
 5. For blocked feedback, stop without replying or resolving.
 6. Before reply and again before resolve, revalidate GitLab actor, MR identity,
    MR SHA, local branch, local HEAD, and discussion snapshot. If any changed,
    stop instead of posting stale state.
+7. After processing the current discussion set, fetch all discussions again.
+   Add newly arrived actionable feedback to the same local batch and repeat until
+   one fresh fetch contains no unprocessed actionable discussion.
+8. Reopen the synchronization gate, re-fetch MR, remote source, latest remote
+   target, and pipeline state, and revalidate the complete local batch. If the
+   target advanced, restart synchronization without pushing. Otherwise create
+   the focused commit or commits locally and enter the Pipeline Serialization
+   Gate. Reply to and resolve fixed discussions only after the repair push has
+   converged to the MR SHA; those writes do not permit another repair push.
 
 Use `glab mr note create <iid> --repo <project> --reply <discussion-id> -m <reply>`
 or the discussion notes API for replies. Use `glab mr note resolve <discussion-id>
@@ -596,6 +608,20 @@ missing information or product decision needed.
 
 For the exact current MR SHA:
 
+- Maintain `verification_sha` and `canonical_pipeline_id`. After each normal
+  push converges, discover the relevant pipeline created for that SHA once and
+  bind its ID. Poll that same pipeline ID and its complete jobs/bridges every 30
+  seconds until terminal. Do not silently switch to a newer pipeline ID for the
+  same SHA; first establish why the canonical pipeline disappeared, was replaced,
+  or became irrelevant.
+- Never explicitly create a pipeline merely for verification. Do not use
+  `glab ci run`, pipeline-create APIs, job play actions, or equivalent commands.
+- A pipeline retry is allowed only for positively identified transient
+  infrastructure failure, only after the canonical pipeline is terminal, and
+  only after the Pipeline Serialization Gate proves that no relevant pipeline is
+  active. Record the retried pipeline as the new canonical pipeline. Never retry
+  a code failure or retry merely because pipeline discovery is delayed.
+
 - Evaluate jobs before the aggregate pipeline status. A required job with status
   `failed` or `canceled` is terminal evidence and immediately preempts waiting,
   even when its pipeline still reports `created`, `pending`, or `running` because
@@ -610,12 +636,16 @@ For the exact current MR SHA:
   pipelines. Retry only when the evidence is clearly transient infrastructure;
   if the same unchanged failure remains, treat it as a blocker.
 - For code failures, make the smallest repair, perform only checks allowed by
-  Local Verification Budget after reconfirming the synchronization gate, cancel active pipelines
-  for the known-failure SHA under Known-Failure
-  Pipeline Cancellation, re-fetch MR, remote source, latest remote target, and
-  pipeline before commit and again before push. If the target advanced, restart
-  synchronization without pushing. Otherwise commit, normally push, wait for
-  local, remote-source, and MR SHA convergence, then restart the loop.
+  Local Verification Budget after reconfirming the synchronization gate and keep
+  the repair local. Fetch discussions and pipeline/jobs again after the repair;
+  incorporate additional actionable findings into the same local batch. If any
+  relevant pipeline remains active, continue polling it every 30 seconds or use
+  Known-Failure Pipeline Cancellation only when every cancellation guard passes.
+  Re-fetch MR, remote source, latest remote target, discussions, and pipelines
+  before commit and again before push. If the target advanced, restart
+  synchronization without pushing. Otherwise push once only after the Pipeline
+  Serialization Gate opens, wait for convergence, bind the new canonical
+  pipeline, then restart the loop.
 - Manual, skipped, blocked deployment, or unknown terminal states require human
   intervention. Stop and report the exact job or pipeline blocker.
 
@@ -631,6 +661,37 @@ When a user or discussion provides a job URL, parse the numeric job ID strictly
 from the URL path segment and query that exact job through the jobs API. Do not
 silently alter, trim, or guess malformed IDs; re-fetch the linked discussion or
 pipeline metadata to resolve the canonical job ID.
+
+## Pipeline Serialization Gate
+
+At most one relevant pipeline may be active before this loop performs a mutation
+that could create another pipeline. This is a mandatory admission gate before
+every normal push, transient-infrastructure retry, rebase request, or other
+GitLab action known to create a pipeline:
+
+1. Re-fetch the MR identity and current SHA, then enumerate every pipeline for
+   the MR source branch and exact current SHA, including push,
+   `merge_request_event`, parent, child, and bridge-triggered pipelines.
+2. Classify `created`, `waiting_for_resource`, `preparing`, `pending`, `running`,
+   and `scheduled` as active. If any relevant pipeline is active, do not push,
+   retry, or trigger CI. Poll the canonical pipeline and all other active relevant
+   pipeline IDs after 30 seconds.
+3. Repeat until every relevant pipeline is terminal. A local repair being ready,
+   a failed required job in one pipeline, or a newer local commit does not bypass
+   this gate. Known-Failure Pipeline Cancellation may shorten the wait only under
+   its complete safeguards, and cancellation must be confirmed terminal before
+   the gate opens.
+4. Immediately before mutation, fetch pipelines once more. If an active pipeline
+   appeared, close the gate and resume 30-second polling. Otherwise perform
+   exactly one mutation and do not perform another pipeline-producing mutation
+   until its resulting canonical pipeline is terminal.
+
+If one push causes GitLab to create multiple relevant pipelines for the same SHA,
+record all IDs, select the MR-associated required pipeline as canonical, and wait
+for every active relevant pipeline to become terminal. Do not attempt to solve
+project `workflow:rules` duplication by pushing again. Report repeated dual
+creation as a repository CI-configuration finding and repair the configuration
+in the next local batch when it is within the MR scope.
 
 ## Known-Failure Pipeline Cancellation
 

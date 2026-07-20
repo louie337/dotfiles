@@ -62,6 +62,8 @@ assert_contains "command selects active agent" "$COMMAND" "agent: mr-agent-loop"
 assert_contains "command prohibits history rewriting" "$COMMAND" "locally rebase or force-push"
 assert_contains "command requires Linear lookup" "$COMMAND" "fetch the issue through Linear MCP"
 assert_contains "command separates intent from tooling" "$COMMAND" "Treat deterministic conflict intent separately from tool availability"
+assert_contains "command batches repairs before one push" "$COMMAND" "Batch all actionable discussion and failed-pipeline repairs locally before one"
+assert_contains "command blocks push during active CI" "$COMMAND" "require that every relevant pipeline is"
 
 assert_order "state machine precedes snapshot" "$AGENT" "## Synchronization-First State Machine" "## Loop Snapshot"
 assert_order "safe synchronization precedes repair" "$AGENT" "## Safe Synchronization" "## MR Review And Discussion Repair"
@@ -151,9 +153,21 @@ assert_contains "interrupted repair is reapplied after sync" "$AGENT" "never pus
 assert_contains "terminal awaiting pipeline is defined" "$AGENT" '`awaiting_pipeline`'
 assert_contains "awaiting pipeline remains non-success" "$AGENT" "observational non-success state"
 assert_contains "continuation invariant prohibits checkpoint stop" "$AGENT" "completed push, SHA convergence"
-assert_contains "push convergence restarts startup" "$AGENT" 'convergence -> `startup`'
+assert_contains "push convergence restarts startup" "$AGENT" 'bind one canonical pipeline and `startup`'
 assert_contains "discussion reply transitions to resolution" "$AGENT" "discussion reply -> discussion resolution"
-assert_contains "transient pipeline polls" "$AGENT" "transient exact-SHA pipeline state -> sleep and poll"
+assert_contains "transient pipeline polls" "$AGENT" "sleep and poll the same canonical pipeline"
+assert_contains "repairs accumulate locally" "$AGENT" "actionable discussion and pipeline repair locally"
+assert_contains "discussions do not push individually" "$AGENT" "Do not commit or push after each discussion"
+assert_contains "discussion refresh extends repair batch" "$AGENT" "Add newly arrived actionable feedback to the same local batch"
+assert_contains "pipeline serialization gate exists" "$AGENT" "## Pipeline Serialization Gate"
+assert_contains "active pipeline blocks push and retry" "$AGENT" "If any relevant pipeline is active, do not push"
+assert_contains "active pipelines poll every 30 seconds" "$AGENT" "pipeline IDs after 30 seconds"
+assert_contains "one mutation follows open gate" "$AGENT" "exactly one mutation and do not perform another"
+assert_contains "canonical pipeline is bound to pushed SHA" "$AGENT" 'Maintain `verification_sha` and `canonical_pipeline_id`'
+assert_contains "canonical pipeline ID remains stable" "$AGENT" "Poll that same pipeline ID"
+assert_contains "agent cannot explicitly create verification CI" "$AGENT" "Never explicitly create a pipeline merely for verification"
+assert_contains "retry requires terminal canonical pipeline" "$AGENT" "only after the canonical pipeline is terminal"
+assert_contains "duplicate GitLab pipelines do not cause another push" "$AGENT" "Do not attempt to solve"
 assert_contains "watchdog controls returns" "$AGENT" '`external_return_required` is set by the'
 assert_contains "checkpoints require forced suspension" "$AGENT" "voluntarily, and never treat one as a terminal result"
 assert_contains "awaiting pipeline requires imposed suspension" "$AGENT" "permitted only when the"
