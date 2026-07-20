@@ -28,7 +28,7 @@ Before creating or resuming an attempt:
 7. Create one loop-owned detached worktree:
 
 ```sh
-git worktree add --detach /tmp/mr-agent-loop-worktree-<conflict-attempt-id> <expected-source-sha>
+git worktree add --detach /tmp/mr-loop-worktree-<conflict-attempt-id> <expected-source-sha>
 ```
 
 Verify detached `HEAD`, exact SHA, clean tree, no merge state, and ownership by
@@ -78,7 +78,7 @@ Verify exactly two parents in order: expected source SHA then exact target SHA.
 Set `conflict_phase=committed_unpushed`, record the merge SHA, and preserve it:
 
 ```sh
-git update-ref refs/mr-agent-loop/conflicts/<conflict-attempt-id> <merge-commit-sha>
+git update-ref refs/mr-loop/conflicts/<conflict-attempt-id> <merge-commit-sha>
 ```
 
 Immediately before push, rerun identity preflight, pipeline serialization gate,
@@ -101,7 +101,7 @@ guarded cleanup and restart at `startup` from a fresh same-SHA snapshot.
 
 ## Decision Log And Cleanup
 
-Persist JSON at `/tmp/mr-agent-loop-state-<conflict-attempt-id>.json`, never in a
+Persist JSON at `/tmp/mr-loop-state-<conflict-attempt-id>.json`, never in a
 Git worktree. Record phase, source SHA, target SHA, conflicted paths and types,
 per-path evidence, generated paths, rule dispatch, verification, merge SHA,
 preservation ref, pushed SHA, cleanup state, and residual risks.

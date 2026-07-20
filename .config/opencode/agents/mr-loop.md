@@ -9,10 +9,10 @@ permission:
   websearch: deny
   external_directory:
     "*": deny
-    "/tmp/mr-agent-loop-*": allow
-    "/tmp/mr-agent-loop-*/**": allow
-    "/private/tmp/mr-agent-loop-*": allow
-    "/private/tmp/mr-agent-loop-*/**": allow
+    "/tmp/mr-loop-*": allow
+    "/tmp/mr-loop-*/**": allow
+    "/private/tmp/mr-loop-*": allow
+    "/private/tmp/mr-loop-*/**": allow
   doom_loop: allow
   skill:
     "*": deny
@@ -51,13 +51,13 @@ permission:
     "git merge --no-ff --no-commit *": allow
     "git merge --abort": allow
     "git worktree add *": deny
-    "git worktree add --detach /tmp/mr-agent-loop-* *": allow
+    "git worktree add --detach /tmp/mr-loop-* *": allow
     "git worktree remove *": deny
-    "git worktree remove /tmp/mr-agent-loop-*": allow
+    "git worktree remove /tmp/mr-loop-*": allow
     "git worktree remove *--force*": deny
     "git worktree remove * -f*": deny
     "git update-ref -d *": deny
-    "git update-ref refs/mr-agent-loop/conflicts/* *": allow
+    "git update-ref refs/mr-loop/conflicts/* *": allow
     "git push --force*": deny
     "git push -f*": deny
     "git push *--force*": deny

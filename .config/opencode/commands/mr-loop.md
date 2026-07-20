@@ -1,6 +1,6 @@
 ---
 description: Run the GitLab MR agent loop until the MR is mergeable or merged.
-agent: mr-agent-loop
+agent: mr-loop
 ---
 
 Run the GitLab MR agent loop with these arguments:
@@ -12,7 +12,7 @@ $ARGUMENTS
 Interpret the arguments as:
 
 ```text
-/mr-agent-loop <MR URL> [--until mergeable|merged]
+/mr-loop <MR URL> [--until mergeable|merged]
 ```
 
 Default `--until` to `mergeable`.
@@ -20,6 +20,6 @@ Default `--until` to `mergeable`.
 Examples:
 
 ```text
-/mr-agent-loop https://gitlab.com/group/project/-/merge_requests/123
-/mr-agent-loop https://gitlab.com/group/project/-/merge_requests/123 --until merged
+/mr-loop https://gitlab.com/group/project/-/merge_requests/123
+/mr-loop https://gitlab.com/group/project/-/merge_requests/123 --until merged
 ```

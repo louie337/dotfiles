@@ -5,14 +5,14 @@ description: Use for GitLab MR loop immutable evidence envelopes, read-only work
 
 # MR Loop Evidence
 
-This skill defines the shared contracts used by the `mr-agent-loop` orchestrator,
+This skill defines the shared contracts used by the `mr-loop` orchestrator,
 its reusable skills, and its read-only investigator subagents.
 
 ## Policy IDs
 
 - `INV-NO-HISTORY-REWRITE`: never reset, clean, stash, locally rebase, amend,
   rewrite history, force-push, force-with-lease, or discard user work.
-- `INV-PRIMARY-MUTATION-OWNER`: only the primary `mr-agent-loop` edits, stages,
+- `INV-PRIMARY-MUTATION-OWNER`: only the primary `mr-loop` edits, stages,
   commits, pushes, replies, resolves discussions, requests rebase, cancels
   pipelines, merges, or changes Git branch pointers.
 - `INV-EXACT-SHA-EVIDENCE`: every finding is bound to host, project path, IID,
@@ -31,7 +31,7 @@ its reusable skills, and its read-only investigator subagents.
   the only editing exception because it opens the gate.
 - `INV-CONFLICT-COMMIT-PRESERVED`: after a conflict merge commit exists, never
   abort, amend, delete, reset, rebase, rewrite, or hide it; preserve it under
-  `refs/mr-agent-loop/conflicts/<conflict-attempt-id>` on concurrency or push
+  `refs/mr-loop/conflicts/<conflict-attempt-id>` on concurrency or push
   failure.
 
 ## Immutable Assignment Envelope

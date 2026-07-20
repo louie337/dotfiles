@@ -3,10 +3,10 @@
 ## Source Of Truth
 
 The active MR loop is the OpenCode primary agent at
-`.config/opencode/agents/mr-agent-loop.md`. It is the sole state-machine,
+`.config/opencode/agents/mr-loop.md`. It is the sole state-machine,
 scheduler, mutation owner, and final-output authority.
 
-The slash-command entry point is `.config/opencode/commands/mr-agent-loop.md`.
+The slash-command entry point is `.config/opencode/commands/mr-loop.md`.
 It only forwards arguments, documents the default, and selects the active agent.
 
 Reusable procedures live in `.config/opencode/skills/mr-loop-*/SKILL.md`:
@@ -29,9 +29,9 @@ Reusable procedures live in `.config/opencode/skills/mr-loop-*/SKILL.md`:
 - `mr-loop-linear-context`: exact Linear lookup from `SUB-[0-9]+` source branches
   and domain conflict precedence.
 
-The executable policy contract is `tests/mr-agent-loop-test.sh`. Structured
+The executable policy contract is `tests/mr-loop-test.sh`. Structured
 conflict transition cases are in
-`tests/fixtures/mr-agent-loop-conflict-scenarios.json`.
+`tests/fixtures/mr-loop-conflict-scenarios.json`.
 
 The dotfiles repository is installed with Stow, so files under
 `~/.config/opencode/` are links to these source-controlled definitions. Edit the
@@ -81,7 +81,7 @@ Run the path-specific executable policy contract after changing the agent,
 command, skills, worker agents, or this documentation:
 
 ```sh
-sh tests/mr-agent-loop-test.sh
+sh tests/mr-loop-test.sh
 ```
 
 Before completion, also run `git diff --check` and review the branch-wide diff.

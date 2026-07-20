@@ -5,7 +5,7 @@ description: Use for GitLab MR loop startup checks, exact MR identity, target-br
 
 # MR Loop Snapshot
 
-Collect snapshots for the primary `mr-agent-loop` state machine. This skill does
+Collect snapshots for the primary `mr-loop` state machine. This skill does
 not authorize edits or GitLab writes.
 
 ## Startup Checks

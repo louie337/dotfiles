@@ -3,11 +3,11 @@
 set -u
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-AGENT="$ROOT/.config/opencode/agents/mr-agent-loop.md"
-COMMAND="$ROOT/.config/opencode/commands/mr-agent-loop.md"
+AGENT="$ROOT/.config/opencode/agents/mr-loop.md"
+COMMAND="$ROOT/.config/opencode/commands/mr-loop.md"
 CONFIG="$ROOT/.config/opencode/opencode.json"
-DOC="$ROOT/docs/mr-agent-loop.md"
-SCENARIOS="$ROOT/tests/fixtures/mr-agent-loop-conflict-scenarios.json"
+DOC="$ROOT/docs/mr-loop.md"
+SCENARIOS="$ROOT/tests/fixtures/mr-loop-conflict-scenarios.json"
 SKILL_DIR="$ROOT/.config/opencode/skills"
 AGENT_DIR="$ROOT/.config/opencode/agents"
 PASS=0
@@ -82,8 +82,8 @@ assert_file "global OpenCode config exists" "$CONFIG"
 assert_file "active MR loop documentation exists" "$DOC"
 assert_file "merge fallback scenario fixture exists" "$SCENARIOS"
 
-assert_contains "command selects active agent" "$COMMAND" "agent: mr-agent-loop"
-assert_contains "command documents invocation" "$COMMAND" "/mr-agent-loop <MR URL> [--until mergeable|merged]"
+assert_contains "command selects active agent" "$COMMAND" "agent: mr-loop"
+assert_contains "command documents invocation" "$COMMAND" "/mr-loop <MR URL> [--until mergeable|merged]"
 assert_contains "command defaults mergeable" "$COMMAND" 'Default `--until` to `mergeable`.'
 assert_not_contains "command does not duplicate history policy" "$COMMAND" "Never locally rebase"
 assert_not_contains "command does not duplicate recursive CI policy" "$COMMAND" "bridges, downstream pipelines"
@@ -136,10 +136,10 @@ assert_contains "conflict analysis preserves both parents" "$SKILL_DIR/mr-loop-c
 assert_contains "conflict analysis handles add-add" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "add/add conflicts containing"
 assert_contains "conflict analysis detects generated files" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "SQLC output, protobuf"
 assert_contains "conflict analysis separates mechanism from intent" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "Conflict intent and mechanism availability are separate"
-assert_contains "conflict integration creates detached worktree" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git worktree add --detach /tmp/mr-agent-loop-worktree-<conflict-attempt-id>'
+assert_contains "conflict integration creates detached worktree" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git worktree add --detach /tmp/mr-loop-worktree-<conflict-attempt-id>'
 assert_contains "conflict integration merges exact target" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git merge --no-ff --no-commit <exact-target-sha>'
 assert_contains "conflict integration defines resolved boundary" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'Set `conflict_phase=resolved_uncommitted` only after'
-assert_contains "conflict integration preserves merge ref" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'refs/mr-agent-loop/conflicts/<conflict-attempt-id>'
+assert_contains "conflict integration preserves merge ref" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'refs/mr-loop/conflicts/<conflict-attempt-id>'
 assert_contains "conflict integration pushes detached head" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git push origin HEAD:<source-branch>'
 assert_contains "review repair batches discussions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Do not commit or push after each discussion"
 assert_contains "review repair records decisions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Record every autonomous decision"
@@ -159,7 +159,7 @@ assert_contains "permissions deny stash" "$AGENT" '"git stash *": deny'
 assert_contains "permissions deny amend" "$AGENT" '"git commit --amend*": deny'
 assert_contains "permissions deny force push" "$AGENT" '"git push *--force*": deny'
 assert_contains "permissions allow exact merge form" "$AGENT" '"git merge --no-ff --no-commit *": allow'
-assert_contains "permissions allow detached loop worktree" "$AGENT" '"git worktree add --detach /tmp/mr-agent-loop-* *": allow'
+assert_contains "permissions allow detached loop worktree" "$AGENT" '"git worktree add --detach /tmp/mr-loop-* *": allow'
 assert_contains "permissions prohibit force worktree cleanup" "$AGENT" '"git worktree remove *": deny'
 assert_contains "permissions deny forced refspec push" "$AGENT" '"git push * +*": deny'
 assert_contains "permissions deny hidden while polling" "$AGENT" '"*while*glab api*pipelines/*": deny'
@@ -172,11 +172,11 @@ assert_contains "review worker forbids writes" "$AGENT_DIR/mr-loop-review-invest
 assert_contains "conflict worker forbids Git mutation" "$AGENT_DIR/mr-loop-conflict-investigator.md" "Do not edit files, resolve markers"
 assert_contains "ci worker forbids retries" "$AGENT_DIR/mr-loop-ci-investigator.md" "Do not retry, cancel, create"
 
-assert_contains "docs identify authoritative agent" "$DOC" '.config/opencode/agents/mr-agent-loop.md'
+assert_contains "docs identify authoritative agent" "$DOC" '.config/opencode/agents/mr-loop.md'
 assert_contains "docs identify skill source" "$DOC" '.config/opencode/skills/mr-loop-*/SKILL.md'
 assert_contains "docs identify worker model" "$DOC" "## Worker Model"
 assert_contains "docs distinguish historical supervisor" "$DOC" 'removed `.local/bin/mr-loop` shell'
-assert_contains "docs record policy test" "$DOC" 'sh tests/mr-agent-loop-test.sh'
+assert_contains "docs record policy test" "$DOC" 'sh tests/mr-loop-test.sh'
 
 if jq -e '
   length == 19 and

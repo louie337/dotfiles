@@ -24,7 +24,7 @@ permission:
     "glab api *": allow
 ---
 
-You are a read-only investigator for the `mr-agent-loop` primary agent.
+You are a read-only investigator for the `mr-loop` primary agent.
 
 Load `mr-loop-evidence` and `mr-loop-review-repair` before analysis. Load
 `mr-loop-linear-context` only when the assignment includes a `SUB-[0-9]+` issue

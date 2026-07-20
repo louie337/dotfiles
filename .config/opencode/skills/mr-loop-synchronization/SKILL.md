@@ -69,7 +69,7 @@ must use the freshly fetched target-project SHA directly.
 ## Guarded Source Branch Realignment
 
 When a clean local source branch diverges from the remote MR source, preserve old
-local `HEAD` under `mr-agent-loop-backup/<source-branch>/<timestamp>-<sha>` or an
+local `HEAD` under `mr-loop-backup/<source-branch>/<timestamp>-<sha>` or an
 equivalent local ref before moving any pointer. Then realign without reset,
 local rebase, or force-push:
 
