@@ -55,6 +55,16 @@ assert_not_contains() {
   fi
 }
 
+assert_tree_not_contains() {
+  description=$1
+  pattern=$2
+  if grep -R -F -q -- "$pattern" "$ROOT/.config/opencode/agents" "$ROOT/.config/opencode/skills"; then
+    fail "$description"
+  else
+    pass "$description"
+  fi
+}
+
 assert_skill() {
   name=$1
   path="$SKILL_DIR/$name/SKILL.md"
@@ -70,10 +80,22 @@ assert_worker() {
   assert_file "worker $name exists" "$path"
   assert_contains "worker $name is hidden" "$path" "hidden: true"
   assert_contains "worker $name is subagent" "$path" "mode: subagent"
+  assert_contains "worker $name uses terra low model" "$path" "model: datax_openai/gpt-5.6-terra"
+  assert_contains "worker $name uses low variant" "$path" "variant: low"
   assert_contains "worker $name denies edits" "$path" "edit: deny"
   assert_contains "worker $name denies default bash" "$path" '"*": deny'
+  assert_contains "worker $name is execution-only" "$path" "Execution-only contract"
+  assert_contains "worker $name requests primary reassignment" "$path" "needs_primary_reassignment"
   assert_contains "agent may invoke worker $name" "$AGENT" "$name: allow"
   assert_contains "docs list worker $name" "$DOC" "\`$name\`"
+}
+
+assert_terra_low_agent() {
+  name=$1
+  path="$AGENT_DIR/$name.md"
+  assert_file "agent $name exists" "$path"
+  assert_contains "agent $name uses terra model" "$path" "model: datax_openai/gpt-5.6-terra"
+  assert_contains "agent $name uses low variant" "$path" "variant: low"
 }
 
 assert_file "active MR agent exists" "$AGENT"
@@ -81,6 +103,37 @@ assert_file "active MR command exists" "$COMMAND"
 assert_file "global OpenCode config exists" "$CONFIG"
 assert_file "active MR loop documentation exists" "$DOC"
 assert_file "merge fallback scenario fixture exists" "$SCENARIOS"
+assert_tree_not_contains "workers do not report blocked input" "blocked_input"
+
+for agent in \
+  docker-developer \
+  golang-developer \
+  react-native-expo-developer \
+  typescript-developer \
+  mr-loop \
+  patch \
+  teach
+do
+  assert_terra_low_agent "$agent"
+done
+
+assert_contains "build uses terra low" "$CONFIG" '"build": {'
+if jq -e '.agent.build.model == "datax_openai/gpt-5.6-terra" and .agent.build.variant == "low" and .agent.plan.model == "datax_openai/gpt-5.6-terra" and .agent.plan.variant == "low" and .agent.patch.model == "datax_openai/gpt-5.6-terra" and .agent.patch.variant == "low" and .agent.teach.model == "datax_openai/gpt-5.6-terra" and .agent.teach.variant == "low"' "$CONFIG" >/dev/null; then
+  pass "inline agents use terra low"
+else
+  fail "inline agents use terra low"
+fi
+
+for exec_agent in \
+  docker-developer \
+  golang-developer \
+  react-native-expo-developer \
+  typescript-developer
+do
+  assert_contains "agent $exec_agent has execution-only contract" "$AGENT_DIR/$exec_agent.md" "## Execution-Only Contract"
+  assert_contains "agent $exec_agent does not own broad strategy" "$AGENT_DIR/$exec_agent.md" "Do not create project plans"
+  assert_contains "agent $exec_agent returns reassignment signal" "$AGENT_DIR/$exec_agent.md" "needs_primary_reassignment"
+done
 
 assert_contains "command selects active agent" "$COMMAND" "agent: mr-loop"
 assert_contains "command documents invocation" "$COMMAND" "/mr-loop <MR URL> [--until mergeable|merged]"
@@ -117,6 +170,10 @@ assert_contains "agent retains no history rewrite invariant" "$AGENT" "INV-NO-HI
 assert_contains "agent retains pre-sync repair invariant" "$AGENT" "INV-NO-PRESYNC-REPAIR"
 assert_contains "agent retains deadline invariant" "$AGENT" "INV-PIPELINE-DEADLINE-FIRST"
 assert_contains "agent retains permission override" "$AGENT" "override generic skill"
+assert_contains "agent delegates only execution scopes" "$AGENT" "Subagents are execution-only helpers"
+assert_contains "agent keeps planning in primary" "$AGENT" "Do not ask subagents to plan"
+assert_contains "agent handles reassignment signal" "$AGENT" "do not treat it as a blocker"
+assert_contains "agent continues after reassignment" "$AGENT" "continue the loop whenever a safe next"
 assert_contains "agent has canonical state machine" "$AGENT" "## Canonical State Machine"
 assert_contains "agent defines safe merge conflict transition" "$AGENT" "safe_merge_conflict_resolution"
 assert_contains "agent defines terminal guard" "$AGENT" 'there is no executable `next_state`'

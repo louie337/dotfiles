@@ -58,7 +58,10 @@ Every read-only worker assignment must include this envelope:
 ```
 
 Workers must not infer missing identity fields. If the envelope is incomplete,
-return `status=blocked_input` and do not inspect unrelated context.
+return `status=needs_primary_reassignment` with `missingInput` and do not inspect
+unrelated context. This is not a blocker or terminal state; it tells the primary
+`mr-loop` agent to supply a complete envelope, narrow the scope, or perform the
+reasoning itself.
 
 ## Worker Result Contract
 
@@ -66,12 +69,13 @@ Read-only workers return concise evidence, not patches:
 
 ```json
 {
-  "status": "ok|no_finding|blocked_input|stale_risk",
+  "status": "ok|no_finding|needs_primary_reassignment|stale_risk",
   "identity": {
     "expectedSourceSha": "<same-as-assignment>",
     "exactTargetSha": "<same-as-assignment>"
   },
   "scopeReviewed": ["path/or/discussion/or/job"],
+  "missingInput": ["field-or-scope-needed"],
   "findings": [
     {
       "location": "path:line or GitLab object ID",
@@ -94,6 +98,9 @@ snippet for review. Do not run mutating commands.
   envelope exists.
 - Prefer smaller workers: one conflict group, one discussion cluster, one failed
   job family, or one focused code area per task.
+- Treat `needs_primary_reassignment` as a primary-agent routing signal, never as
+  a terminal blocker. The primary owns replanning, rescoping, and any judgment
+  needed to keep the MR loop automatic.
 - Never wait for optional workers while `next_pipeline_poll_deadline` is due.
 - The primary must revalidate the assignment envelope immediately before acting
   on a result.

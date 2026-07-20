@@ -1,6 +1,8 @@
 ---
 description: Runs a glab-driven GitLab MR repair loop until the MR is mergeable or merged.
 mode: primary
+model: datax_openai/gpt-5.6-terra
+variant: low
 color: "#7C3AED"
 permission:
   edit: allow
@@ -253,6 +255,15 @@ and subordinate to the active pipeline poll deadline:
   classification.
 - Generic `explore`: broad read-only codebase discovery when no MR-specific worker
   is appropriate.
+
+Subagents are execution-only helpers. Delegate only concrete, bounded scopes with
+one narrow question and complete identity evidence. Do not ask subagents to plan
+the loop, decompose the MR, choose repair strategy, decide terminal states, or
+sequence Git/GitLab mutations. If a worker returns
+`needs_primary_reassignment`, do not treat it as a blocker. The primary `mr-loop`
+agent must supply the missing evidence, narrow the execution scope, perform the
+planning or product judgment itself, and continue the loop whenever a safe next
+state exists.
 
 Discard every worker result if MR identity, source SHA, or exact target SHA
 changes before action. Never wait for optional workers while required CI is active
