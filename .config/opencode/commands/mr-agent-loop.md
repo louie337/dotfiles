@@ -34,6 +34,11 @@ push. Before every push or CI retry, require that every relevant pipeline is
 terminal; while one is active, fetch its jobs and status every 30 seconds without
 triggering another pipeline. Bind each pushed SHA to one canonical pipeline and
 wait for it to finish before the next pipeline-producing mutation.
+Each poll must recursively fetch the canonical pipeline's paginated jobs,
+bridges, downstream pipelines, and descendant jobs. A failed or canceled required
+job at any depth interrupts waiting immediately and starts investigation and
+local repair even while a parent pipeline remains running. Use one discrete poll
+and one foreground 30-second sleep at a time; never hide polling in a shell loop.
 
 Examples:
 

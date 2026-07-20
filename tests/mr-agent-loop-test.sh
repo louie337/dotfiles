@@ -161,13 +161,34 @@ assert_contains "discussions do not push individually" "$AGENT" "Do not commit o
 assert_contains "discussion refresh extends repair batch" "$AGENT" "Add newly arrived actionable feedback to the same local batch"
 assert_contains "pipeline serialization gate exists" "$AGENT" "## Pipeline Serialization Gate"
 assert_contains "active pipeline blocks push and retry" "$AGENT" "If any relevant pipeline is active, do not push"
-assert_contains "active pipelines poll every 30 seconds" "$AGENT" "pipeline IDs after 30 seconds"
+assert_contains "active pipelines poll every 30 seconds" "$AGENT" "only a graph with no terminal required failure may sleep 30 seconds"
 assert_contains "one mutation follows open gate" "$AGENT" "exactly one mutation and do not perform another"
 assert_contains "canonical pipeline is bound to pushed SHA" "$AGENT" 'Maintain `verification_sha` and `canonical_pipeline_id`'
 assert_contains "canonical pipeline ID remains stable" "$AGENT" "Poll that same pipeline ID"
 assert_contains "agent cannot explicitly create verification CI" "$AGENT" "Never explicitly create a pipeline merely for verification"
 assert_contains "retry requires terminal canonical pipeline" "$AGENT" "only after the canonical pipeline is terminal"
 assert_contains "duplicate GitLab pipelines do not cause another push" "$AGENT" "Do not attempt to solve"
+assert_contains "recursive pipeline graph poll exists" "$AGENT" "### Recursive Pipeline Graph Poll"
+assert_contains "poll fetches bridges endpoint" "$AGENT" 'pipelines/<pipeline-id>/bridges?per_page=100'
+assert_contains "poll traverses downstream project and pipeline" "$AGENT" 'each unseen `(project_id, pipeline_id)` pair'
+assert_contains "poll includes every descendant depth" "$AGENT" "Include every descendant depth"
+assert_contains "poll checks jobs before aggregate status" "$AGENT" "Before inspecting any aggregate pipeline status"
+assert_contains "poll observes every failed job" "$AGENT" "search every current job and"
+assert_contains "poll reports every failed job" "$AGENT" "report each one"
+assert_contains "child failure interrupts parent wait" "$AGENT" "Do not wait for the parent pipeline to become"
+assert_contains "failed job starts immediate repair" "$AGENT" "begin the local repair"
+assert_contains "parent running cannot hide child failure" "$AGENT" 'A parent pipeline remaining `running`'
+assert_contains "poll is one discrete step" "$AGENT" "Run one discrete poll step at a time"
+assert_contains "shell polling loops are forbidden" "$AGENT" 'Never delegate waiting to a shell `while`'
+assert_contains "poll uses standalone sleep" "$AGENT" 'standalone foreground `sleep 30` tool call'
+assert_contains "poll refreshes graph after sleep" "$AGENT" "return to step 1 with fresh"
+assert_contains "bash denies while pipeline poll" "$AGENT" '"*while*glab api*pipelines/*": deny'
+assert_contains "bash denies until pipeline poll" "$AGENT" '"*until*glab api*pipelines/*": deny'
+assert_contains "bash denies API then sleep loop" "$AGENT" '"*glab api*pipelines/*sleep 30*": deny'
+assert_contains "bash denies sleep then API loop" "$AGENT" '"*sleep 30*glab api*pipelines/*": deny'
+assert_contains "command requires recursive child polling" "$COMMAND" "bridges, downstream pipelines, and descendant jobs"
+assert_contains "command makes child failure preempt wait" "$COMMAND" "interrupts waiting immediately"
+assert_contains "command forbids hidden shell polling" "$COMMAND" "never hide polling in a shell loop"
 assert_contains "watchdog controls returns" "$AGENT" '`external_return_required` is set by the'
 assert_contains "checkpoints require forced suspension" "$AGENT" "voluntarily, and never treat one as a terminal result"
 assert_contains "awaiting pipeline requires imposed suspension" "$AGENT" "permitted only when the"

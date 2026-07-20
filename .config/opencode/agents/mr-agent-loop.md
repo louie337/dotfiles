@@ -44,6 +44,10 @@ permission:
     "glab ci cancel *": deny
     "glab ci cancel pipeline *": ask
     "glab ci delete *": deny
+    "*while*glab api*pipelines/*": deny
+    "*until*glab api*pipelines/*": deny
+    "*glab api*pipelines/*sleep 30*": deny
+    "*sleep 30*glab api*pipelines/*": deny
 ---
 
 You run a GitLab merge-request repair loop using the installed `glab` CLI and
@@ -280,6 +284,7 @@ glab mr note list <iid> --repo <project> --output json --state all
 glab ci get --repo <project> --merge-request <iid> --output json --with-job-details
 glab ci list --repo <project> --sha <sha> --output json
 glab api --hostname <host> --paginate "projects/<encoded-project>/pipelines/<pipeline-id>/jobs?per_page=100&include_retried=true"
+glab api --hostname <host> --paginate "projects/<encoded-project>/pipelines/<pipeline-id>/bridges?per_page=100"
 glab api --hostname <host> "projects/<encoded-project>/merge_requests/<iid>?include_rebase_in_progress=true&include_diverged_commits_count=true"
 glab api --hostname <host> --paginate "projects/<encoded-project>/merge_requests/<iid>/discussions?per_page=100"
 ```
@@ -610,10 +615,10 @@ For the exact current MR SHA:
 
 - Maintain `verification_sha` and `canonical_pipeline_id`. After each normal
   push converges, discover the relevant pipeline created for that SHA once and
-  bind its ID. Poll that same pipeline ID and its complete jobs/bridges every 30
-  seconds until terminal. Do not silently switch to a newer pipeline ID for the
-  same SHA; first establish why the canonical pipeline disappeared, was replaced,
-  or became irrelevant.
+  bind its ID. Poll that same pipeline ID and its complete recursively expanded
+  job graph every 30 seconds until terminal. Do not silently switch to a newer
+  pipeline ID for the same SHA; first establish why the canonical pipeline
+  disappeared, was replaced, or became irrelevant.
 - Never explicitly create a pipeline merely for verification. Do not use
   `glab ci run`, pipeline-create APIs, job play actions, or equivalent commands.
 - A pipeline retry is allowed only for positively identified transient
@@ -622,11 +627,13 @@ For the exact current MR SHA:
   active. Record the retried pipeline as the new canonical pipeline. Never retry
   a code failure or retry merely because pipeline discovery is delayed.
 
-- Evaluate jobs before the aggregate pipeline status. A required job with status
+- Evaluate every job and bridge in the recursively expanded parent/child graph
+  before every aggregate pipeline status. A required job or bridge with status
   `failed` or `canceled` is terminal evidence and immediately preempts waiting,
-  even when its pipeline still reports `created`, `pending`, or `running` because
-  other jobs continue. Inspect that job's trace, bridges, and child pipelines and
-  enter failed-job repair in the same iteration.
+  even when any parent or sibling pipeline still reports `created`, `pending`, or
+  `running`. Fetch that failed node's trace and enter failed-job investigation
+  and repair in the same iteration. Do not wait for the parent pipeline to become
+  terminal first.
 - Only after confirming that no required job is terminally failed or canceled,
   treat missing, created, waiting_for_resource, preparing, pending, running, and
   scheduled pipeline/job states as transient. Sleep 30 seconds, then collect a
@@ -653,9 +660,54 @@ Never decide from a branch pipeline whose SHA differs from the current MR SHA.
 Ignore every pre-rebase or pre-fix pipeline after MR SHA convergence changes.
 Never sleep or wait solely from aggregate pipeline status, MR
 `detailed_merge_status`, or an embedded `head_pipeline` projection. Before every
-sleep, enumerate all exact-SHA pipeline jobs and assert that none is a terminal
-required failure. `allow_failure: true` jobs do not trigger repair unless GitLab
-still treats them as merge-blocking.
+sleep, complete the Recursive Pipeline Graph Poll below and assert that no
+required job or bridge anywhere in the graph is a terminal failure.
+`allow_failure: true` jobs do not trigger repair unless GitLab still treats them
+as merge-blocking.
+
+### Recursive Pipeline Graph Poll
+
+Run one discrete poll step at a time so the agent regains control after every API
+snapshot. Never delegate waiting to a shell `while`, `until`, watch command, or
+other long-running polling loop. In particular, never run
+`while true; ... sleep 30; done` for pipeline observation. For each poll step:
+
+1. Start with `canonical_pipeline_id`. Fetch its fresh pipeline record, all
+   paginated direct jobs with retried jobs included, and all paginated bridges.
+2. From every bridge, extract the downstream pipeline project ID and pipeline ID
+   when present. Recursively repeat the pipeline, jobs, and bridges fetch against
+   that downstream project for each unseen `(project_id, pipeline_id)` pair.
+   Track visited pairs to prevent cycles. Include every descendant depth, not
+   only immediate children, including multi-project pipelines. A bridge's own
+   `success` does not imply its downstream pipeline or jobs succeeded.
+3. Normalize all jobs and bridges into one graph-wide set containing project ID,
+   pipeline ID, job ID, name, stage, status, `allow_failure`, failure reason, and
+   web URL. Distinguish superseded retried attempts from each current job attempt.
+   Preserve old attempt traces as evidence, but do not mistake a superseded failed
+   attempt for the current result.
+4. Before inspecting any aggregate pipeline status, search every current job and
+   bridge for `failed` or `canceled` and report each one. If any is required or
+   merge-blocking, do not sleep. Fetch its trace immediately, inspect the owning
+   pipeline and bridge ancestry, classify the failure, and begin the local repair
+   in the same agent turn. Record non-blocking `allow_failure` failures but let
+   them preempt waiting only when GitLab treats them as merge-blocking. Other
+   graph nodes still running only block the eventual push under Pipeline
+   Serialization Gate; they do not block investigation or local edits.
+5. After the job-first scan, treat a terminal failed or canceled pipeline with no
+   exposed required failed job as immediate investigation evidence too; do not
+   sleep merely because GitLab omitted or delayed its jobs.
+6. Only when no graph-wide required node has terminally failed may aggregate
+   states determine whether to wait. If any graph node is active, run one
+   standalone foreground `sleep 30` tool call, then return to step 1 with fresh
+   API calls. Do not combine the sleep and polling APIs in one shell command, and
+   do not reuse job or bridge JSON from the prior poll.
+7. Treat verification as successful only when every current required job and
+   bridge in every discovered parent and descendant pipeline succeeded and no
+   relevant graph node remains active. A parent pipeline remaining `running`
+   after a child job failed can never justify another sleep.
+
+Use GitLab's pipeline, jobs, and bridges endpoints for every discovered pipeline;
+the parent pipeline jobs endpoint alone is never a complete CI snapshot.
 
 When a user or discussion provides a job URL, parse the numeric job ID strictly
 from the URL path segment and query that exact job through the jobs API. Do not
@@ -674,8 +726,9 @@ GitLab action known to create a pipeline:
    `merge_request_event`, parent, child, and bridge-triggered pipelines.
 2. Classify `created`, `waiting_for_resource`, `preparing`, `pending`, `running`,
    and `scheduled` as active. If any relevant pipeline is active, do not push,
-   retry, or trigger CI. Poll the canonical pipeline and all other active relevant
-   pipeline IDs after 30 seconds.
+   retry, or trigger CI. Run a Recursive Pipeline Graph Poll immediately. A
+   discovered required failure starts investigation and local repair at once;
+   only a graph with no terminal required failure may sleep 30 seconds.
 3. Repeat until every relevant pipeline is terminal. A local repair being ready,
    a failed required job in one pipeline, or a newer local commit does not bypass
    this gate. Known-Failure Pipeline Cancellation may shorten the wait only under
