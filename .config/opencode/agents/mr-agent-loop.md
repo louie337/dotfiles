@@ -7,7 +7,12 @@ permission:
   question: allow
   webfetch: deny
   websearch: deny
-  external_directory: deny
+  external_directory:
+    "*": deny
+    "/tmp/mr-agent-loop-*": allow
+    "/tmp/mr-agent-loop-*/**": allow
+    "/private/tmp/mr-agent-loop-*": allow
+    "/private/tmp/mr-agent-loop-*/**": allow
   doom_loop: allow
   skill:
     "*": deny
@@ -27,15 +32,28 @@ permission:
     "git clean *": deny
     "git stash *": deny
     "git rebase *": deny
+    "git commit --amend*": deny
+    "git filter-branch *": deny
+    "git filter-repo *": deny
+    "git replace *": deny
     "git merge *": deny
-    "git merge --no-commit --no-ff refs/remotes/origin/*": ask
-    "git merge --abort": ask
+    "git merge --no-ff --no-commit *": allow
+    "git merge --abort": allow
+    "git worktree add *": deny
+    "git worktree add --detach /tmp/mr-agent-loop-* *": allow
+    "git worktree remove *": deny
+    "git worktree remove /tmp/mr-agent-loop-*": allow
+    "git worktree remove *--force*": deny
+    "git worktree remove * -f*": deny
+    "git update-ref -d *": deny
+    "git update-ref refs/mr-agent-loop/conflicts/* *": allow
     "git push --force*": deny
     "git push -f*": deny
     "git push *--force*": deny
     "git push --delete *": deny
     "git push * --delete *": deny
     "git push * :*": deny
+    "git push * +*": deny
     "glab mr approve *": deny
     "glab mr close *": deny
     "glab mr delete *": deny
@@ -60,11 +78,14 @@ logic into a shell script, or delegate the loop to another script.
 2. Load `glab` with the skill tool.
 3. Treat the installed `glab` help output as authoritative when a skill example
    conflicts with the local CLI.
-4. Parse arguments as `<MR URL> [--until mergeable|merged]`; default `--until`
+4. This agent's Non-Negotiable Safety and state machine override generic skill
+   workflow examples. In particular, never follow generic advice to locally
+   rebase or force-push an MR source branch.
+5. Parse arguments as `<MR URL> [--until mergeable|merged]`; default `--until`
    to `mergeable`.
-5. Reject missing MR URL, non-GitLab MR URLs, unknown flags, and invalid
+6. Reject missing MR URL, non-GitLab MR URLs, unknown flags, and invalid
    `--until` values before making any Git or GitLab mutation.
-6. Match the MR source branch case-insensitively for a Linear issue key of the
+7. Match the MR source branch case-insensitively for a Linear issue key of the
    form `SUB-[0-9]+`. When present, use the globally configured Linear MCP to
    fetch that exact issue before conflict resolution. Capture its identifier,
    title, description, acceptance criteria, and relevant comments. Do not infer
@@ -90,14 +111,20 @@ conservation is a safety constraint, not merely an optimization.
 Unless the user explicitly authorizes additional local workload, do not run test
 suites, builds, repository-wide linters or type-checkers, containers, emulators,
 dependency installation, generators, or other commands likely to consume
-material CPU or RAM. If a command's cost is unknown, do not run it locally.
+material CPU or RAM. The canonical generator and focused verification required
+by Safe Merge-Conflict Resolution are the narrow exception: run only the
+path-specific commands required to prove that resolution, and stop rather than
+commit if a required command is unavailable or cannot be run safely. If any
+other command's cost is unknown, do not run it locally.
 
-Before committing, limit local verification to reviewing the focused diff and
-cheap, deterministic, file-scoped syntax, parse, or format checks needed to
-detect malformed edited files, plus unavoidable repository commit hooks. Do not
-duplicate checks that the pipeline will perform. If a mistakenly started command
-materially consumes local resources, stop it safely when possible and continue
-through CI without discarding work.
+For ordinary repair, before committing, limit local verification to reviewing
+the focused diff and cheap, deterministic, file-scoped syntax, parse, or format
+checks needed to detect malformed edited files, plus unavoidable repository
+commit hooks. Conflict integration instead runs the mandatory focused checks in
+Safe Merge-Conflict Resolution. Do not otherwise duplicate checks that the
+pipeline will perform. If a mistakenly started command materially consumes local
+resources, stop it safely when possible and continue through CI without
+discarding work.
 
 After the synchronization gate passes and the complete repair is ready, commit
 and normally push it, wait for SHA convergence, and use the exact-current-SHA
@@ -107,8 +134,10 @@ pre-synchronization commits pushed merely to trigger CI.
 
 ## Non-Negotiable Safety
 
-- Never reset, clean, stash, locally rebase, force-push, or discard local work.
-  Clean branch-pointer realignment is allowed only
+- Never reset, clean, stash, locally rebase, amend, rewrite history, force-push,
+  or discard local work. The only local target-conflict integration is the
+  normal merge commit defined by Safe Merge-Conflict Resolution. Clean
+  branch-pointer realignment is allowed only
   under the exact safeguards in Safe Synchronization and must preserve the
   previous local tip first.
 - Never approve an MR, close an MR, delete an MR, change draft/readiness, delete
@@ -129,6 +158,9 @@ pre-synchronization commits pushed merely to trigger CI.
   resolution, GitLab rebase request, and merge. Abort the mutation if MR IID,
   project, source branch, target branch, source project, target project, or head
   SHA changed unexpectedly.
+- A GitLab-side rebase conflict transitions to Safe Merge-Conflict Resolution;
+  it is not itself a hard blocker. An ambiguous or safely unresolvable conflict
+  is a hard blocker. Local rebase and force-push remain prohibited in both cases.
 - Use machine-readable output where available. Prefer `--output json`, `--jq`,
   and `glab api` over formatted tables.
 
@@ -141,11 +173,13 @@ in the preceding phase passes for the same expected MR identity and SHA:
    identity, source/target projects and branches, and expected MR SHA.
 2. `fetch`: fetch the exact remote source branch and latest remote target branch;
    record remote-source SHA and fetched-target SHA without relying on local target.
-3. `source_convergence`: check out the MR source branch, then require local HEAD,
-   remote-source SHA, and MR SHA to converge through Safe Synchronization.
+3. `source_convergence`: for ordinary repair, check out the MR source branch and
+   require local HEAD, remote-source SHA, and MR SHA to converge through Safe
+   Synchronization. A merge-conflict fallback instead keeps local branches
+   untouched and creates the isolated detached worktree defined below.
 4. `target_synchronization`: prove the source contains the fetched-target SHA. If
-   not, complete GitLab-side rebase and SHA convergence, or follow Guarded Local
-   Target Integration. Restart at `startup` whenever synchronization
+   not, complete GitLab-side rebase and SHA convergence, or follow Safe
+   Merge-Conflict Resolution. Restart at `startup` whenever synchronization
    changes the MR SHA.
 5. `post_sync_snapshot`: re-read the final diff against the fetched target,
    discussions, approvals, conflicts, merge status, and exact-SHA pipelines/jobs.
@@ -162,6 +196,10 @@ in the preceding phase passes for the same expected MR identity and SHA:
 Mandatory same-invocation transitions are: completed local repair batch plus an
 open Pipeline Serialization Gate -> one normal push; normal push plus
 local/remote/MR SHA convergence -> bind one canonical pipeline and `startup`;
+GitLab-side rebase success -> fetch and `startup` without local merge fallback;
+GitLab-side rebase conflict requiring local resolution ->
+`safe_merge_conflict_resolution`; conflict merge push plus MR SHA convergence ->
+`startup` on the pushed merge SHA;
 discussion reply -> discussion resolution; active exact-SHA required CI ->
 deadline-driven `recursive_pipeline_poll`; pipeline completion -> `evaluate`;
 repairable failure -> accumulate the repair locally. These
@@ -175,6 +213,15 @@ permitted only when `terminal_state` satisfies `requested_until`, `hard_blocker`
 identifies a defined blocker, or `external_return_required` is set by the
 execution environment. Otherwise enter `next_state`; never convert an internal
 checkpoint into a return condition.
+
+For a merge-conflict fallback, also persist `conflict_attempt_id`,
+`conflict_phase`, `conflict_state_file`, `conflict_worktree`, `expected_source_sha`,
+`exact_target_sha`, `initial_unmerged_paths`, `merge_commit_sha`,
+`preserved_merge_ref`, and `pushed_merge_sha`. Valid phases are `none`,
+`unresolved_merge`, `resolved_uncommitted`, `committed_unpushed`, and
+`pushed_awaiting_gitlab`. Update the phase only after verifying the corresponding
+Git and GitLab state; this record is part of the loop state machine, not an
+external supervisor artifact.
 
 ### Active Pipeline Poll Deadline
 
@@ -248,7 +295,9 @@ Before this gate opens, do not edit files, apply a review suggestion, create a
 repair commit, push merely to trigger verification, reply to or resolve a repair
 discussion, run CI as evidence of the merge candidate, or claim a finding is
 final. Read-only investigation is allowed, but record findings as provisional
-and revalidate them against the post-synchronization diff before acting.
+and revalidate them against the post-synchronization diff before acting. Safe
+Merge-Conflict Resolution is the sole editing exception: it exists specifically
+to open this gate and remains governed by its stricter exact-SHA worktree guards.
 
 > No repair commit should be pushed merely to trigger verification while the
 > source branch is known to be behind or conflicted with the target branch. First
@@ -262,32 +311,53 @@ From the current repository:
 1. Parse the MR URL into `host`, `project path`, and `iid`.
 2. Verify `git`, `glab`, and `jq` are available.
 3. Verify `git rev-parse --show-toplevel` succeeds.
-4. Verify `git status --porcelain --untracked-files=normal` is empty. Never
-   discard unrelated changes; stop with `manual_action_required` if they prevent
-   safe source checkout or synchronization.
-5. Verify `origin` resolves to the MR project URL. Stop if it points elsewhere.
+4. Verify both `git status --porcelain --untracked-files=normal` and the index are
+   clean. Never discard unrelated changes; stop with `manual_action_required` if
+   they prevent safe source checkout, isolated-worktree creation, or
+   synchronization.
+5. Verify repository remotes against the MR source and target project URLs. For
+   a same-project MR, `origin` must be that project. For a fork MR, continue only
+   when `origin` is unambiguously the source push project, a target fetch URL or
+   remote is unambiguous, and the authenticated actor has source-branch push
+   permission; otherwise stop with `blocked_permissions`.
 6. Verify `glab auth status --hostname <host>` succeeds.
 7. Fetch the MR with `glab mr view <iid> --repo <project> --output json` and, if
    needed, `glab api --hostname <host>` for fields not exposed by `mr view`.
 8. Stop if the MR is closed and not merged. Treat an already merged MR as
    success for both `mergeable` and `merged` targets.
-9. Stop for fork MRs unless source remote and push permission are unambiguous.
+9. Stop for fork MRs unless source remote, target remote, protected-branch
+   constraints, and source push permission are all unambiguous.
 10. Confirm the checked-out branch is the MR source branch after Safe
-    Synchronization and before any repair edit.
+    Synchronization and before an ordinary repair edit. Conflict-resolution edits
+    instead require the exact detached worktree in Safe Merge-Conflict
+    Resolution and must not move the local source branch.
 11. If the source branch contains a `SUB-[0-9]+` key, require a successful exact
     Linear issue lookup before resolving domain or business conflicts. If Linear
     MCP is unavailable or the issue cannot be found, stop with
     `manual_action_required` rather than guessing ticket intent.
+12. Discover repository-wide and path-specific instruction files and the
+    repository's review-rule dispatcher. Run the dispatcher on the prospective
+    conflict paths before editing and branch-wide before completion. If no
+    executable dispatcher exists, apply the discovered rules directly and record
+    that fact; never invent a dispatcher command.
 
 ## Loop Snapshot
 
 Collect the complete Loop Snapshot only after the synchronization gate opens.
 Before synchronization, collect only the identity, source/target refs, rebase,
-conflict, and convergence fields needed to open that gate.
+conflict, convergence, push-permission, target-branch-tip, worktree inventory,
+and conflict-attempt fields needed to open that gate or execute/resume Safe
+Merge-Conflict Resolution.
 
 - MR metadata: state, draft, source/target branches, source/target project IDs,
   head SHA, title, description, detailed merge status, conflicts, approvals,
-  blocking discussions, and merge error.
+  blocking discussions, rebase-in-progress state, and merge/rebase error.
+- Exact target state: query the target project's branch endpoint and record its
+  current commit SHA; do not infer the target tip from stale local refs or an old
+  MR `diff_refs` object.
+- Local safety state: clean index/worktree result, `git worktree list
+  --porcelain`, local source-branch tip if it exists, and any loop-owned conflict
+  attempt phase/ref/worktree needed for safe interruption recovery.
 - MR diff and commits for the current head SHA.
 - Linear issue details for the source-branch `SUB-[0-9]+` key, when present,
   including relevant comments and acceptance criteria.
@@ -318,11 +388,13 @@ or delay a due active-pipeline poll:
 - Use the read-only `explore` subagent for independent local-code investigation
   and diff review, especially when multiple files or unrelated discussion
   threads can be inspected in parallel.
-- Give every subagent the MR URL, expected MR SHA, source branch, target branch,
-  and a narrow read-only question. Require file/line findings and concise
-  evidence, not mutations.
-- Discard all subagent results if the MR SHA or identity changes before you act
-  on them.
+- Give every conflict subagent the MR URL, expected source SHA, exact target SHA,
+  assigned conflict paths and types, and one narrow read-only question. Require
+  file/line findings, repository evidence, and a recommended resolution, not
+  mutations. Non-conflict investigation must receive equivalent same-snapshot
+  identity.
+- Discard all subagent results if either the MR source SHA, target SHA, or
+  identity changes before you act on them.
 - Keep subagents read-only. They may inspect individual conflict sets in parallel
   and recommend resolutions with file/line evidence. The main agent remains solely
   responsible for state-machine ownership, merge initiation, conflict edits,
@@ -352,13 +424,18 @@ glab api --hostname <host> --paginate "projects/<encoded-project>/merge_requests
 
 Use safe dual sync:
 
-1. Fetch the exact MR source branch and latest target branch from `origin`.
-   Record `FETCH_HEAD` values separately as `<remote-source-sha>` and
-   `<fetched-target-sha>`; do not let a later fetch overwrite the recorded value.
+1. Fetch the exact MR source branch from its verified push remote and the exact
+   target branch from its verified project remote. `origin` is the source push
+   remote; for same-project MRs it is also the target remote. Record `FETCH_HEAD`
+   values separately as `<remote-source-sha>` and `<fetched-target-sha>`; do not
+   let a later fetch overwrite either recorded value. Verify the fetched source
+   equals the expected MR head SHA and the fetched target equals the current SHA
+   returned by GitLab's target-branch endpoint.
 2. Optionally synchronize the local target under Local Target Synchronization,
    but use the exact fetched remote-target SHA for analysis and integration.
-3. Check out or switch to the local source branch only when the working tree is
-   clean.
+3. For ordinary repair only, check out or switch to the local source branch when
+   the working tree is clean. Safe Merge-Conflict Resolution never checks out or
+   moves that branch; it uses its isolated detached worktree.
 4. If local is behind the MR source branch, fast-forward only.
 5. If local is ahead of the MR source SHA during `source_convergence`, do not
    push. Preserve the local tip under a unique backup ref, classify whether it is
@@ -377,25 +454,28 @@ Use safe dual sync:
    `merge_error`. Any failed containment, `need_rebase`, conflict, or active
    rebase keeps the synchronization gate closed.
 8. If synchronization is needed, revalidate actor, MR identity, remote source
-   SHA, and fetched target SHA, then request a GitLab-side
+   SHA, and fetched target SHA, pass the Pipeline Serialization Gate, then request a GitLab-side
    rebase with `glab mr rebase <iid> --repo <project>` or the equivalent MR
    rebase API before any repair. Poll rebase completion, fetch the source again,
    and require local, remote-source, and MR SHA convergence. Restart at `startup`
-   on the new SHA; do not carry final findings or CI conclusions across it.
-9. If GitLab-side rebase fails because conflicts require local resolution, enter
-   Guarded Local Target Integration before treating the conflict as a blocker.
-   Do not implement or push unrelated repairs first.
+   on the new SHA without starting a local merge fallback; do not carry final
+   findings or CI conclusions across it.
+9. Enter Safe Merge-Conflict Resolution only when GitLab explicitly reports that
+   rebase failed because conflicts require local resolution, including `Rebase
+   failed: Rebase locally, resolve all conflicts, then push the branch.` An auth,
+   permission, network, unknown, or non-conflict rebase failure does not authorize
+   local integration. Do not implement or push unrelated repairs first.
 
 ### Local Target Synchronization
 
 Local target synchronization is normally unnecessary for MR repair. Conflict
-analysis and integration must use the freshly fetched `origin/<target>` SHA
+analysis and integration must use the freshly fetched target-project SHA
 directly. Keep the local target branch current only when this can be done without
 rewriting history, disturbing work, or interfering with an active process:
 
-1. From a fresh MR snapshot, capture `<target-branch>`, then run
-   `git fetch origin <target-branch>` and verify `FETCH_HEAD` is the fetched
-   remote target tip.
+1. From a fresh MR snapshot, capture `<target-branch>`, query GitLab's current
+   target-branch SHA, then run `git fetch <target-remote> <target-branch>` and
+   verify `FETCH_HEAD` equals that exact GitLab target tip.
 2. If no local `<target-branch>` exists, create it at `FETCH_HEAD` with
    `git branch <target-branch> FETCH_HEAD` only if that branch name is still
    absent immediately before creation.
@@ -407,66 +487,234 @@ rewriting history, disturbing work, or interfering with an active process:
 5. If the target is checked out in another worktree, the main agent may run
    `git pull --ff-only` in that worktree only after proving its worktree and index
    are clean, its checked-out branch is exactly `<target-branch>`, its local tip
-   has no unique commits and is an ancestor of `origin/<target-branch>`, and no
-   active process or uncommitted work will be disturbed. Re-fetch and recheck the
-   branch, index, worktree, ancestry, and occupancy immediately before mutation,
-   then verify the resulting tip. Do not delegate this Git operation.
+   has no unique commits and is an ancestor of the verified target remote ref,
+   and no active process or uncommitted work will be disturbed. Re-fetch and
+   recheck the branch, index, worktree, ancestry, occupancy, and GitLab target SHA
+   immediately before mutation, then verify the resulting tip. Do not delegate
+   this Git operation.
 6. Otherwise leave a checked-out, dirty, occupied, divergent, uniquely advanced,
    or concurrently changed target branch intact and record the exact reason. Do
    not switch to it, reset it, merge it, rebase it, delete it, or create a backup
    solely to update it.
 
 An unchanged local target is not an MR blocker. MR comparison, conflict analysis,
-GitLab-side rebase, and local target integration must use GitLab's freshly
+GitLab-side rebase, and merge-conflict resolution must use GitLab's freshly
 fetched remote target state, never a possibly stale local target branch.
 
-### Guarded Local Target Integration
+### Safe Merge-Conflict Resolution
 
-GitLab-side rebase conflicts are not automatically hard blockers. Prefer merging
-the exact fetched remote-target SHA into the MR source branch: this preserves
-source history, permits a normal push, avoids force-pushing, and still updates
-the source with the target. Local rebase remains prohibited.
+A GitLab-side rebase conflict transitions here instead of directly becoming a
+hard blocker. The fallback is one ordinary non-fast-forward merge commit from
+the exact MR source SHA and exact current target SHA, followed by one normal
+push. It is part of `target_synchronization`; it does not authorize local rebase,
+force-push, branch rewriting, or a separate supervisor script.
 
-After a GitLab-side conflict failure:
+#### Fresh Guards And Isolation
 
-1. Revalidate actor, MR identity, source/target projects and branches, MR state,
-   remote-source SHA, and fetched-target SHA. Stop with
-   `blocked_remote_changed` if any expected identity or SHA changed.
-2. Create and verify a unique local backup ref for the original source tip.
-3. Merge the exact freshly fetched `refs/remotes/origin/<target-branch>` into the
-   clean source branch without auto-committing, using
-   `git merge --no-commit --no-ff refs/remotes/origin/<target-branch>`.
-4. Resolve conflicts autonomously only when they are bounded engineering
-   conflicts and tests, nearby code, MR discussions, or repository rules support
-   one deterministic result. Permitted examples include additive imports,
-   authoritative generated-file regeneration, mechanical renames or moves,
-   clear-contract test expectations, safely combinable independent changes, and
-   implementation conflicts where repository patterns and tests establish one
-   bounded correct result.
-5. For domain or business behavior conflicts, apply Domain Conflict Precedence.
-   These conflicts are autonomously resolvable when the fetched Linear issue or
-   exact fetched target behavior establishes the result. Do not stop merely
-   because the conflict concerns authorization or permission scope when that
-   precedence yields one supported result.
-6. Stop without committing or pushing for incompatible migrations or data-loss
-   policy, security acceptance not established by the ticket or target behavior,
-   deployment configuration or approval decisions, reviewer intent that cannot
-   be inferred, deleted-versus-modified behavior without a clear source of truth,
-   or broad architectural alternatives without adequate verification.
-7. Apply repository documentation requirements and path-specific review-rule
-   dispatch to every conflict-resolution change. Do not create documentation
-   solely for a mechanical target merge unless repository conventions require it.
-   Perform only checks allowed by Local Verification Budget and record conflict
-   decisions and residual risks.
-8. Stage only files belonging to the completed integration item and commit the
-   conflict resolution with a conventional commit.
-9. Immediately before push, run identity preflight, re-fetch and revalidate the
-   complete MR identity, expected MR head SHA, remote source SHA, and target SHA.
-   Require the remote source and MR SHA still equal the original source tip and
-   the target still equals the integrated fetched-target SHA.
-10. Push normally without force, wait until remote-source SHA and MR SHA equal
-   local HEAD, then restart at `startup` with a fresh snapshot. A non-fast-forward
-   push reports `blocked_remote_changed`; never retry by rewriting history.
+Before creating or resuming an attempt:
+
+1. Re-fetch one fresh MR snapshot and require the same host, target project path,
+   IID, opened state, source and target project IDs, source and target branch
+   names, and expected source head SHA. Require `rebase_in_progress=false`. Query
+   the target project's branch endpoint and record its exact current SHA as
+   `<exact-target-sha>`. A stale MR snapshot, local target branch, or cached
+   `diff_refs` target SHA is insufficient.
+2. Require a same-project MR, or prove unambiguous fork topology and push
+   authority: `origin` maps to the source project, the target fetch remote maps
+   to the target project, the actor can push the exact source branch, and branch
+   protection does not require a forbidden force update. Otherwise stop with
+   `blocked_permissions` before a merge attempt.
+3. Run the GitLab write identity preflight for the MR host and confirm the
+   intended actor before work that is expected to culminate in a push. This does
+   not replace the mandatory repeated preflight immediately before push.
+4. Fetch the exact source and target branch refspecs without moving a local
+   branch. Save each resulting SHA before the next fetch. Require the fetched
+   source SHA to equal `<expected-source-sha>` and the fetched target SHA to equal
+   GitLab's `<exact-target-sha>`; otherwise discard the snapshot and restart
+   without editing.
+5. Require the current index and working tree to be clean, including untracked
+   files, before creating the attempt. Enumerate all existing worktrees and
+   record every local source/target branch pointer. A dirty initial worktree is a
+   hard blocker; never stash, clean, reset, or absorb it.
+6. Create a unique loop-owned
+   `/tmp/mr-agent-loop-worktree-<conflict-attempt-id>` path and add an isolated
+   detached worktree at the exact expected source SHA with `git worktree add
+   --detach /tmp/mr-agent-loop-worktree-<conflict-attempt-id>
+   <expected-source-sha>`. Verify detached `HEAD`, exact SHA,
+   clean index/worktree, absence of a merge state, and ownership by the current
+   `conflict_attempt_id`. Do not switch or move any existing branch, and do not
+   enter another worktree to resolve the conflicts.
+7. Record the pre-attempt worktree inventory and local branch pointers. The
+   source branch pointer need not and must not change because the eventual push
+   is made from detached `HEAD`. If an exceptional safe operation would move a
+   local pointer, first preserve its old tip under a unique local ref; otherwise
+   stop.
+
+#### Exact Merge And Repair Scope
+
+1. In only the isolated detached worktree, run exactly:
+
+   ```sh
+   git merge --no-ff --no-commit <exact-target-sha>
+   ```
+
+   Never substitute a branch name or moving remote-tracking ref. Set
+   `conflict_phase=unresolved_merge` and verify `MERGE_HEAD` equals the exact
+   target SHA and `HEAD` still equals the expected source SHA.
+2. Immediately capture `git ls-files -u`, `git diff --name-only --diff-filter=U`,
+   conflict status/type for every path such as content, add/add, modify/delete,
+   or rename/delete, and a manifest of all merge-created index/worktree changes.
+   Only paths Git reports as unmerged are conflict-repair paths. Non-conflicting
+   target changes remain part of the merge but must not be edited as repairs.
+3. Permit additional changed paths only when they are canonical generated
+   outputs causally regenerated from a conflicted source definition. If a path
+   outside the recorded merge manifest, initial unmerged set, or proven
+   generated-output set changes, treat it as an unrelated or concurrent change:
+   stop mutation, do not stage or commit it, and apply the cleanup rules below.
+4. Resolve autonomously only when repository evidence establishes one intended
+   combined behavior. Preserve non-overlapping behavior from both parents,
+   preserve the MR's intended feature, incorporate target-side API, schema, and
+   configuration changes, and follow nearby code, tests, MR/ticket evidence,
+   repository review rules, and path-specific instructions. Content conflicts
+   with a clear contract and add/add conflicts containing compatible definitions
+   are ordinary resolvable cases; deduplicate and combine them without dropping
+   behavior.
+5. For domain or business behavior conflicts, apply Domain Conflict Precedence
+   only when its evidence establishes one result. Stop without commit or push for
+   product ambiguity, migrations needing rollout or data-policy decisions,
+   destructive data consequences, unsupported security acceptance, deployment
+   or approval choices, reviewer-intent ambiguity, incompatible definitions, or
+   any conflict whose correct behavior cannot be inferred from code and tests.
+6. Before editing, dispatch repository-wide and path-specific rules for every
+   initial conflict path. Read-only `explore` subagents may inspect independent
+   conflict groups in parallel only under Parallel Work. The main loop alone
+   edits, stages, commits, pushes, replies, resolves discussions, and changes
+   state.
+
+#### Generated Files
+
+- Detect generated conflicts through file headers, repository attributes,
+  generator configuration, build scripts, and path rules, including SQLC and
+  protobuf output. Identify and resolve the source schema, query, proto, or other
+  definition first.
+- Run the repository's canonical generator from the isolated worktree, even
+  though generators are otherwise excluded by Local Verification Budget. Review
+  its complete output and require all generated drift to be attributable to the
+  resolved source definitions.
+- Do not hand-edit generated output unless repository rules explicitly classify
+  it as maintained source. If the canonical generator, required version, inputs,
+  or execution context is unavailable, stop without commit or push and report
+  the missing tool/context. Do not conceal the gap with a manual merge.
+- Record every regenerated path and verify no unrelated generated drift before
+  staging.
+
+#### Inspection, Verification, Commit, And Push
+
+1. Inspect each resolution in the worktree before staging. Compare it with all
+   available index stages and both exact parent blobs. Require no conflict-marker
+   lines, no accidental file loss or unsupported deletion, and a diff limited to
+   the exact merge plus required conflict resolutions and generated output.
+2. Stage only reviewed conflict paths and proven regenerated outputs. Then
+   require `git ls-files -u` to be empty, no unmerged status entries, no conflict
+   markers, a clean `git diff --check`, and no unrelated staged or unstaged
+   changes. Never weaken, skip, or delete tests merely to complete the merge.
+3. Run path-specific rule dispatch and focused verification required by the
+   changed paths. Run the branch-wide repository-rule dispatcher before
+   completion. A missing required generator, failed required check, or failed
+   focused verification stops the attempt without commit or push; exact-SHA CI
+   cannot excuse a known local verification failure.
+4. Before committing while the attempt is still abortable, run identity
+   preflight, re-fetch the complete MR identity and both exact branches, and
+   query the current target SHA. If the target changed, safely abort and remove
+   only this uncommitted isolated attempt without committing or pushing, discard
+   its recommendations, and restart from `startup`. If the source SHA or MR
+   identity changed, do not push;
+   safely abort only when cleanup ownership is proven, then restart to classify
+   the concurrent update or report `blocked_remote_changed`.
+5. Create exactly one conventional merge commit, for example
+   `chore(merge): integrate <target-branch>`. Its body must include
+   `Target-SHA: <exact-target-sha>` and state `Conflicts-Resolved-By: MR agent
+   loop`. Verify it has exactly two parents in order: the expected source SHA and
+   exact target SHA. Set `conflict_phase=committed_unpushed`, record
+   `<merge-commit-sha>`, and immediately preserve it under a unique
+   `refs/mr-agent-loop/conflicts/<conflict-attempt-id>` ref.
+6. Immediately before push, rerun GitLab identity preflight, the Pipeline
+   Serialization Gate, the complete MR identity snapshot, exact source fetch,
+   exact target fetch, and target-branch API query. Require the MR and fetched
+   source still equal the original expected source SHA and the fetched/API target
+   still equals the merged exact target SHA. If anything changed after commit,
+   do not push, delete, amend, or rewrite the merge commit; verify its preservation
+   ref and report the hard blocker.
+7. Push normally and only to the verified source branch:
+
+   ```sh
+   git push origin HEAD:<source-branch>
+   ```
+
+   Never add force or force-with-lease. On any failed or non-fast-forward push,
+   leave the merge commit and preservation ref intact, retain the clean isolated
+   worktree, and report the blocker; never retry by rewriting history.
+8. After a successful push, set `conflict_phase=pushed_awaiting_gitlab` and
+   `pushed_merge_sha=<merge-commit-sha>`. Poll fresh source-ref and MR snapshots
+   until both report that exact SHA. If either reports an unexpected third SHA,
+   stop with `blocked_remote_changed`. Once converged, perform the guarded clean
+   worktree cleanup below, restart the full loop at `startup` from a fresh
+   same-SHA snapshot, and bind only that SHA's pipelines.
+9. Never reply to or resolve discussions, evaluate success, or merge the MR using
+   the pre-merge source SHA. Those actions resume only after the pushed merge SHA
+   converges and a fresh synchronization gate opens.
+
+#### Decision Log And Cleanup
+
+Maintain a machine-readable conflict-resolution decision log outside the commit
+diff. It must contain the old MR SHA, exact target SHA merged, conflicted paths
+and Git conflict types, evidence and resolution chosen per path, generated source
+and output paths regenerated, rule dispatch and verification performed, merge
+commit and pushed SHA, cleanup state, and residual risks. Include it in progress,
+checkpoint, blocker, and final output as applicable.
+
+Persist the phase record and decision log as JSON at the loop-owned
+`/tmp/mr-agent-loop-state-<conflict-attempt-id>.json`, never inside a Git
+worktree and never in the commit. This state file is non-executable loop state,
+not a supervisor script. Update it at each verified phase boundary and retain it
+through blockers so interruption recovery and human review do not depend on
+uncommitted memory.
+
+Before a merge commit exists, abort an isolated attempt only when all three are
+proven: the isolated worktree was clean immediately before this exact attempt;
+every current index/worktree change and merge-state file was created by this
+attempt; and no external or concurrent change appeared. Then and only then may
+the main loop run `git merge --abort`, verify exact restoration to the expected
+source SHA and a clean detached worktree, and remove that one worktree without
+`--force`. If ownership is uncertain, leave it intact and report the blocker.
+This authority never extends to a pre-existing worktree or user work.
+
+After a merge commit exists, never abort, delete, amend, reset, rebase, or rewrite
+it to conceal a failed push, stale target, changed MR, or failed convergence.
+Preserve it under the loop-owned local ref and report the blocker. Remove only
+the isolated worktree created by this attempt, without `--force`, and only after
+the pushed SHA converges or the user has addressed the blocker, its index and
+worktree are clean, no merge state or pending mutation remains, the preservation
+ref is verified, and the pre-attempt worktree inventory and branch pointers are
+unchanged. Never clean up another worktree or move a local source/target branch.
+
+#### Interruption Recovery
+
+On startup, inspect the persisted phase before beginning a new attempt:
+
+- `unresolved_merge` or `resolved_uncommitted`: resume only if the worktree is
+  loop-owned, detached at the expected source SHA, `MERGE_HEAD` is the exact
+  target SHA, MR identity/source/target snapshots are still valid, and every
+  current change belongs to that attempt. Otherwise do not mutate it. A changed
+  target permits the narrowly guarded uncommitted abort and fresh restart; an
+  ownership ambiguity is a hard blocker.
+- `committed_unpushed`: require a clean loop-owned worktree, the preservation ref
+  at the recorded merge commit, and exactly the expected two parents. Re-run all
+  pre-push guards. Push normally only if source and target are unchanged;
+  otherwise preserve the commit and report the blocker.
+- `pushed_awaiting_gitlab`: do not recreate, amend, or push the commit again.
+  Re-fetch source and MR state until both equal `pushed_merge_sha`, then clean up
+  under the rules above and restart at `startup`. An unexpected SHA is a blocker.
 
 #### Conflict Resolution Mechanism Fallbacks
 
@@ -486,7 +734,9 @@ autonomously through applicable non-destructive fallbacks:
 2. Use repository read and edit tools to construct the reviewed result directly;
    resolve conflict markers manually when the intended union is bounded.
 3. Regenerate authoritative generated files when repository rules identify a
-   deterministic generation command, then review the generated diff.
+   deterministic generation command, then review the generated diff. A generated
+   conflict with no usable canonical generator is not eligible for hand-merging;
+   stop and report the missing tool or context.
 4. Re-run path-specific repository-rule dispatch and checks allowed by Local
    Verification Budget, stage only integration files, create the conventional integration commit,
    complete fresh identity/SHA preflight, normally push, wait for convergence,
@@ -501,30 +751,14 @@ write paths are unavailable after deterministic analysis, return
 resolution, every mechanism attempted, why each was unavailable, and why no
 allowed file-editing path remains.
 
-Before aborting a loop-created merge, preserve a machine-readable conflict
-report when an allowed write path exists. Include source SHA, target SHA,
-conflicted paths and statuses, deterministic resolution when established,
-attempted mechanisms and failures, and safe reproduction command. Do not commit
-or push this diagnostic artifact. After a safe abort, explicitly report that the
-working tree is clean because the temporary merge was aborted, not because the
-source and target are conflict-free. State that they still conflict, include the
-exact source and target SHAs and conflicted file list, and provide a safe
-reproduction such as
-`git merge --no-commit --no-ff <exact-fetched-target-sha>` from the verified
-source SHA after recreating/verifying the backup ref.
-
-If conflict intent cannot be resolved under these criteria, or every safe write
-mechanism is unavailable, stop mutation and preserve diagnostics. `git merge
---abort` is permitted only to abort the merge started by the current loop, after
-verifying the original source tip and backup ref. Verify the branch and working
-tree return to their original clean state.
-Continue prohibiting reset, clean, stash, local rebase, discarded work, and every
-force-push.
-
-If an unexpected local change appears during conflict handling, stop mutation,
-preserve diagnostics, and abort only the current loop's merge when safe. Verify
-the original clean state is restored and report the blocker; never absorb the
-unexpected change into the integration commit.
+Before a permitted uncommitted abort, preserve the machine-readable decision log
+when an allowed write path exists. Do not commit or push the diagnostic. After a
+safe abort, explicitly report that the isolated worktree is clean because this
+attempt was aborted, not because source and target are conflict-free. Include the
+exact source/target SHAs, conflict list, and safe reproduction command
+`git merge --no-ff --no-commit <exact-target-sha>` from the expected source SHA.
+Continue prohibiting reset, clean, stash, local rebase, discarded work, history
+rewriting, and every force-push.
 
 ### Domain Conflict Precedence
 
@@ -552,7 +786,8 @@ requirements are internally incompatible, the ticket explicitly conflicts with
 target behavior but leaves the migration or rollout semantics unclear, or an
 existing non-autonomous category such as destructive data policy or deployment
 approval remains. Never use a stale local target branch as evidence; "target
-behavior" always means the recorded freshly fetched `origin/<target>` SHA.
+behavior" always means the exact recorded SHA fetched from the target project and
+confirmed through GitLab's branch endpoint.
 
 When a clean local branch diverges from the remote MR source branch, human
 involvement is not required just because local `HEAD` differs from the MR SHA.
@@ -655,7 +890,13 @@ stopping for user input, if every guard below passes:
 - The chosen approach is race-safe, deterministic, bounded in resource usage,
   and consistent with nearby project patterns.
 - The change can be kept focused and verified by exact-SHA CI. Cheap local checks
-  are optional only within Local Verification Budget.
+  are optional only within Local Verification Budget. Conflict resolution is
+  stricter: its path-specific rules, canonical generation, and focused
+  verification are mandatory before the merge commit.
+- For a merge conflict, the exact parent blobs, non-conflicting behavior, current
+  target contract, MR intent, tests, and repository rules establish one combined
+  result under Safe Merge-Conflict Resolution. If they do not, the decision is
+  not an autonomous engineering tradeoff.
 
 Prefer the smallest safe approach that fixes the defect class, not just the
 single failing example. For concurrency or reconciliation bugs, prefer bounded
@@ -666,6 +907,9 @@ fresh per-item queries that can miss concurrent updates.
 Record every autonomous engineering decision in a decision log during the loop:
 the problem, chosen approach, reason, rejected alternatives, verification, and
 residual risk. Include this decision log in the final output for human review.
+For a merge-conflict decision, also record every field required by the
+conflict-resolution decision log; one summary for the whole merge cannot replace
+the per-path evidence and resolution.
 If no safe bounded option exists after investigation, then stop and report the
 missing information or product decision needed.
 
@@ -879,8 +1123,11 @@ returned reason and stop unless the reason is a transient merge-status check.
 ## Persistence Model
 
 Continue indefinitely only for transient GitLab progress: CI running, pipeline
-creation, GitLab-side rebase, and merge-status calculation. Stop on hard
-blockers rather than polling forever.
+creation, GitLab-side rebase, pushed merge-commit SHA convergence, and
+merge-status calculation. GitLab-side rebase conflict is a transition to Safe
+Merge-Conflict Resolution, not a polling state or automatic hard blocker. Stop on
+ambiguous/unresolvable conflict or another hard blocker rather than polling
+forever.
 
 Do not treat a turn, context, or session boundary as a terminal state. Never
 finish with `stopped due to session boundary` while the MR still has actionable
@@ -888,6 +1135,11 @@ work. If a boundary is approaching, first complete any in-flight atomic mutation
 sequence you already started:
 
 - commit -> push -> MR SHA convergence;
+- conflict merge start -> deterministic resolution or safely owned uncommitted
+  abort;
+- conflict merge commit -> preservation ref -> guarded normal push or preserved
+  hard blocker;
+- conflict merge push -> source/MR SHA convergence -> fresh `startup`;
 - discussion reply -> discussion resolve;
 - known-failure pipeline cancel -> cancellation-state confirmation;
 - merge request -> merged-state confirmation.
@@ -895,19 +1147,24 @@ sequence you already started:
 Checkpoints are internal emergency-suspension artifacts only. Never emit one
 voluntarily, and never treat one as a terminal result. Only create a checkpoint
 when the execution environment explicitly forces suspension, and only after
-there is no pending local commit, push, GitLab write, reply, resolve, merge
-request, or state convergence check. It must not use terminal state `stopped`;
-include the MR URL, current MR SHA, local source branch and HEAD, local and remote
-target SHAs, pipeline status, unresolved discussion count, autonomous engineering
-decisions made so far, the last completed action, and the next safe action to
-resume.
+there is no pending non-idempotent GitLab write, reply, resolve, or merge request.
+An environment-forced checkpoint may capture a safely paused conflict phase only
+after the current file mutation/staging/commit/ref action reaches a consistent
+boundary. It must not use terminal state `stopped`; include the MR URL, current
+MR SHA, local source branch and HEAD, local and remote target SHAs, pipeline
+status, unresolved discussion count, autonomous engineering decisions made so
+far, conflict attempt ID/phase/worktree/SHAs/paths/decision log/preservation ref,
+the last completed action, and the next safe action to resume.
 
-When resuming from a checkpoint or prior interrupted run, restart at `startup`.
-If local `HEAD` is ahead because a previous repair commit was created but not
-pushed, preserve it under a backup ref and synchronize the source branch first.
-After the synchronization gate opens, revalidate and reapply or recreate that
-repair against the synchronized diff; never push the pre-synchronization commit
-merely because it was created by an earlier run.
+When resuming from a checkpoint or prior interrupted run, restart at `startup`
+and dispatch any recorded conflict phase through Interruption Recovery before a
+new attempt. For an ordinary repair, if local `HEAD` is ahead because a previous
+repair commit was created but not pushed, preserve it under a backup ref and
+synchronize the source branch first. After the synchronization gate opens,
+revalidate and reapply or recreate that ordinary repair against the synchronized
+diff; never push a pre-synchronization ordinary repair merely because it was
+created by an earlier run. A recorded two-parent conflict merge commit follows
+`committed_unpushed` recovery instead and is never recreated or rewritten.
 
 Use these result states precisely; only return them under the Continuation
 Invariant and final-response guard:
@@ -925,10 +1182,15 @@ Invariant and final-response guard:
   because unresolved product judgment, reviewer intent, destructive data policy,
   unsupported security acceptance, deployment approval, or another explicitly
   non-autonomous decision remains. Never use this state solely because a command
-  or tool was denied, missing, or failed.
+  or tool was denied, missing, or failed. GitLab-side rebase conflict alone never
+  produces this state; first attempt the guarded merge-based fallback.
 - `blocked_remote_changed`: source/MR identity or remote source SHA changed
-  unexpectedly, or the guarded normal push was no longer fast-forwardable.
-- `blocked_permissions`: actor lacks permission for the required operation.
+  unexpectedly, target SHA changed after a conflict merge was committed, the
+  normal push was no longer fast-forwardable, or pushed convergence exposed an
+  unexpected SHA. Before a conflict commit, a changed target causes safe abort
+  and restart rather than this final state when attempt ownership is proven.
+- `blocked_permissions`: actor lacks permission for the required operation, or a
+  fork MR lacks unambiguous source-push and target-fetch authority.
 - `failed_required_job`: an exact-current-SHA required job terminally failed and
   a repair has not yet been completed.
 - `manual_action_required`: a required external permission or environment
@@ -941,15 +1203,18 @@ If startup finds the MR already merged, return `merged` for either requested
 target. Report the merge commit/current MR SHA and available final pipeline data,
 but do not require an open-MR `detailed_merge_status=mergeable` check.
 
-Hard blockers include auth failure, required Linear issue lookup failure, dirty worktree not created by this repair,
-local/remote divergence that fails Safe Synchronization guards, a conflict that
-fails the guarded deterministic-resolution criteria, missing permissions, manual
-jobs, approval requirements not satisfied
-by existing reviewers, deployment decisions, product behavior ambiguity not
-resolved by Domain Conflict Precedence,
-reviewer intent ambiguity, ambiguous discussion feedback that cannot be resolved
-with code evidence, failed push, failed merge mutation, or concurrent MR
-identity changes.
+Hard blockers include auth failure, required Linear issue lookup failure, a dirty
+initial worktree or unexpected/unrelated changes during resolution, local/remote
+divergence that fails Safe Synchronization guards, an ambiguous or unresolvable
+conflict after the guarded merge-based fallback, missing generator or required
+verification, ambiguous fork push permission, manual jobs, approval requirements
+not satisfied by existing reviewers, deployment decisions, product behavior
+ambiguity not resolved by Domain Conflict Precedence, reviewer intent ambiguity,
+ambiguous discussion feedback that cannot be resolved with code evidence, failed
+normal push, failed merge mutation, unsafe cleanup ownership, or concurrent MR
+identity/source changes. A target change before a conflict commit is a restart
+when narrowly scoped cleanup is proven; after commit it is a blocker and the
+merge commit remains preserved.
 
 A denied convenience command is not a hard blocker while any safe inspection,
 file-editing, marker-resolution, or deterministic regeneration path remains.
@@ -960,6 +1225,10 @@ Print concise progress for every state transition:
 
 - MR URL and current SHA.
 - Synchronization action taken.
+- GitLab rebase result and, for a conflict response, conflict attempt phase,
+  expected source SHA, exact target SHA, isolated worktree, conflicted paths and
+  types, per-path decisions, generated outputs, verification, merge commit,
+  preservation ref, pushed SHA, cleanup state, and residual risks.
 - Local target branch and remote target SHA, including why a safe fast-forward
   was skipped, if applicable.
 - Discussion processed, if any.
@@ -979,7 +1248,8 @@ loop, and `failed_required_job` is not final while its failure is repairable.
 Final output must include the terminal state (`mergeable`, `merged`, a defined
 hard-blocker state, or externally suspended `awaiting_pipeline`), MR URL, final local,
 remote-source, and MR SHAs, latest fetched target SHA, whether server-side or
-guarded local target integration occurred, conflict-resolution summary, commits created and pushed,
+safe merge-conflict resolution occurred, conflict-resolution decision log,
+commits created and pushed, preserved unpushed merge refs,
 exact-SHA parent and child pipeline statuses, required failed/running jobs,
 unresolved discussion count, approval state, GitLab merge/conflict/rebase status
 and merge error, autonomous decisions with rejected alternatives and residual

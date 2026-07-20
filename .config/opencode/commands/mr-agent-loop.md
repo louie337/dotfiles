@@ -19,11 +19,38 @@ Default `--until` to `mergeable`. Use the `gitlab-cli-skills` and `glab`
 skills plus the installed `glab` CLI for all GitLab inspection and mutations.
 Synchronize the source branch with the latest fetched remote target and wait for
 SHA convergence before review fixes, repair commits, pushes, or CI evaluation.
-If GitLab-side rebase encounters bounded deterministic conflicts, integrate the
-exact fetched remote target with a guarded normal merge and normal push. Never
-locally rebase or force-push. For source branches containing a `SUB-XXXX` Linear
-issue key, fetch the issue through Linear MCP. Explicit ticket requirements win;
-otherwise preserve the exact freshly fetched target-branch behavior.
+Always prefer GitLab-side rebase and, when it succeeds, restart on GitLab's new
+SHA without a local merge. Only GitLab's specific conflict-required-local-
+resolution failure enters the agent state machine's Safe Merge-Conflict
+Resolution fallback.
+
+For that fallback, refresh and lock the complete open-MR identity, source SHA,
+current GitLab target SHA, no-rebase state, actor, source push permission, and
+clean local state. Fetch both exact branches, create a loop-owned isolated
+detached worktree at the expected source SHA, and run only `git merge --no-ff
+--no-commit <exact-target-sha>`. Resolve only Git-reported unmerged paths when
+repository evidence is deterministic; combine compatible content and add/add
+changes, resolve source definitions before regenerating generated output, run
+path-specific rules and focused verification, and stop on ambiguity, unrelated
+changes, missing generation context, or failed checks.
+
+Create one conventional two-parent merge commit whose body records the target
+SHA and that the MR agent loop resolved conflicts. Re-run identity, exact source
+and target SHA, permission, and pipeline-serialization guards immediately before
+`git push origin HEAD:<source-branch>`. Push normally, wait for GitLab to report
+the pushed SHA, then restart from a fresh same-SHA snapshot. Preserve a committed
+but unpushed merge under a local ref on any push or concurrency failure; abort
+only a proven loop-owned uncommitted attempt. Existing worktrees and local branch
+pointers remain untouched.
+
+Never locally rebase, reset, clean, stash, amend, rewrite history, force-push, or
+use force-with-lease. A GitLab-side rebase conflict triggers the guarded fallback;
+only an ambiguous or safely unresolvable conflict is a hard blocker. Never reply,
+resolve discussions, evaluate success, or merge from the pre-merge SHA.
+
+For source branches containing a `SUB-XXXX` Linear issue key, fetch the issue
+through Linear MCP. Explicit ticket requirements win; otherwise preserve the
+exact freshly fetched target-branch behavior.
 Treat deterministic conflict intent separately from tool availability. If one
 mechanical command is denied, exhaust safe stage/blob inspection, repository
 file-editing, conflict-marker, and deterministic regeneration fallbacks without

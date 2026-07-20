@@ -1,0 +1,96 @@
+[
+  {
+    "scenario": "gitlab_rebase_succeeds",
+    "transition": "gitlab_rebase -> startup",
+    "localMerge": false,
+    "push": false
+  },
+  {
+    "scenario": "gitlab_rebase_conflicts",
+    "transition": "gitlab_rebase -> safe_merge_conflict_resolution -> pushed_awaiting_gitlab -> startup",
+    "localMerge": true,
+    "pushMode": "normal"
+  },
+  {
+    "scenario": "clear_content_conflict",
+    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
+    "resolution": "combine_evidenced_behavior"
+  },
+  {
+    "scenario": "compatible_add_add_conflict",
+    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
+    "resolution": "deduplicate_compatible_definitions"
+  },
+  {
+    "scenario": "generated_file_conflict",
+    "transition": "unresolved_merge -> resolved_uncommitted -> committed_unpushed",
+    "resolution": "resolve_sources_then_regenerate"
+  },
+  {
+    "scenario": "target_changes_before_commit",
+    "transition": "resolved_uncommitted -> safe_owned_abort -> startup",
+    "push": false
+  },
+  {
+    "scenario": "source_changes_before_commit",
+    "transition": "resolved_uncommitted -> safe_owned_abort -> startup_or_blocked_remote_changed",
+    "push": false
+  },
+  {
+    "scenario": "dirty_initial_worktree",
+    "transition": "startup -> manual_action_required",
+    "commit": false,
+    "push": false
+  },
+  {
+    "scenario": "unrelated_change_appears",
+    "transition": "unresolved_merge -> safe_owned_abort_or_blocker",
+    "commit": false,
+    "push": false
+  },
+  {
+    "scenario": "ambiguous_product_conflict",
+    "transition": "unresolved_merge -> blocked_conflicts",
+    "commit": false,
+    "push": false
+  },
+  {
+    "scenario": "focused_verification_fails",
+    "transition": "resolved_uncommitted -> blocker",
+    "commit": false,
+    "push": false
+  },
+  {
+    "scenario": "normal_push_fails",
+    "transition": "committed_unpushed -> blocked_remote_changed",
+    "preserveMergeRef": true,
+    "historyRewrite": false
+  },
+  {
+    "scenario": "fork_permission_ambiguous",
+    "transition": "startup -> blocked_permissions",
+    "localMerge": false,
+    "push": false
+  },
+  {
+    "scenario": "unresolved_index_or_markers",
+    "transition": "resolved_uncommitted -> blocker",
+    "commit": false,
+    "push": false
+  },
+  {
+    "scenario": "isolated_worktree_preserves_local_state",
+    "transition": "safe_merge_conflict_resolution -> startup",
+    "existingWorktreesChanged": false,
+    "branchPointersChanged": false
+  },
+  {
+    "scenario": "interruption_recovery",
+    "transition": "startup -> interruption_recovery",
+    "resumePhases": [
+      "unresolved_merge",
+      "committed_unpushed",
+      "pushed_awaiting_gitlab"
+    ]
+  }
+]
