@@ -4,7 +4,7 @@ description: >
   step by step, asks targeted clarifying questions before acting, and
   never moves on without confirming ambiguous requirements.
 mode: primary
-model: datax_openai/gpt-5.4-mini
+model: datax_openai/gpt-5.5
 permission:
   edit: allow
   external_directory: ask

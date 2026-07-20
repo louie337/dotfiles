@@ -53,7 +53,7 @@
     },
     "plan": {
       "model": "datax_openai/gpt-5.6-sol",
-      "variant": "low",
+      "variant": "max",
       "color": "#FF6B6B",
       "permission": {
         "edit": "deny"
