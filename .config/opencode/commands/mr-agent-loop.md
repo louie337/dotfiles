@@ -39,6 +39,12 @@ bridges, downstream pipelines, and descendant jobs. A failed or canceled require
 job at any depth interrupts waiting immediately and starts investigation and
 local repair even while a parent pipeline remains running. Use one discrete poll
 and one foreground 30-second sleep at a time; never hide polling in a shell loop.
+Track `last_recursive_pipeline_poll_at` and a hard poll deadline no more than 30
+seconds later whenever required CI is active. Keep recursive polling as the
+highest-priority `next_state`: after every bounded action, poll first when due;
+defer optional or long-running work that could cross the deadline, and never wait
+for optional subagents. Every deadline poll must freshly reload the complete
+parent and descendant graph without cached nodes.
 
 Examples:
 

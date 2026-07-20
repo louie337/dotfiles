@@ -155,7 +155,7 @@ assert_contains "awaiting pipeline remains non-success" "$AGENT" "observational 
 assert_contains "continuation invariant prohibits checkpoint stop" "$AGENT" "completed push, SHA convergence"
 assert_contains "push convergence restarts startup" "$AGENT" 'bind one canonical pipeline and `startup`'
 assert_contains "discussion reply transitions to resolution" "$AGENT" "discussion reply -> discussion resolution"
-assert_contains "transient pipeline polls" "$AGENT" "sleep and poll the same canonical pipeline"
+assert_contains "transient pipeline polls" "$AGENT" 'deadline-driven `recursive_pipeline_poll`'
 assert_contains "repairs accumulate locally" "$AGENT" "actionable discussion and pipeline repair locally"
 assert_contains "discussions do not push individually" "$AGENT" "Do not commit or push after each discussion"
 assert_contains "discussion refresh extends repair batch" "$AGENT" "Add newly arrived actionable feedback to the same local batch"
@@ -180,8 +180,8 @@ assert_contains "failed job starts immediate repair" "$AGENT" "begin the local r
 assert_contains "parent running cannot hide child failure" "$AGENT" 'A parent pipeline remaining `running`'
 assert_contains "poll is one discrete step" "$AGENT" "Run one discrete poll step at a time"
 assert_contains "shell polling loops are forbidden" "$AGENT" 'Never delegate waiting to a shell `while`'
-assert_contains "poll uses standalone sleep" "$AGENT" 'standalone foreground `sleep 30` tool call'
-assert_contains "poll refreshes graph after sleep" "$AGENT" "return to step 1 with fresh"
+assert_contains "poll uses standalone sleep" "$AGENT" 'one standalone foreground `sleep 30`'
+assert_contains "poll refreshes graph after sleep" "$AGENT" "fetch a completely fresh graph"
 assert_contains "bash denies while pipeline poll" "$AGENT" '"*while*glab api*pipelines/*": deny'
 assert_contains "bash denies until pipeline poll" "$AGENT" '"*until*glab api*pipelines/*": deny'
 assert_contains "bash denies API then sleep loop" "$AGENT" '"*glab api*pipelines/*sleep 30*": deny'
@@ -189,6 +189,41 @@ assert_contains "bash denies sleep then API loop" "$AGENT" '"*sleep 30*glab api*
 assert_contains "command requires recursive child polling" "$COMMAND" "bridges, downstream pipelines, and descendant jobs"
 assert_contains "command makes child failure preempt wait" "$COMMAND" "interrupts waiting immediately"
 assert_contains "command forbids hidden shell polling" "$COMMAND" "never hide polling in a shell loop"
+
+# Deadline scenario 1: a running child that fails is observed by T+30.
+assert_contains "deadline records last recursive poll" "$AGENT" '`last_recursive_pipeline_poll_at`'
+assert_contains "deadline is at most 30 seconds" "$AGENT" "no later than 30 seconds afterward"
+assert_contains "deadline checks after every bounded action" "$AGENT" "After every tool batch, subagent launch, subagent result"
+assert_contains "deadline poll runs before other actions" "$AGENT" "before doing anything else"
+assert_contains "failed node preempts auxiliary work" "$AGENT" "immediately preempt all auxiliary work"
+assert_contains "failed node fetches exact trace" "$AGENT" "exact failed node record and trace immediately"
+
+# Deadline scenario 2: optional subagents never delay a due poll.
+assert_contains "optional subagent cannot outlast deadline" "$AGENT" "Do not launch an optional subagent or broad investigation"
+assert_contains "active CI never waits for optional subagent" "$AGENT" "Never wait for an optional subagent while required CI"
+assert_contains "subagent result is not consumed before poll" "$AGENT" "without waiting for or consuming its result first"
+
+# Deadline scenario 3: a running parent cannot mask a failed child.
+assert_contains "running parent cannot justify auxiliary review" "$AGENT" "can never justify another sleep or auxiliary review"
+
+# Deadline scenario 4: local repair is bounded and cannot push while CI runs.
+assert_contains "local repair continues only in bounded steps" "$AGENT" "Local repair may continue between deadlines only as bounded steps"
+assert_contains "long tool call is deferred" "$AGENT" "A tool call expected to exceed the remaining interval"
+assert_contains "active repair preserves poll next state" "$AGENT" "preserve the deadline-driven recursive"
+
+# Deadline scenario 5: terminal graph clears the deadline.
+assert_contains "terminal graph clears deadline" "$AGENT" 'Clear `next_pipeline_poll_deadline` only'
+assert_contains "normal flow resumes after terminal graph" "$AGENT" "then resume normal"
+
+# Deadline scenario 6: bridge-only discovery applies recursively at every depth.
+assert_contains "unexposed descendants count as active" "$AGENT" "not yet terminal or fully exposed"
+assert_contains "each deadline fetches fresh parent graph" "$AGENT" "cached parent, job, or bridge data cannot"
+assert_contains "each deadline fetches fresh descendants" "$AGENT" "no cached descendant node may satisfy it"
+
+assert_contains "missed deadline is recorded" "$AGENT" "record the expected deadline and actual resume time"
+assert_contains "missed deadline polls before optional work" "$AGENT" "Do not continue or"
+assert_contains "parallelism cannot delay active poll" "$AGENT" "Useful parallelism never includes work that can obscure"
+assert_contains "command exposes hard poll deadline" "$COMMAND" "hard poll deadline no more than 30"
 assert_contains "watchdog controls returns" "$AGENT" '`external_return_required` is set by the'
 assert_contains "checkpoints require forced suspension" "$AGENT" "voluntarily, and never treat one as a terminal result"
 assert_contains "awaiting pipeline requires imposed suspension" "$AGENT" "permitted only when the"

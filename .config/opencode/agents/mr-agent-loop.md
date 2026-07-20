@@ -162,8 +162,8 @@ in the preceding phase passes for the same expected MR identity and SHA:
 Mandatory same-invocation transitions are: completed local repair batch plus an
 open Pipeline Serialization Gate -> one normal push; normal push plus
 local/remote/MR SHA convergence -> bind one canonical pipeline and `startup`;
-discussion reply -> discussion resolution; transient exact-SHA pipeline state ->
-sleep and poll the same canonical pipeline; pipeline completion -> `evaluate`;
+discussion reply -> discussion resolution; active exact-SHA required CI ->
+deadline-driven `recursive_pipeline_poll`; pipeline completion -> `evaluate`;
 repairable failure -> accumulate the repair locally. These
 transitions are not optional checkpoint opportunities.
 
@@ -175,6 +175,60 @@ permitted only when `terminal_state` satisfies `requested_until`, `hard_blocker`
 identifies a defined blocker, or `external_return_required` is set by the
 execution environment. Otherwise enter `next_state`; never convert an internal
 checkpoint into a return condition.
+
+### Active Pipeline Poll Deadline
+
+Also maintain `last_recursive_pipeline_poll_at` and
+`next_pipeline_poll_deadline`. A complete Recursive Pipeline Graph Poll contains
+active required CI when any required job or bridge at any discovered depth is
+active, or when an active canonical/descendant pipeline or bridge has required
+descendants that are not yet terminal or fully exposed.
+
+Immediately after every complete recursive snapshot containing active required
+CI, set `last_recursive_pipeline_poll_at` to the snapshot completion time and set
+`next_pipeline_poll_deadline` no later than 30 seconds afterward. While that
+deadline exists, reserve `next_state=recursive_pipeline_poll`; local repair work
+between deadlines is an interstitial bounded action and must not replace, clear,
+or postpone that state. Clear the deadline only when a complete fresh recursive
+snapshot proves every relevant graph node terminal, then resume normal
+`evaluate`, `repair`, or serialization flow.
+
+Treat the deadline as the highest-priority non-atomic state transition:
+
+- After every tool batch, subagent launch, subagent result, local edit, focused
+  check, discussion action, or other bounded action, compare the current time to
+  `next_pipeline_poll_deadline` before doing anything else. If due, enter
+  `recursive_pipeline_poll` immediately.
+- Before any optional action, estimate whether it may run beyond the remaining
+  interval. Defer optional subagents, broad read-only investigation, and any tool
+  call that may outlast the deadline. Never wait for an optional subagent while
+  required CI is active; poll first even when its result arrives at the deadline.
+- Local repair may continue between deadlines only as bounded steps that return
+  control in time to poll. A tool call expected to exceed the remaining interval
+  must be deferred unless it is an atomic safety-critical mutation already in
+  progress. Finish such a mutation to its shortest safe boundary, record any poll
+  delay, and poll immediately upon regaining control before optional work.
+- If the execution environment, a tool call, or suspension prevents meeting a
+  deadline, record the expected deadline and actual resume time, then perform a
+  fresh recursive poll immediately upon regaining control. Do not continue or
+  consume optional work first.
+
+Use this scheduling invariant:
+
+```text
+if canonical_graph_has_active_required_nodes:
+    next_pipeline_poll_deadline = last_recursive_pipeline_poll_at + 30s
+    next_state = recursive_pipeline_poll
+
+after_each_bounded_action:
+    if now >= next_pipeline_poll_deadline:
+        enter recursive_pipeline_poll before any other action
+
+before_optional_action:
+    if action_may_outlast(next_pipeline_poll_deadline):
+        defer action
+        enter recursive_pipeline_poll
+```
 
 The synchronization gate is open only when all of these are true for one fresh
 snapshot: local HEAD equals remote-source SHA and MR SHA; the source commit
@@ -254,7 +308,9 @@ unknown requiring another CI API query, never as transient evidence.
 
 ## Parallel Work
 
-Use parallelism when it is safe and useful:
+Use parallelism only when it is safe, useful, and subordinate to Active Pipeline
+Poll Deadline. Useful parallelism never includes work that can obscure, replace,
+or delay a due active-pipeline poll:
 
 - Batch independent read-only tool calls in the same step when the results do
   not depend on each other, such as MR metadata, discussions, pipeline/jobs,
@@ -272,8 +328,11 @@ Use parallelism when it is safe and useful:
   responsible for state-machine ownership, merge initiation, conflict edits,
   verification, commits, pushes, GitLab writes, discussion actions, retries, and
   branch realignment. Git operations never require delegation.
-- Do not wait for subagents before polling an already-running CI pipeline unless
-  their results are needed to decide a concrete repair.
+- Do not launch an optional subagent or broad investigation when it may outlast
+  the active poll deadline. Never wait for an optional subagent while required CI
+  is active. A launched subagent may continue independently, but the main agent
+  must poll when due without waiting for or consuming its result first. Even a
+  subagent needed for a concrete repair does not waive or postpone the deadline.
 
 Useful commands, adjusted as needed after checking `--help`:
 
@@ -559,7 +618,8 @@ Do not commit or push after each discussion:
 3. For valid feedback, make the smallest code change and retain it locally as
    part of the current repair batch. Perform only checks allowed by Local
    Verification Budget. Continue through every currently actionable discussion
-   without pushing an intermediate repair.
+   without pushing an intermediate repair, but break work into bounded steps and
+   yield immediately whenever Active Pipeline Poll Deadline is due.
 4. For invalid or obsolete feedback, leave the tree clean, re-fetch the exact
    discussion, reply with a specific technical rationale, then resolve.
 5. For blocked feedback, stop without replying or resolving.
@@ -636,8 +696,9 @@ For the exact current MR SHA:
   terminal first.
 - Only after confirming that no required job is terminally failed or canceled,
   treat missing, created, waiting_for_resource, preparing, pending, running, and
-  scheduled pipeline/job states as transient. Sleep 30 seconds, then collect a
-  complete fresh pipeline-and-jobs snapshot.
+  scheduled pipeline/job states as transient. Set Active Pipeline Poll Deadline;
+  bounded local repair may continue between polls, but optional work cannot delay
+  the next complete fresh recursive snapshot.
 - Success means evaluate mergeability using a fresh same-SHA snapshot.
 - Failed or canceled means inspect failed jobs, traces, bridge jobs, and child
   pipelines. Retry only when the evidence is clearly transient infrastructure;
@@ -646,8 +707,9 @@ For the exact current MR SHA:
   Local Verification Budget after reconfirming the synchronization gate and keep
   the repair local. Fetch discussions and pipeline/jobs again after the repair;
   incorporate additional actionable findings into the same local batch. If any
-  relevant pipeline remains active, continue polling it every 30 seconds or use
-  Known-Failure Pipeline Cancellation only when every cancellation guard passes.
+  required pipeline node remains active, preserve the deadline-driven recursive
+  poll as `next_state` or use Known-Failure Pipeline Cancellation only when every
+  cancellation guard passes.
   Re-fetch MR, remote source, latest remote target, discussions, and pipelines
   before commit and again before push. If the target advanced, restart
   synchronization without pushing. Otherwise push once only after the Pipeline
@@ -668,18 +730,22 @@ as merge-blocking.
 ### Recursive Pipeline Graph Poll
 
 Run one discrete poll step at a time so the agent regains control after every API
-snapshot. Never delegate waiting to a shell `while`, `until`, watch command, or
-other long-running polling loop. In particular, never run
+snapshot. Never delegate waiting to a shell `while`, `until`, watcher, background
+command, script, or other long-running polling loop. In particular, never run
 `while true; ... sleep 30; done` for pipeline observation. For each poll step:
 
 1. Start with `canonical_pipeline_id`. Fetch its fresh pipeline record, all
    paginated direct jobs with retried jobs included, and all paginated bridges.
+   Every poll must fetch these again; cached parent, job, or bridge data cannot
+   satisfy a new deadline.
 2. From every bridge, extract the downstream pipeline project ID and pipeline ID
    when present. Recursively repeat the pipeline, jobs, and bridges fetch against
    that downstream project for each unseen `(project_id, pipeline_id)` pair.
    Track visited pairs to prevent cycles. Include every descendant depth, not
    only immediate children, including multi-project pipelines. A bridge's own
-   `success` does not imply its downstream pipeline or jobs succeeded.
+   `success` does not imply its downstream pipeline or jobs succeeded. Freshly
+   fetch every discovered descendant and its paginated jobs and bridges during
+   this poll; no cached descendant node may satisfy it.
 3. Normalize all jobs and bridges into one graph-wide set containing project ID,
    pipeline ID, job ID, name, stage, status, `allow_failure`, failure reason, and
    web URL. Distinguish superseded retried attempts from each current job attempt.
@@ -687,24 +753,32 @@ other long-running polling loop. In particular, never run
    attempt for the current result.
 4. Before inspecting any aggregate pipeline status, search every current job and
    bridge for `failed` or `canceled` and report each one. If any is required or
-   merge-blocking, do not sleep. Fetch its trace immediately, inspect the owning
-   pipeline and bridge ancestry, classify the failure, and begin the local repair
-   in the same agent turn. Record non-blocking `allow_failure` failures but let
-   them preempt waiting only when GitLab treats them as merge-blocking. Other
-   graph nodes still running only block the eventual push under Pipeline
-   Serialization Gate; they do not block investigation or local edits.
+   merge-blocking, immediately preempt all auxiliary work and do not sleep. Fetch
+   the exact failed node record and trace immediately, inspect the owning pipeline
+   and bridge ancestry, classify the failure, and begin the local repair in the
+   same agent turn. Record non-blocking `allow_failure` failures but let them
+   preempt waiting only when GitLab treats them as merge-blocking. Other graph
+   nodes still running only block the eventual push under Pipeline Serialization
+   Gate; they do not block investigation or local edits.
 5. After the job-first scan, treat a terminal failed or canceled pipeline with no
    exposed required failed job as immediate investigation evidence too; do not
    sleep merely because GitLab omitted or delayed its jobs.
 6. Only when no graph-wide required node has terminally failed may aggregate
-   states determine whether to wait. If any graph node is active, run one
-   standalone foreground `sleep 30` tool call, then return to step 1 with fresh
-   API calls. Do not combine the sleep and polling APIs in one shell command, and
-   do not reuse job or bridge JSON from the prior poll.
+   states determine whether to wait. If required nodes remain active, update
+   `last_recursive_pipeline_poll_at`, set the hard deadline at no more than 30
+   seconds, and retain `next_state=recursive_pipeline_poll`. Between snapshots,
+   either perform deadline-safe bounded local repair steps or, when no such work
+   is selected, run one standalone foreground `sleep 30` immediately after the
+   snapshot. Never run a full 30-second sleep after other work has consumed part
+   of the interval; poll at the deadline instead. Do not combine sleep and polling
+   APIs in one shell command or reuse prior job or bridge JSON. After that sleep
+   returns, enter `recursive_pipeline_poll` and fetch a completely fresh graph
+   before any other action.
 7. Treat verification as successful only when every current required job and
    bridge in every discovered parent and descendant pipeline succeeded and no
-   relevant graph node remains active. A parent pipeline remaining `running`
-   after a child job failed can never justify another sleep.
+   relevant graph node remains active. Clear `next_pipeline_poll_deadline` only
+   after this terminal proof. A parent pipeline remaining `running` after a child
+   job failed can never justify another sleep or auxiliary review.
 
 Use GitLab's pipeline, jobs, and bridges endpoints for every discovered pipeline;
 the parent pipeline jobs endpoint alone is never a complete CI snapshot.
