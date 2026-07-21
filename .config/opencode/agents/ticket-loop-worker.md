@@ -1,8 +1,8 @@
 ---
 description: Hidden execution-only worker for one exact ticket-loop implementation or fix commit.
 mode: subagent
-model: datax_openai/gpt-5.6-sol
-variant: max
+model: datax_openai/gpt-5.6-terra
+variant: medium
 hidden: true
 permission:
   question: deny

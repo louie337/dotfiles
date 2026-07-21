@@ -27,6 +27,9 @@ planning-only mode and does not execute parallel workers. Foreman executes the a
 OpenCode task subagents, one mutating worker at a time, followed by a fresh adversarial QA worker for
 each exact commit. Foreman never launches tmux, `claude -p`, or another agent process.
 
+Planning, orchestration, commit QA, and integration review use `gpt-5.6-sol`. Implementation and fix
+workers use `gpt-5.6-terra` with the `medium` reasoning variant to reduce execution latency.
+
 ## Local Publication Gate
 
 `ticket-loop-integration-pm` independently reviews the complete exact-SHA branch after all Foreman

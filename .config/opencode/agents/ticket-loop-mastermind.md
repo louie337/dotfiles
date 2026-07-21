@@ -24,10 +24,6 @@ permission:
   task:
     "*": deny
     general: allow
-    docker-developer: allow
-    golang-developer: allow
-    react-native-expo-developer: allow
-    typescript-developer: allow
     ticket-loop-worker: allow
     ticket-loop-commit-qa: allow
     ticket-loop-integration-pm: allow
@@ -103,8 +99,9 @@ do not silently continue stale or contradictory state.
    explicit user approval. With the flag, record autonomous approval and proceed. Any later material
    requirement or scope change invalidates approval and requires a new plan revision; autonomous
    reapproval is allowed only when the original invocation included `--approve-plan`.
-4. `foreman_execution`: load `foreman`. Execute plan units serially. Use the best matching specialist
-   or `ticket-loop-worker` for implementation and fixes. Require exactly one normal commit per unit,
+4. `foreman_execution`: load `foreman`. Execute plan units serially. Use `ticket-loop-worker` for
+   every implementation and fix so execution consistently runs on `gpt-5.6-terra` with medium
+   reasoning. Require exactly one normal commit per unit,
    then invoke a fresh `ticket-loop-commit-qa` for its exact SHA. Revalidate HEAD and cleanliness
    after every result. Handle FAIL with focused fix and re-QA; ask the user only for BLOCKED product
    or scope decisions. Run final branch-wide validation when all units pass.
