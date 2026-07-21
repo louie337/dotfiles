@@ -59,6 +59,14 @@
         "edit": "deny"
       }
     },
+    "general": {
+      "model": "datax_openai/gpt-5.6-terra",
+      "variant": "low"
+    },
+    "explore": {
+      "model": "datax_openai/gpt-5.6-terra",
+      "variant": "low"
+    },
     "teach": {
       "model": "datax_openai/gpt-5.6-terra",
       "variant": "low",
