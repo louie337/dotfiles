@@ -29,7 +29,7 @@ You are **Mission Control**. You do NOT write code yourself. You:
 
 Determine where the plan comes from:
 
-**Option A — Linear issue**: If the user provides a Linear issue ID (e.g., "SUB-500"), fetch it using the `mcp__linear-server__get_issue` tool. Parse the description for structured sections: phases, tasks, edge cases, acceptance criteria.
+**Option A — Linear issue**: If the user provides a Linear issue ID (e.g., "SUB-500"), fetch it using the available Linear MCP `linear_get_issue` tool. Parse the description for structured sections: phases, tasks, edge cases, acceptance criteria. Reading a ticket does not authorize comments, status transitions, or other Linear writes.
 
 **Option B — Inline plan**: If the user describes the work, collaborate to structure it into the mission format below.
 
@@ -89,6 +89,11 @@ Show the user the structured mission plan in a clear table format:
 - Adjust scope
 
 If the user says "go", "run it", "execute", or similar — proceed to execution.
+
+When another primary workflow uses Mission for planning only, stop after returning the approved,
+versioned plan to that parent workflow. Do not spawn Mission workers. A parent may bypass the pause
+only when its invocation contains an explicit autonomous-plan flag such as `--approve-plan`; absence
+of that flag always requires user approval.
 
 ## STEP 4: Execute Phase by Phase
 
