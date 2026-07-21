@@ -19,6 +19,22 @@ or code areas in parallel using the assignment envelope from `mr-loop-evidence`.
 Their findings are advisory and expire when source SHA, target SHA, or identity
 changes.
 
+## Verification Boundary
+
+Run service-free local checks first. Formatting, static analysis, compilation,
+documentation checks, and focused or unit tests known not to require external
+services are normal. Resource-heavy verification uses the exact automatic GitLab
+jobs mapped by `mr-loop-snapshot`.
+
+Do not start `just infra-up`, Docker Compose, containers, local databases, queues,
+object stores, backend stacks, browser stacks, or preview environments merely to
+verify a repair. Report mapped CI or temporarily unavailable evidence as pending.
+Report missing remote coverage as a gap only when complete readable evidence
+proves it. If that uncovered check genuinely requires local infrastructure,
+return it to the primary to explain and obtain user approval. After approval use
+only a targeted dependency workflow, never a whole stack for one service, and
+never production or shared customer data.
+
 ## Discussion Repair
 
 Process unresolved resolvable discussions oldest first as one local repair batch.

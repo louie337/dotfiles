@@ -51,12 +51,39 @@ invalidates approval and requires revised overview and plan versions.
 Planning, orchestration, commit QA, and integration review use `gpt-5.6-sol`. Implementation and fix
 workers use `gpt-5.6-terra` with the `medium` reasoning variant to reduce execution latency.
 
+## Verification Policy
+
+Ticket-loop runs service-free local verification first: formatting, static analysis, compilation,
+documentation checks, and focused or unit tests known not to require external services. Before
+implementation it inspects the target repository's GitLab CI includes and path-selection rules for
+planned paths, then repeats that mapping for final changed paths before publication. It maps
+resource-heavy verification to exact existing automatic jobs and does not invent job names or claim
+coverage that the configuration does not demonstrate.
+
+Database integration, backend-service integration, Docker-dependent, browser/Playwright,
+full-stack, preview-environment, and similar expensive checks default to GitLab CI. Ticket-loop and
+its workers do not run `just infra-up`, Docker Compose, local databases, service stacks, or browser
+stacks merely to reproduce those jobs. Pending CI and missing remote coverage are distinct: pending
+jobs are handed to MR-loop after the normal publication push. Temporarily inaccessible or incomplete
+CI evidence is also pending and never authorizes an invented job name. A coverage gap requires
+complete readable configuration proving no automatic equivalent and carries an expected CI
+follow-up.
+
+No no-op commit, extra push, MR creation/update, or explicit pipeline creation is allowed solely to
+trigger verification. If a genuinely required check has no remote equivalent, ticket-loop explains
+the gap and asks before starting local infrastructure. Approval permits only the targeted dependency
+needed for isolated reproduction, never an entire stack for one service and never production or
+shared customer data. Repository-documented local startup remains an opt-in fallback for explicitly
+requested reproduction or interactive debugging.
+
 ## Local Publication Gate
 
 `ticket-loop-integration-pm` independently reviews the complete exact-SHA branch after all Foreman
 units pass. It receives the ticket snapshot, clarified requirements, approved plan revision, base
-and HEAD SHAs, commit QA reports, decisions, tests, and known deferrals. It is read-only and returns
-PASS, FAIL, BLOCKED, or STALE.
+and HEAD SHAs, commit QA reports, decisions, service-free checks, pending automatic CI, coverage
+gaps, and known deferrals. It is read-only and returns PASS, FAIL, BLOCKED, or STALE. PASS means the
+branch is suitable for its normal publication and remote CI; it does not convert pending CI into a
+passing result.
 
 A FAIL returns to Foreman for one focused repair commit, commit QA, and a fresh integration review.
 Only two automatic integration repair cycles are allowed. BLOCKED requires a product or scope

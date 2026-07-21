@@ -57,11 +57,23 @@ Set `conflict_phase=resolved_uncommitted` only after all of these are true:
 - conflict marker checks pass;
 - `git diff --check` passes;
 - no unrelated staged or unstaged changes exist;
-- required path-specific rules, canonical generation, and focused verification
-  have completed successfully or are proven not applicable.
+- required service-free path-specific rules, canonical generation, and focused
+  verification have completed successfully or are proven not applicable;
+- resource-heavy verification is mapped to exact automatic GitLab jobs that will
+  run after the normal merge-commit push, has temporarily unavailable evidence
+  recorded as pending, or has a proven remote coverage gap requiring primary-agent
+  handling.
 
 This phase exists before the commit so recovery can distinguish a fully resolved
 but still abortable attempt from an unresolved merge.
+
+Do not start `just infra-up`, Docker Compose, containers, local databases, queues,
+object stores, backend stacks, browser stacks, preview environments, or similar
+infrastructure to cross this boundary. If no remote equivalent exists and the
+check is genuinely required before commit, the primary must explain the gap and
+obtain user approval first. Use only the approved targeted dependency with
+isolated test data; never start a whole stack for one service or use production or
+shared customer data.
 
 ## Commit And Push
 
@@ -104,7 +116,9 @@ guarded cleanup and restart at `startup` from a fresh same-SHA snapshot.
 Persist JSON at `/tmp/mr-loop-state-<conflict-attempt-id>.json`, never in a
 Git worktree. Record phase, source SHA, target SHA, conflicted paths and types,
 per-path evidence, generated paths, rule dispatch, verification, merge SHA,
-preservation ref, pushed SHA, cleanup state, and residual risks.
+pending automatic CI jobs or evidence, proven remote coverage gaps, any approved
+targeted local fallback, preservation ref, pushed SHA, cleanup state, and residual
+risks.
 
 Before a merge commit exists, abort an isolated attempt only when ownership is
 fully proven. After a merge commit exists, never abort, delete, amend, reset,

@@ -114,6 +114,12 @@ delegate the state machine to another process.
   pipelines, explicitly create verification CI, or bypass GitLab merge
   requirements. Cancel pipelines only under `mr-loop-pipeline` known-failure
   safeguards.
+- Local verification is service-free by default. Do not start `just infra-up`,
+  Docker Compose, containers, local databases, queues, object stores, backend
+  stacks, browser stacks, preview environments, or similar infrastructure merely
+  to reproduce verification already covered by GitLab CI.
+- Never use production data or shared customer data for verification. Any
+  user-approved local fallback must use isolated test resources.
 - Keep the working tree and index clean outside your active repair. If local
   changes appear that you did not create for the current repair, stop and report
   `manual_action_required`.
@@ -136,7 +142,8 @@ in the previous phase passes for the same MR identity and SHA:
 
 1. `startup`: use `mr-loop-snapshot` to validate arguments, tools, repository,
    clean worktree, actor, MR identity, remotes, source/target projects and
-   branches, expected MR SHA, repository rules, and prior conflict-attempt state.
+   branches, expected MR SHA, repository rules, automatic GitLab CI path
+   selection, and prior conflict-attempt state.
 2. `fetch`: use `mr-loop-synchronization` to fetch exact source and exact target
    branches and separately record remote-source SHA and fetched-target SHA.
 3. `source_convergence`: converge local HEAD, remote-source SHA, and MR SHA.
@@ -148,16 +155,18 @@ in the previous phase passes for the same MR identity and SHA:
    `safe_merge_conflict_resolution`.
 5. `safe_merge_conflict_resolution`: use `mr-loop-conflict-integration` as the
    sole editing exception before the synchronization gate opens. It uses exact
-   detached worktree merge, deterministic conflict analysis, mandatory focused
-   verification, a preserved two-parent merge commit, one normal push, SHA
-   convergence, and fresh `startup`.
+   detached worktree merge, deterministic conflict analysis, mandatory
+   service-free focused verification, explicit pending remote verification, a
+   preserved two-parent merge commit, one normal push, SHA convergence, and fresh
+   `startup`.
 6. `post_sync_snapshot`: use `mr-loop-snapshot` to re-read diff, discussions,
    approvals, conflicts, merge status, Linear context, and exact-SHA recursive CI
    evidence after the synchronization gate opens.
 7. `repair`: use `mr-loop-review-repair` and `mr-loop-pipeline` evidence to
    revalidate provisional findings, batch every actionable discussion and pipeline
-   repair locally, run only checks allowed by the local verification budget, and
-   commit the batch. Push once only after `mr-loop-pipeline` serialization opens;
+   repair locally, run service-free checks allowed by the local verification
+   budget, and commit the batch. Push once only after `mr-loop-pipeline`
+   serialization opens;
    wait for source/MR SHA convergence, bind the canonical pipeline, and restart at
    `startup`.
 8. `evaluate`: process only exact-current-SHA CI, discussions, approvals,
@@ -176,11 +185,15 @@ repairable failure -> local repair batch.
 ## Loop Variables
 
 Maintain `requested_until`, `terminal_state`, `hard_blocker`,
-`external_return_required`, and `next_state`. Returning is permitted only when the
-requested terminal condition is satisfied, a defined hard blocker exists, or the
-execution environment explicitly forces suspension. A clean worktree, completed
-push, SHA convergence, completed discussion repair, and running CI are not return
-conditions.
+`external_return_required`, `next_state`, `verification_required_jobs`,
+`remote_verification_pending`, `remote_coverage_gaps`, and any
+`approved_local_fallback_evidence`. Bind every verification job or fallback result
+to the exact source SHA. Represent each required job as an expected `(pipeline
+graph selector, job name)` occurrence, not a graph-wide name. Returning is
+permitted only when the requested terminal condition is satisfied, a defined hard
+blocker exists, or the execution environment explicitly forces suspension. A
+clean worktree, completed push, SHA convergence, completed discussion repair, and
+running CI are not return conditions.
 
 For conflict fallback, persist `conflict_attempt_id`, `conflict_phase`,
 `conflict_state_file`, `conflict_worktree`, `expected_source_sha`,
@@ -192,9 +205,10 @@ For conflict fallback, persist `conflict_attempt_id`, `conflict_phase`,
 `resolved_uncommitted` is set only at the boundary defined in
 `mr-loop-conflict-integration`: after reviewed conflict paths and proven generated
 outputs are staged, unmerged entries and markers are gone, `git diff --check` and
-required focused verification pass, and no unrelated staged or unstaged changes
-exist. This makes recovery distinguish a fully resolved but still abortable
-attempt from an unresolved merge.
+required service-free focused verification pass, resource-heavy verification is
+mapped to exact automatic GitLab jobs or a named coverage gap, and no unrelated
+staged or unstaged changes exist. This makes recovery distinguish a fully
+resolved but still abortable attempt from an unresolved merge.
 
 ## Synchronization Gate
 
@@ -271,25 +285,70 @@ and a poll is due or may become due before the worker can return.
 
 ## Local Verification Budget
 
-Prefer exact-SHA GitLab CI for substantive verification. Unless the user
-explicitly authorizes more local workload, do not run test suites, builds,
-repository-wide linters or type-checkers, containers, emulators, dependency
-installation, generators, or other expensive commands.
+Prefer service-free local verification first: formatting, static analysis,
+compilation, documentation checks, and focused or unit tests known not to require
+external services are normal. Start narrow and expand only while checks remain
+service-free and proportionate to the repair.
 
-Ordinary repair may use focused diff review and cheap deterministic file-scoped
-syntax, parse, or format checks, plus unavoidable hooks. Conflict integration is
-stricter: canonical generation, path-specific rule dispatch, focused
-verification, `git diff --check`, unresolved-entry checks, and conflict-marker
-checks required by `mr-loop-conflict-integration` must pass before commit.
+Prefer exact-SHA GitLab CI for resource-heavy verification. Inspect the target
+repository's CI includes, job commands, and `rules`/path selection for the current
+diff. Record exact automatically selected job names and their demonstrated
+coverage; never infer coverage from names or invent a job. Database integration,
+backend-service integration, Docker-dependent, browser/Playwright, full-stack,
+preview-environment, and similar expensive checks should run in those existing
+GitLab jobs, not a locally started stack.
+
+Classify remote evidence precisely. `remote_verification_pending` means a proven
+automatic job has not appeared or completed yet, or CI configuration/pipeline
+evidence is temporarily inaccessible or incomplete. Do not invent a job name when
+evidence is unavailable. `remote_coverage_gap` requires readable, complete CI
+configuration and path rules proving that no automatic job covers a required
+verification obligation. A transient read or API failure is never a coverage
+gap, and a mapped occurrence omitted by its expected complete terminal graph is a
+non-substitutable selection gap rather than a no-capability gap.
+
+Do not run `just infra-up`, Docker Compose, containers, local databases, queues,
+object stores, backend stacks, browser stacks, preview environments, or similar
+infrastructure merely to execute verification GitLab covers. If automatic CI
+cannot yet be observed, run available service-free checks and report the exact
+remote verification as pending. Never create a no-op or verification-only commit,
+push unchanged code, create/update an MR, or explicitly create a pipeline solely
+to trigger CI. A normal push is allowed only for actual repair code intended to
+merge after all synchronization and serialization gates pass.
+
+If complete readable evidence proves no automatic remote equivalent, record a
+`remote_coverage_gap` and expected CI follow-up. When local infrastructure is
+genuinely necessary, explain the uncovered need and ask the user before startup.
+If approved and a targeted workflow exists, start only the required dependency;
+never start an entire stack for one database, queue, or browser test.
+Repository-documented local startup remains available only for explicitly
+requested reproduction or interactive debugging. If approval or an isolated safe
+resource is unavailable, report `manual_action_required` rather than substituting
+production or shared customer data.
+
+Conflict integration remains stricter about service-free evidence: canonical
+generation that needs no services, path-specific rule dispatch, focused
+service-free checks, `git diff --check`, unresolved-entry checks, and
+conflict-marker checks required by `mr-loop-conflict-integration` must pass before
+commit. Resource-heavy checks remain pending for the exact automatic pipeline
+after the merge commit's normal push. A named coverage gap blocks completion until
+the separate CI follow-up supplies coverage or an explicitly user-approved,
+targeted, isolated local fallback passes for the exact SHA; retain and report the
+gap even when that fallback supplies the verification evidence.
 
 No repair commit should be pushed merely to trigger verification while the source
 branch is behind or conflicted with the target branch. First synchronize, then
-verify and push the code intended to merge.
+verify service-free checks and push only code intended to merge.
 
 ## Mergeability And Merge
 
 `mergeable` succeeds only when a fresh same-SHA snapshot confirms: MR open or
-already merged; exact-SHA required parent and child jobs pass; no unresolved
+already merged; exact-SHA required parent and child jobs pass; every mapped
+`verification_required_job` occurrence appears in its expected complete relevant
+exact-SHA pipeline graph and succeeds even when GitLab marks it `allow_failure`;
+no remote evidence is pending; every proven no-capability coverage gap either has
+been closed by CI or has an explicitly user-approved targeted fallback that
+passed against this exact SHA; no mapped selection gap exists; no unresolved
 resolvable discussions remain; no conflicts or merge errors exist; the
 synchronization gate is open; GitLab reports mergeable; required approvals and
 project merge checks are satisfied.
@@ -307,10 +366,14 @@ reason and stop unless it is a transient merge-status check.
 ## Terminal States
 
 - `mergeable`: synchronization gate open, exact-SHA required parent and child CI
-  pass, discussions resolved, approvals satisfied, and GitLab reports mergeable.
+  plus every expected graph/job verification occurrence pass, no remote evidence
+  is pending, every proven no-capability gap has exact-SHA approved fallback
+  evidence, no mapped selection gap exists, discussions are resolved, approvals
+  are satisfied, and GitLab reports mergeable.
 - `awaiting_pipeline`: externally imposed non-success suspension only while final
-  synchronized SHA is current and required jobs are incomplete with no terminal
-  required failure.
+  synchronized SHA is current and required or verification-required jobs are
+  incomplete, or remote configuration/pipeline evidence is temporarily
+  unavailable, with no terminal required failure.
 - `blocked_conflicts`: deterministic conflict intent cannot be established. Never
   use this solely because a command or tool is denied, missing, or failed.
 - `blocked_remote_changed`: source/MR identity changed, target changed after a
@@ -321,8 +384,13 @@ reason and stop unless it is a transient merge-status check.
 - `failed_required_job`: exact-current-SHA required job terminally failed and a
   repair has not yet been completed. This is not final while repairable.
 - `manual_action_required`: external permission, environment capability, Linear
-  lookup, generator, required verification, or safe write path remains unavailable
-  after allowed mechanisms are exhausted.
+  lookup, generator, required verification, remote CI coverage, isolated fallback
+  resource, or safe write path remains unavailable after allowed mechanisms are
+  exhausted. This includes a proven coverage gap without exact-SHA approved
+  fallback evidence; a mapped occurrence absent from its complete terminal
+  exact-SHA graph; and a mapped occurrence ending `manual`, `skipped`, or any
+  terminal status other than `success`, `failed`, or `canceled`. Do not play a
+  manual job or substitute a local fallback for a mapped selection gap.
 - `merged`: requested `merged` target and GitLab confirms merged. If startup finds
   the MR already merged, return `merged` for either requested target.
 
@@ -345,8 +413,9 @@ Final output must include terminal state, MR URL, final local/remote/MR SHAs,
 latest fetched target SHA, whether GitLab-side rebase or safe merge-conflict
 resolution occurred, conflict decision log, commits created and pushed, preserved
 merge refs, exact-SHA parent and child pipeline statuses, failed/running required
-jobs, unresolved discussion count, approval state, GitLab merge/conflict/rebase
-status, autonomous decisions, residual risks, and exact human action required
-when blocked. For Linear issue branches, include the issue key and whether the
-resolution preserved fetched-target behavior or implemented an explicit ticket
-requirement.
+jobs, mapped automatic verification jobs, remote coverage gaps, any user-approved
+targeted local fallback, service-free checks, unresolved discussion count,
+approval state, GitLab merge/conflict/rebase status, autonomous decisions,
+residual risks, and exact human action required when blocked. For Linear issue
+branches, include the issue key and whether the resolution preserved
+fetched-target behavior or implemented an explicit ticket requirement.

@@ -78,6 +78,46 @@ Active required CI owns a hard recursive-poll deadline no later than 30 seconds
 after each complete graph snapshot. Optional workers and broad investigation
 cannot delay that poll.
 
+## Verification Policy
+
+MR-loop runs service-free checks locally first: formatting, static analysis,
+compilation, documentation checks, and focused or unit tests known not to require
+external services. It inspects the target repository's GitLab CI includes, job
+commands, and path-selection rules, then records exact automatic jobs that cover
+database integration, backend services, Docker, browser/Playwright, full-stack,
+preview environments, or other resource-heavy verification. It never invents a
+job name or infers coverage from a name alone.
+
+Every mapped verification-required job is paired with its expected pipeline graph
+and must appear and succeed there, even if GitLab marks it `allow_failure`. A
+same-named job in another graph is not a substitute. MR-loop does not become
+mergeable while mapped jobs or CI evidence are pending. In an expected completed
+graph, an absent, `manual`, `skipped`, or otherwise terminal non-successful mapped
+job is a selection/execution gap, not a passing result; the agent does not play it
+or replace it with local verification.
+
+Resource-heavy verification defaults to those exact-SHA GitLab jobs. MR-loop does
+not run `just infra-up`, Docker Compose, local databases, service stacks, browser
+stacks, or preview environments merely to reproduce CI. It also never creates a
+no-op commit, pushes unchanged code, updates an MR, or explicitly creates a
+pipeline solely to trigger verification. Normal synchronized repair pushes remain
+allowed because they publish actual code intended to merge and automatically
+select CI by path.
+
+If automatic remote verification or its configuration is temporarily not
+observable, MR-loop runs available service-free checks and reports the evidence
+as pending without inventing job names. A coverage gap requires readable,
+complete CI configuration and path rules proving no automatic equivalent. A
+mapped job omitted by its expected complete terminal graph is instead a
+non-substitutable selection gap. A no-capability gap is recorded with an expected
+CI follow-up, not treated as permission to start local services. If local
+infrastructure is genuinely necessary, the agent explains the gap and asks first;
+approval permits only a targeted dependency using isolated test data. A
+successful approved fallback remains bound to the exact SHA and does not erase
+the reported CI gap. Whole-stack startup for one service and production or shared
+customer data are prohibited. Documented local startup procedures remain opt-in
+fallbacks for explicit reproduction or interactive debugging requests.
+
 ## Testing Note
 
 Run the path-specific executable policy contract after changing the agent,

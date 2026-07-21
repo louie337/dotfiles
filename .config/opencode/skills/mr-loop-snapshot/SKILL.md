@@ -25,8 +25,24 @@ not authorize edits or GitLab writes.
 8. Stop when the MR is closed and not merged. Treat an already merged MR as
    success for both requested targets.
 9. Discover repository-wide and path-specific rule files and any review-rule
-   dispatcher. Run the dispatcher only when allowed by the primary's local
-   verification budget.
+   dispatcher. Run a dispatcher when it is service-free and allowed by the
+   primary's local verification budget; do not let a dispatcher start local
+   infrastructure implicitly.
+10. Inspect GitLab CI includes, job commands, and `rules`/path selection for the
+    changed paths. Record exact automatically selected job names and demonstrated
+    coverage for database integration, backend services, Docker, browser,
+    full-stack, preview, or other resource-heavy verification. Do not infer
+    coverage from names. Store jobs required to verify the changed behavior as
+    `verification_required_jobs`, including command and rule evidence plus the
+    expected pipeline source or parent/child graph selector. A mapping identifies
+    an expected `(pipeline graph selector, job name)` occurrence; the same job name
+    in a different graph is not equivalent.
+11. If CI includes or selection evidence are temporarily inaccessible or
+    incomplete, set `remote_verification_pending` with the failed evidence source;
+    do not invent names or classify a gap. Set `remote_coverage_gap` only when
+    readable, complete CI configuration and path rules prove no automatic job
+    covers a required verification obligation. Neither state permits local service
+    startup.
 
 ## Loop Snapshot
 
@@ -51,6 +67,10 @@ The complete snapshot includes:
 - Every pipeline for the exact current MR head SHA, including pipeline ID, SHA,
   ref, source, status, timestamps, jobs, bridges, downstream relationships, job
   allow-failure state, failure reason, trace URLs, and current-attempt identity.
+- Expected `verification_required_jobs` selected by the current paths, whether
+  each expected graph/job occurrence appears and succeeds in its exact-SHA graph,
+  pending remote evidence, proven coverage gaps, mapped selection gaps, and any
+  exact-SHA approved local fallback evidence.
 
 If identity or MR SHA changes during collection, discard the partial snapshot and
 restart the iteration.
