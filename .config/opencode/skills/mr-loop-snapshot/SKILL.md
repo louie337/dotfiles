@@ -43,6 +43,14 @@ not authorize edits or GitLab writes.
     readable, complete CI configuration and path rules prove no automatic job
     covers a required verification obligation. Neither state permits local service
     startup.
+12. When repository review documentation defines agent-review findings or a
+    suppression protocol, collect its trust inputs without writing to GitLab:
+    resolve the review bot user ID when available; fetch all paginated MR notes and
+    discussions; fetch project members through `/members/all`; and record whether
+    Developer-or-higher authorization (`access_level >= 30`) is verifiable. A
+    missing bot identity or unavailable/empty authorized-member result disables
+    the corresponding trusted lifecycle or suppression action for this snapshot.
+    Never fall back to trusting every commenter.
 
 ## Loop Snapshot
 
@@ -64,6 +72,19 @@ The complete snapshot includes:
 - MR diff and commits for the current head SHA.
 - Linear issue details for a source-branch `SUB-[0-9]+` key when present.
 - Activities and discussions, including all paginated discussion pages.
+- When supported by the target repository, the complete current agent-review
+  inventory: report note ID and author, first line-anchored review head/base SHA
+  markers, severity, cited rule, exact stable finding ID copied from the report or
+  finding marker, matching discussion and marker-note author, resolution state,
+  and all human replies or adjudication directives. Preserve findings even when
+  their inline thread is already resolved; thread state alone is not a finding
+  disposition.
+- The review bot user ID and Developer-or-higher project member IDs used to
+  validate lifecycle and suppression evidence. For every apparent suppression,
+  record comment ID, author ID, exact body, finding IDs, whether the author was
+  authorized at snapshot time, and whether a non-empty auditable reason is in the
+  same comment. Unauthorized directives remain visible evidence but do not count
+  as adjudication.
 - Every pipeline for the exact current MR head SHA, including pipeline ID, SHA,
   ref, source, status, timestamps, jobs, bridges, downstream relationships, job
   allow-failure state, failure reason, trace URLs, and current-attempt identity.
@@ -72,8 +93,15 @@ The complete snapshot includes:
   pending remote evidence, proven coverage gaps, mapped selection gaps, and any
   exact-SHA approved local fallback evidence.
 
-If identity or MR SHA changes during collection, discard the partial snapshot and
-restart the iteration.
+At snapshot completion, re-fetch MR identity/current source SHA and the target
+project's branch endpoint. If identity, source SHA, or exact target SHA changed
+during collection, discard the partial snapshot and restart the iteration.
+
+Do not infer a finding ID from file, title, line, or thread text. Do not treat a
+resolved thread as proof that a finding was fixed or suppressed. If report
+identity, bot authorship, member authorization, or exact finding identity cannot
+be verified, preserve the uncertainty explicitly for `mr-loop-review-repair` and
+the primary integration layer.
 
 ## Preferred Commands
 

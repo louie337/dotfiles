@@ -160,13 +160,16 @@ in the previous phase passes for the same MR identity and SHA:
    preserved two-parent merge commit, one normal push, SHA convergence, and fresh
    `startup`.
 6. `post_sync_snapshot`: use `mr-loop-snapshot` to re-read diff, discussions,
-   approvals, conflicts, merge status, Linear context, and exact-SHA recursive CI
-   evidence after the synchronization gate opens.
+   approvals, conflicts, merge status, Linear context, agent-review findings and
+   adjudication trust evidence, and exact-SHA recursive CI evidence after the
+   synchronization gate opens.
 7. `repair`: use `mr-loop-review-repair` and `mr-loop-pipeline` evidence to
-   revalidate provisional findings, batch every actionable discussion and pipeline
-   repair locally, run service-free checks allowed by the local verification
-   budget, and commit the batch. Push once only after `mr-loop-pipeline`
-   serialization opens;
+   revalidate provisional findings, assign every agent-review finding exactly one
+   proportional disposition, batch only code-changing `must-fix` findings, valid
+   ordinary human feedback, and pipeline repairs locally, perform authorized
+   suppression side effects separately, run service-free checks allowed by the
+   local verification budget, and commit the repair batch. Push once only after
+   `mr-loop-pipeline` serialization opens;
    wait for source/MR SHA convergence, bind the canonical pipeline, and restart at
    `startup`.
 8. `evaluate`: process only exact-current-SHA CI, discussions, approvals,
@@ -178,22 +181,33 @@ open pipeline serialization gate -> one normal push; normal push plus
 local/remote/MR SHA convergence -> bind canonical pipeline and `startup`;
 GitLab-side rebase success -> fetch and `startup`; GitLab-side rebase conflict ->
 `safe_merge_conflict_resolution`; conflict merge push plus MR SHA convergence ->
-`startup`; discussion reply -> discussion resolution; active exact-SHA required CI
--> deadline-driven `recursive_pipeline_poll`; pipeline completion -> `evaluate`;
-repairable failure -> local repair batch.
+`startup`; ordinary human-discussion reply -> guarded discussion resolution;
+verified suppression plus exact head/base dedup -> guarded matching bot-thread
+resolution; active exact-SHA required CI -> deadline-driven
+`recursive_pipeline_poll`; pipeline completion -> `evaluate`; repairable failure
+-> local repair batch.
 
 ## Loop Variables
 
 Maintain `requested_until`, `terminal_state`, `hard_blocker`,
 `external_return_required`, `next_state`, `verification_required_jobs`,
 `remote_verification_pending`, `remote_coverage_gaps`, and any
-`approved_local_fallback_evidence`. Bind every verification job or fallback result
-to the exact source SHA. Represent each required job as an expected `(pipeline
-graph selector, job name)` occurrence, not a graph-wide name. Returning is
-permitted only when the requested terminal condition is satisfied, a defined hard
-blocker exists, or the execution environment explicitly forces suspension. A
-clean worktree, completed push, SHA convergence, completed discussion repair, and
-running CI are not return conditions.
+`approved_local_fallback_evidence`. Maintain `finding_dispositions` keyed by the
+trusted review report, exact finding ID, and occurrence identity such as report
+index or matching discussion ID. Each current agent-review finding occurrence has
+exactly one record containing source SHA, target SHA, review head/base markers,
+severity, cited rule, classification, material-risk analysis, evidence, intended
+action, completion evidence, and current thread state. If one stable ID maps to
+multiple distinct current findings, do not suppress it autonomously because the
+repository suppression directive affects every occurrence sharing that ID; use
+`needs-human-decision`. Preserve superseded records as an audit history, but never
+act on one after its identity envelope expires. Bind every verification job or
+fallback result to the exact source SHA. Represent each required job as an
+expected `(pipeline graph selector, job name)` occurrence, not a graph-wide name.
+Returning is permitted only when the requested terminal condition is satisfied, a
+defined hard blocker exists, or the execution environment explicitly forces
+suspension. A clean worktree, completed push, SHA convergence, completed
+discussion repair, and running CI are not return conditions.
 
 For conflict fallback, persist `conflict_attempt_id`, `conflict_phase`,
 `conflict_state_file`, `conflict_worktree`, `expected_source_sha`,
@@ -283,6 +297,126 @@ Discard every worker result if MR identity, source SHA, or exact target SHA
 changes before action. Never wait for optional workers while required CI is active
 and a poll is due or may become due before the worker can return.
 
+## Review Finding Integration
+
+Use the canonical classification policy in `mr-loop-review-repair` only for
+verified agent-review findings with exact stable IDs. Ordinary human discussions
+retain their valid/invalid/obsolete/blocked workflow. A failed or canceled CI job,
+job trace, bridge, or downstream pipeline is pipeline evidence, not a suppressible
+review finding: classify and repair it through `mr-loop-pipeline` even if an
+agent-review thread discusses the same code.
+
+For each trusted current review report, inventory every finding before acting and
+write exactly one `finding_dispositions` record:
+
+- `must-fix`: edit only after independently revalidating the exact-SHA evidence.
+  Follow the cited rule's `## Fix`, make the smallest correct repair, add focused
+  regression coverage for behavior changes, run proportionate checks, and include
+  a required commit reference such as `Fixes RULE-0007`. The disposition completes
+  only when a later trusted review for the current head/base no longer emits the
+  finding. Until then, a pushed repair is pending evidence, not completion.
+- `suppress-with-reason`: make no code edit. This is available only for a
+  non-blocking finding that satisfies every suppression condition in
+  `mr-loop-review-repair`. Perform the guarded suppression workflow below.
+- `already-fixed-or-stale`: make no code edit and do not mutate code or Git solely
+  to obtain a review run. Let the next normal `mr:review:agent` run remove it and
+  let the documented bot-thread lifecycle resolve it. Complete it only when a
+  trusted exact-current-head/base review omits the ID. If such a review still
+  emits it, reclassify it; if no normal automatic review can run, transition to
+  `manual_action_required` with the lifecycle gap rather than creating a no-op
+  mutation.
+- `needs-human-decision`: make no edit, suppression, reply that claims a decision,
+  or resolution. Set `hard_blocker=manual_action_required` with the exact product,
+  safety, authorization, data, rule, or tradeoff decision required.
+
+Severity never overrides material risk. A warning with material business,
+security, data, compatibility, documentation, accessibility, reliability,
+performance, resource, or operational breakage is `must-fix`. Never suppress a
+valid error. A blocking error that appears inapplicable but is not stale remains
+`needs-human-decision`; this loop does not waive it merely to make CI green.
+
+### Guarded Suppression Workflow
+
+1. Require a fresh snapshot proving the exact finding ID, current source and
+   target SHAs, non-blocking severity, cited rule and exceptions, material-risk
+   analysis, and non-empty evidence-based reason. Never derive an ID from title,
+   path, line, or explanation, and never reuse another finding's ID.
+2. Check all MR notes first. Count a comment as autonomous completion evidence
+   only when its entire persisted body has the canonical one-finding form: first
+   line exactly `agent-review: suppress <finding-id>`, one blank line, then
+   `Reason: <non-whitespace evidence>` with no second directive, quoted copy,
+   code-fence wrapper, prefix, suffix, or additional finding ID. The ID must equal
+   this disposition's exact ID. If that canonical comment is from a currently
+   verified Developer-or-higher author, record it and do not post a duplicate.
+   Other authorized human directives remain adjudication evidence and may be
+   honored by repository CI, but the loop must not misattribute their reason or
+   count them as its canonical completion proof.
+3. Before a loop-authored suppression, run the normal GitLab identity preflight,
+   then re-fetch `/projects/:id/members/all` and prove the acting user's ID has
+   `access_level >= 30`. If actor membership, member lookup, exact finding
+   identity, or reason is unavailable, do not post and do not mark the disposition
+   complete; transition to `manual_action_required`.
+4. Revalidate MR identity, source SHA, target SHA, local branch and HEAD, finding
+   record, and current discussion snapshot immediately before posting. Post one
+   non-resolvable MR comment for one finding so its reason is unambiguous:
+
+   ```text
+   agent-review: suppress <exact-finding-id>
+
+   Reason: <concise evidence from the exact diff and repository rules>
+   ```
+
+   With the installed CLI, use `glab mr note create <iid> --repo <project>
+   --resolvable=false --message <body>` or the equivalent notes API. Posting the
+   comment is the primary integration layer's GitLab side effect; the read-only
+   snapshot and evidence skills never post it.
+5. Re-fetch the exact note, `/members/all`, MR identity/current source SHA, target
+   branch endpoint, trusted review report/finding occurrence, and discussion
+   snapshot. Require the persisted body to equal the exact canonical body the
+   loop posted; its author to equal the preflight actor; that author still to have
+   Developer-or-higher access; and MR identity, source SHA, exact target SHA,
+   review head/base markers, finding body/ID, and discussion snapshot to remain
+   unchanged. Otherwise suppression failed closed, the comment is only stale
+   audit evidence, and the finding remains incomplete pending fresh triage.
+6. Suppression takes effect on the next normal `mr:review:agent` run. Do not push
+   unchanged code, create a no-op commit, update the MR, or explicitly create a
+   pipeline to force that run. When a later trusted review omits the ID, accept the
+   repository's bot-created stale-thread auto-resolution lifecycle.
+7. If and only if the latest trusted bot review's authoritative head/base markers
+   exactly match the current review inputs and documented head/base dedup prevents
+   another run, revalidate the verified suppression comment and resolve only the
+   matching bot-created thread whose finding-marker note was authored by the
+   verified review bot. Revalidate actor, membership, MR identity and SHA, local
+   branch and HEAD, suppression note, bot identity, finding marker, and discussion
+   snapshot immediately before resolution.
+
+Manual thread resolution alone is never a disposition and never completes
+suppression. Reply or comment success must precede any permitted resolution. If a
+write or post-write verification fails, leave the thread unresolved and report
+the exact incomplete side effect.
+
+### Ordinary Human Discussions
+
+Keep the existing integration lifecycle for discussions that are not verified
+agent-review findings:
+
+- For valid feedback, include the smallest repair in the local batch. After its
+  push converges to the MR SHA, re-fetch the exact discussion, reply with the
+  repair and verification evidence, then resolve it.
+- For invalid or obsolete feedback, require no repository change from that
+  disposition, re-fetch the exact discussion, reply with a non-empty technical
+  rationale, then resolve it without a push.
+- For blocked feedback, make no reply or resolution and report the exact human
+  decision required.
+
+Immediately before the reply and independently again before resolution, run
+identity preflight and revalidate MR identity and SHA, exact target SHA, local
+branch and HEAD, and the stable discussion snapshot including non-system note
+bodies/authors/resolution flags and stable position fields. After posting, the
+pre-resolution snapshot may differ only by the exact newly persisted reply. Reply
+must succeed and be re-fetched before resolution. If any guard changes, do not
+resolve and restart from a fresh snapshot.
+
 ## Local Verification Budget
 
 Prefer service-free local verification first: formatting, static analysis,
@@ -340,6 +474,28 @@ No repair commit should be pushed merely to trigger verification while the sourc
 branch is behind or conflicted with the target branch. First synchronize, then
 verify service-free checks and push only code intended to merge.
 
+Before merge readiness, run the target repository's branch-wide review-rule
+dispatcher. For the Subanana repository contract, run the required literal
+command exactly:
+
+```sh
+git diff --name-only master... | node scripts/rules-for-paths.js -
+```
+
+Never trust that command as the sole path inventory until `git rev-parse master`
+equals the exact target SHA from GitLab and `HEAD` equals the exact MR source SHA.
+If local `master` is absent or differs, leave it untouched and additionally run
+the authoritative equivalent against immutable revisions:
+
+```sh
+git diff --name-only <exact-target-sha>...<expected-source-sha> | node scripts/rules-for-paths.js -
+```
+
+Use the union of printed obligations; the exact-SHA result is authoritative when
+local `master` differs. Read every printed rule and its exceptions as needed.
+Confirm mandatory documentation exists and describes the final exact-SHA diff
+before evaluating finding dispositions or mergeability.
+
 ## Mergeability And Merge
 
 `mergeable` succeeds only when a fresh same-SHA snapshot confirms: MR open or
@@ -348,8 +504,16 @@ already merged; exact-SHA required parent and child jobs pass; every mapped
 exact-SHA pipeline graph and succeeds even when GitLab marks it `allow_failure`;
 no remote evidence is pending; every proven no-capability coverage gap either has
 been closed by CI or has an explicitly user-approved targeted fallback that
-passed against this exact SHA; no mapped selection gap exists; no unresolved
-resolvable discussions remain; no conflicts or merge errors exist; the
+passed against this exact SHA; no mapped selection gap exists; every current
+finding occurrence in the latest trusted review has exactly one completed
+disposition record regardless of severity; no valid error remains; every
+non-blocking finding is absent after a fix or completed by a verified authorized
+suppression and its required review/thread lifecycle; no `needs-human-decision`
+or pending stale/fix evidence remains; manual resolution is not counted as a
+disposition; no unresolved resolvable discussions remain; required
+`CONV-D1`/`CONV-D6` and repository documentation exist and match the final diff;
+the branch-wide review-rule dispatcher has been run against exact source/target
+evidence when the repository defines one; no conflicts or merge errors exist; the
 synchronization gate is open; GitLab reports mergeable; required approvals and
 project merge checks are satisfied.
 
@@ -368,12 +532,19 @@ reason and stop unless it is a transient merge-status check.
 - `mergeable`: synchronization gate open, exact-SHA required parent and child CI
   plus every expected graph/job verification occurrence pass, no remote evidence
   is pending, every proven no-capability gap has exact-SHA approved fallback
-  evidence, no mapped selection gap exists, discussions are resolved, approvals
-  are satisfied, and GitLab reports mergeable.
+  evidence, no mapped selection gap exists, every agent-review finding has one
+  completed auditable disposition, no valid error or human decision remains,
+  final required documentation and branch-wide rule dispatch pass, discussions
+  are resolved, approvals are satisfied, and GitLab reports mergeable.
 - `awaiting_pipeline`: externally imposed non-success suspension only while final
   synchronized SHA is current and required or verification-required jobs are
   incomplete, or remote configuration/pipeline evidence is temporarily
   unavailable, with no terminal required failure.
+- `awaiting_review_lifecycle`: externally imposed non-success suspension only
+  while a proven automatic current-head/base `mr:review:agent` run is pending or
+  active and no finding needs immediate repair or human judgment. If no such run
+  can occur normally, transition to `manual_action_required`; never remain in this
+  state indefinitely or create a no-op mutation.
 - `blocked_conflicts`: deterministic conflict intent cannot be established. Never
   use this solely because a command or tool is denied, missing, or failed.
 - `blocked_remote_changed`: source/MR identity changed, target changed after a
@@ -389,8 +560,11 @@ reason and stop unless it is a transient merge-status check.
   exhausted. This includes a proven coverage gap without exact-SHA approved
   fallback evidence; a mapped occurrence absent from its complete terminal
   exact-SHA graph; and a mapped occurrence ending `manual`, `skipped`, or any
-  terminal status other than `success`, `failed`, or `canceled`. Do not play a
-  manual job or substitute a local fallback for a mapped selection gap.
+  terminal status other than `success`, `failed`, or `canceled`; an agent-review
+  finding classified `needs-human-decision`; or suppression whose actor
+  authorization, exact ID, reason, comment persistence, or lifecycle cannot be
+  verified. Do not play a manual job, substitute a local fallback for a mapped
+  selection gap, or count manual thread resolution as review disposition.
 - `merged`: requested `merged` target and GitLab confirms merged. If startup finds
   the MR already merged, return `merged` for either requested target.
 
@@ -415,7 +589,9 @@ resolution occurred, conflict decision log, commits created and pushed, preserve
 merge refs, exact-SHA parent and child pipeline statuses, failed/running required
 jobs, mapped automatic verification jobs, remote coverage gaps, any user-approved
 targeted local fallback, service-free checks, unresolved discussion count,
-approval state, GitLab merge/conflict/rebase status, autonomous decisions,
-residual risks, and exact human action required when blocked. For Linear issue
-branches, include the issue key and whether the resolution preserved
-fetched-target behavior or implemented an explicit ticket requirement.
+finding dispositions and their completion evidence, suppression comment IDs and
+authorization evidence, stale findings awaiting review lifecycle, approval state,
+GitLab merge/conflict/rebase status, autonomous decisions, residual risks, and
+exact human action required when blocked. For Linear issue branches, include the
+issue key and whether the resolution preserved fetched-target behavior or
+implemented an explicit ticket requirement.

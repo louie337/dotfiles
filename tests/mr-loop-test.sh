@@ -8,6 +8,7 @@ COMMAND="$ROOT/.config/opencode/commands/mr-loop.md"
 CONFIG="$ROOT/.config/opencode/opencode.json"
 DOC="$ROOT/docs/mr-loop.md"
 SCENARIOS="$ROOT/tests/fixtures/mr-loop-conflict-scenarios.json"
+TRIAGE_SCENARIOS="$ROOT/tests/fixtures/mr-loop-review-triage-scenarios.json"
 SKILL_DIR="$ROOT/.config/opencode/skills"
 AGENT_DIR="$ROOT/.config/opencode/agents"
 PASS=0
@@ -114,6 +115,7 @@ assert_file "active MR command exists" "$COMMAND"
 assert_file "global OpenCode config exists" "$CONFIG"
 assert_file "active MR loop documentation exists" "$DOC"
 assert_file "merge fallback scenario fixture exists" "$SCENARIOS"
+assert_file "review triage scenario fixture exists" "$TRIAGE_SCENARIOS"
 assert_tree_not_contains "workers do not report blocked input" "blocked_input"
 
 for agent in \
@@ -214,6 +216,32 @@ assert_contains "conflict integration preserves merge ref" "$SKILL_DIR/mr-loop-c
 assert_contains "conflict integration pushes detached head" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git push origin HEAD:<source-branch>'
 assert_contains "review repair batches discussions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Do not commit or push after each discussion"
 assert_contains "review repair records decisions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Record every autonomous decision"
+assert_contains "review repair defines exact four-way triage" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" '`must-fix`'
+assert_contains "review repair defines warning suppression" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" '`suppress-with-reason`'
+assert_contains "review repair defines stale findings" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" '`already-fixed-or-stale`'
+assert_contains "review repair defines human decisions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" '`needs-human-decision`'
+assert_contains "review repair makes material risk decisive" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Severity is an input, not the decision"
+assert_contains "review repair requires cited fix guidance" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "read and follow the cited rule's \`## Fix\` section"
+assert_contains "review repair forbids inferred finding ids" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Never calculate, infer, repair"
+assert_contains "review repair keeps stale findings edit-free" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Make no code edit for this disposition"
+assert_contains "review repair routes stale lifecycle gaps to humans" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "return \`manual_action_required\`"
+assert_contains "snapshot preserves resolved findings" "$SKILL_DIR/mr-loop-snapshot/SKILL.md" "Preserve findings even when"
+assert_contains "snapshot collects authorization trust" "$SKILL_DIR/mr-loop-snapshot/SKILL.md" 'Developer-or-higher authorization (`access_level >= 30`)'
+assert_contains "snapshot fails closed on commenter trust" "$SKILL_DIR/mr-loop-snapshot/SKILL.md" "Never fall back to trusting every commenter"
+assert_contains "snapshot revalidates target after collection" "$SKILL_DIR/mr-loop-snapshot/SKILL.md" "exact target SHA changed"
+assert_contains "mastermind tracks one finding disposition" "$AGENT" "Each current agent-review"
+assert_contains "mastermind posts exact suppression directive" "$AGENT" "agent-review: suppress <exact-finding-id>"
+assert_contains "mastermind requires suppression reason" "$AGENT" "Reason: <concise evidence"
+assert_contains "mastermind verifies developer authorization" "$AGENT" '`access_level >= 30`'
+assert_contains "mastermind requires canonical suppression body" "$AGENT" "entire persisted body has the canonical one-finding form"
+assert_contains "mastermind revalidates envelope after suppression" "$AGENT" "review head/base markers, finding body/ID"
+assert_contains "mastermind handles duplicate stable ids" "$AGENT" "multiple distinct current findings"
+assert_contains "mastermind makes manual resolution insufficient" "$AGENT" "Manual thread resolution alone is never a disposition"
+assert_contains "mastermind keeps pipeline logs out of suppression" "$AGENT" "job trace, bridge, or downstream pipeline is pipeline evidence, not a suppressible"
+assert_contains "mastermind requires final branch-wide dispatch" "$AGENT" "branch-wide review-rule"
+assert_contains "mastermind records exact Subanana dispatch" "$AGENT" 'git diff --name-only master... | node scripts/rules-for-paths.js -'
+assert_contains "mastermind dispatches authoritative exact SHA diff" "$AGENT" 'git diff --name-only <exact-target-sha>...<expected-source-sha> | node scripts/rules-for-paths.js -'
+assert_contains "mastermind defines review lifecycle wait" "$AGENT" '`awaiting_review_lifecycle`'
 assert_contains "pipeline defines canonical pipeline" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" 'Maintain `verification_sha` and `canonical_pipeline_id`'
 assert_contains "pipeline recursively fetches bridges" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" 'pipelines/<pipeline-id>/bridges?per_page=100'
 assert_contains "pipeline checks jobs before aggregate" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" "Before aggregate pipeline status"
@@ -270,6 +298,48 @@ if jq -e '
   pass "structured merge fallback state scenarios are specified"
 else
   fail "structured merge fallback state scenarios are specified"
+fi
+
+if jq -e '
+  length == 18 and
+  ([.[].scenario] | unique | length) == 18 and
+  all(.[];
+    (.scenario | type == "string") and
+    (.severity | IN("error", "warning", "info")) and
+    (.finding_id | test("^[0-9a-f]{10}$")) and
+    (.facts | type == "array") and
+    ((.classification == null) or (.classification | IN("must-fix", "suppress-with-reason", "already-fixed-or-stale", "needs-human-decision"))) and
+    (.code_edit | type == "boolean") and
+    ((.suppression_comment == null) or (.suppression_comment | type == "string")) and
+    ((.actor_authorized == null) or (.actor_authorized | type == "boolean")) and
+    (.thread_resolved | type == "boolean") and
+    (.disposition_recorded | type == "boolean") and
+    (.complete | type == "boolean") and
+    (.merge_ready | type == "boolean") and
+    (.state | type == "string")
+  ) and
+  (map(select(.scenario == "valid_error_requires_fix" and .severity == "error" and .classification == "must-fix" and .code_edit == true and .merge_ready == false)) | length) == 1 and
+  (map(select(.scenario == "material_warning_requires_fix" and .severity == "warning" and .classification == "must-fix" and (.facts | index("material_breakage_scenario")) and .code_edit == true)) | length) == 1 and
+  (map(select(.scenario == "harmless_false_positive_warning" and .classification == "suppress-with-reason" and (.facts | index("no_material_risk")) and .code_edit == false)) | length) == 1 and
+  (map(select(.scenario == "uncertain_warning_needs_human" and .classification == "needs-human-decision" and .state == "manual_action_required" and .code_edit == false)) | length) == 1 and
+  (map(select(.scenario == "authorized_suppression_has_exact_id_and_reason" and .actor_authorized == true and (. as $scenario | .suppression_comment | startswith("agent-review: suppress " + $scenario.finding_id + "\n\nReason: ")) and (.facts | index("post_write_comment_persisted")) and (.facts | index("post_write_membership_verified")) and (.facts | index("post_write_envelope_unchanged")) and .complete == true)) | length) == 1 and
+  (map(select(.scenario == "unauthorized_suppression_is_incomplete" and .actor_authorized == false and .complete == false and .merge_ready == false and .state == "manual_action_required")) | length) == 1 and
+  (map(select(.scenario == "authorization_lookup_unavailable_is_incomplete" and .actor_authorized == null and .suppression_comment == null and .complete == false and .state == "manual_action_required")) | length) == 1 and
+  (map(select(.scenario == "manual_resolution_is_not_a_disposition" and .thread_resolved == true and .disposition_recorded == false and .classification == null and .merge_ready == false)) | length) == 1 and
+  (map(select(.scenario == "stale_finding_does_not_edit_code" and .classification == "already-fixed-or-stale" and (.facts | index("automatic_review_pending")) and .code_edit == false and .complete == false and .state == "awaiting_review_lifecycle")) | length) == 1 and
+  (map(select(.scenario == "dedup_allows_matching_bot_thread_resolution" and (.facts | index("authorized_suppression_verified")) and (.facts | index("post_write_envelope_unchanged")) and (.facts | index("exact_head_base_dedup")) and (.facts | index("matching_bot_thread")) and .actor_authorized == true and .thread_resolved == true and .complete == true)) | length) == 1 and
+  (map(select(.scenario == "post_write_comment_missing_is_incomplete" and (.facts | index("post_write_comment_missing")) and .complete == false and .state == "manual_action_required")) | length) == 1 and
+  (map(select(.scenario == "post_write_envelope_change_requires_retriage" and (.facts | index("source_sha_changed_after_comment")) and .complete == false and .state == "triage_required")) | length) == 1 and
+  (map(select(.scenario == "quoted_directive_is_not_canonical_completion" and (.suppression_comment | startswith("> agent-review:")) and .complete == false)) | length) == 1 and
+  (map(select(.scenario == "multi_id_directive_is_not_canonical_completion" and (.facts | index("multiple_finding_ids")) and .complete == false)) | length) == 1 and
+  (map(select(.scenario == "info_suppression_is_incomplete_until_lifecycle" and .severity == "info" and .classification == "suppress-with-reason" and .complete == false and .merge_ready == false and .state == "awaiting_review_lifecycle")) | length) == 1 and
+  (map(select(.scenario == "failed_pipeline_trace_is_not_suppressible" and (.facts | index("failed_job_trace_fetched")) and .classification == "must-fix" and .suppression_comment == null and .code_edit == true)) | length) == 1 and
+  (map(select(.scenario == "duplicate_stable_id_requires_human_decision" and (.facts | index("same_id_multiple_current_occurrences")) and .classification == "needs-human-decision" and .state == "manual_action_required")) | length) == 1 and
+  (map(select(.scenario == "stale_finding_without_review_path_needs_manual_action" and (.facts | index("no_automatic_review_path")) and .classification == "already-fixed-or-stale" and .code_edit == false and .state == "manual_action_required")) | length) == 1
+' "$TRIAGE_SCENARIOS" >/dev/null; then
+  pass "structured proportional review triage scenarios are specified"
+else
+  fail "structured proportional review triage scenarios are specified"
 fi
 
 if jq -e '.mcp.linear.type == "remote" and .mcp.linear.url == "https://mcp.linear.app/mcp" and .mcp.linear.enabled == true' "$CONFIG" >/dev/null; then

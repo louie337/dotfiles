@@ -1,6 +1,6 @@
 ---
 name: mr-loop-review-repair
-description: Use for GitLab MR loop post-synchronization review, unresolved discussion handling, local repair batching, and autonomous engineering decisions.
+description: Use for GitLab MR loop exact-SHA finding triage, proportional repair or suppression, unresolved discussion handling, and local repair batching.
 ---
 
 # MR Loop Review Repair
@@ -18,6 +18,127 @@ Read-only review investigators may inspect independent files, discussion groups,
 or code areas in parallel using the assignment envelope from `mr-loop-evidence`.
 Their findings are advisory and expire when source SHA, target SHA, or identity
 changes.
+
+## Agent-Review Finding Triage
+
+This section is the canonical classification policy for findings emitted by the
+repository's agent-review system. A discussion is an agent-review finding only
+when the snapshot contains its exact stable finding ID from the review report or
+`<!-- mr-review-finding-id: <id> -->` marker. Never calculate, infer, repair,
+borrow, or reuse an ID. If identity is missing or ambiguous, use
+`needs-human-decision` and do not suppress.
+
+Re-evaluate every finding after synchronization and against one immutable
+source/target SHA envelope. Read and record evidence from all of the following:
+
+1. The exact cumulative MR diff and current source SHA, including the
+   MR-introduced causal path alleged by the finding.
+2. The cited `RULE-nnnn` file, including its frontmatter exceptions and `## Fix`
+   section. For an uncited or legacy finding, read the matching category rule.
+3. `docs/agent/core/conventions.md` and its applicable `CONV-*` requirements.
+4. Every applicable category file under `docs/agent/review/`, selected from the
+   changed path and finding subject rather than severity alone.
+5. Relevant focused tests, existing runtime behavior, and exact-SHA CI evidence.
+6. Existing human comments and Developer-or-higher adjudications. Do not silently
+   override an explicit human product, safety, or tradeoff decision.
+
+Record one and only one classification for each finding ID at the current
+evidence envelope:
+
+- `must-fix`
+- `suppress-with-reason`
+- `already-fixed-or-stale`
+- `needs-human-decision`
+
+Severity is an input, not the decision. Use concrete breakage and material risk
+as the boundary.
+
+### `must-fix`
+
+Use `must-fix` for a valid `error` finding and whenever the evidence shows any
+of these, including when the finding is only a warning:
+
+- broken or changed business behavior, user-visible regression, or a material
+  mismatch with explicit product intent;
+- security, authentication, authorization, permission-lifecycle, secret, or
+  prompt-injection exposure;
+- data loss, corruption, schema drift, unsafe migration, or state-consistency
+  risk;
+- API, proto, configuration, persistence, or other compatibility breakage;
+- Kotlin/Go behavior, permission, field-mapping, gateway, or worker parity drift
+  where repository policy requires parity;
+- missing required regression tests, generated artifacts, or CI wiring;
+- missing or inaccurate mandatory `CONV-D1` or `CONV-D6` documentation;
+- an accessibility failure that blocks an intended interaction;
+- meaningful reliability, timeout, retry, concurrency, performance,
+  resource-exhaustion, cost, or operational risk;
+- any warning with a concrete material breakage scenario or a valid required
+  repository-contract violation.
+
+For `must-fix`, read and follow the cited rule's `## Fix` section, make the
+smallest correct change, add or update focused regression coverage when behavior
+changes, preserve unrelated work, and run affected service-free lint, typecheck,
+tests, and builds plus the mapped exact-SHA CI. A rule-cited repair must use the
+repository-required commit reference such as `Fixes RULE-0007`.
+
+### `suppress-with-reason`
+
+Use `suppress-with-reason` only when every condition below is proven:
+
+- the finding is a warning, info, or otherwise non-blocking advisory finding;
+- it is a demonstrable false positive, an already accepted and documented
+  tradeoff, an inapplicable rule or explicit exception, or a harmless
+  stylistic/preference concern;
+- leaving the code unchanged cannot break business logic, product intent,
+  security, authorization, data integrity, compatibility, accessibility,
+  reliability, operations, or a required repository contract;
+- the exact diff, rule text and exceptions, tests/runtime behavior, and any human
+  adjudication provide an auditable explanation.
+
+Do not suppress merely because a finding is inconvenient, expensive, or a
+warning. Do not suppress a valid error to make CI green. A blocking error that
+appears false-positive but is not stale requires `needs-human-decision`, because
+this loop does not autonomously waive a blocking repository gate.
+
+The primary integration layer owns the GitLab comment and thread side effects.
+Return the exact finding ID plus a concise `Reason:` grounded in the recorded
+evidence. Classification alone, an unauthorized comment, or manual thread
+resolution does not complete suppression.
+
+### `already-fixed-or-stale`
+
+Use `already-fixed-or-stale` only after proving the allegation does not apply to
+the exact current source SHA. Make no code edit for this disposition and never
+edit code solely to change thread state. Let the next review run remove the
+finding and let bot-created stale threads follow the repository's documented
+lifecycle. This disposition completes only when a trusted review for the exact
+current head/base omits the finding. If that exact-current review still emits the
+finding, reclassify it as `must-fix`, `suppress-with-reason`, or
+`needs-human-decision`; it is not stale. If no normal automatic review can occur
+without a no-op or verification-only mutation, return `manual_action_required`
+with the lifecycle gap instead of manufacturing a push.
+
+### `needs-human-decision`
+
+Use `needs-human-decision` when product intent, safety, authorization, data
+policy, user-visible behavior, rule applicability, finding identity, or an
+acceptable tradeoff remains uncertain. Also use it when a blocking finding would
+need adjudication rather than a code fix. State the exact decision and evidence
+needed. Do not edit, suppress, reply as if decided, or resolve the finding.
+
+## Disposition Evidence
+
+For every finding, return a disposition record containing the exact finding ID,
+source SHA, target SHA, severity, cited rule when present, classification,
+material-risk analysis, evidence, intended action, and completion condition.
+Code-change state and thread-resolution state are evidence fields, not
+classifications. A manually resolved thread with no classification is still
+untriaged.
+
+The primary must independently revalidate this record immediately before any
+edit or GitLab write. A new source SHA, target SHA, finding body, human
+adjudication, or discussion snapshot invalidates the action and requires fresh
+triage.
 
 ## Verification Boundary
 
@@ -43,26 +164,29 @@ Do not commit or push after each discussion.
 1. Capture stable discussion ID, non-system notes, note bodies, author IDs,
    resolvable/resolved flags, suggestions, and stable position fields excluding
    GitLab-managed base/start/head SHAs.
-2. Classify feedback as valid, invalid, obsolete, or blocked.
-3. For valid feedback, make the smallest code change and keep it local as part of
-   the current batch. Perform only checks allowed by the local verification
-   budget. Continue through currently actionable discussions, yielding whenever
-   the active pipeline poll deadline is due.
-4. For invalid or obsolete feedback, leave the tree clean, re-fetch the exact
-   discussion, reply with a technical rationale, then resolve.
-5. For blocked feedback, stop without replying or resolving.
-6. Before reply and again before resolve, revalidate actor, MR identity, MR SHA,
-   local branch, local HEAD, and discussion snapshot.
+2. Route verified agent-review findings through `Agent-Review Finding Triage`.
+   Do not translate `suppress-with-reason` into a code repair merely because its
+   inline thread is unresolved.
+3. For ordinary human review discussions, retain the existing classification:
+   valid, invalid, obsolete, or blocked.
+4. For valid ordinary feedback and `must-fix` agent findings, make the smallest
+   code change and keep it local as part of the current batch. Perform only checks
+   allowed by the local verification budget. Continue through currently
+   actionable discussions, yielding whenever the active pipeline poll deadline
+   is due.
+5. For invalid or obsolete ordinary feedback, return a technical rationale to the
+   primary integration layer and leave the tree clean. For
+   `already-fixed-or-stale`, make no edit and follow the agent-review lifecycle
+   rather than treating an ordinary reply as suppression.
+6. For blocked ordinary feedback or `needs-human-decision`, stop without
+   representing the issue as decided.
 7. After processing the current set, fetch all discussions again and add newly
    arrived actionable feedback to the same local batch until one fresh fetch has
    none.
 8. Reopen the synchronization gate before finalizing the batch. If the target
    advanced, restart synchronization without pushing.
-9. Reply to and resolve fixed discussions only after the repair push has converged
-   to the MR SHA.
-
-Reply must succeed before resolution. Use `glab mr note create ... --reply` or
-the discussion notes API, then `glab mr note resolve ...` or the resolve API.
+9. Return side-effect intents to the primary. This skill does not equate a reply
+   or resolution with a completed agent-review disposition.
 
 ## Autonomous Engineering Decisions
 
