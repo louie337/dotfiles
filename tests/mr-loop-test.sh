@@ -90,12 +90,23 @@ assert_worker() {
   assert_contains "docs list worker $name" "$DOC" "\`$name\`"
 }
 
+assert_not_contains "mastermind is not execution model" "$AGENT" "model: datax_openai/gpt-5.6-terra"
+assert_not_contains "mastermind is not low reasoning" "$AGENT" "variant: low"
+
 assert_terra_low_agent() {
   name=$1
   path="$AGENT_DIR/$name.md"
   assert_file "agent $name exists" "$path"
   assert_contains "agent $name uses terra model" "$path" "model: datax_openai/gpt-5.6-terra"
   assert_contains "agent $name uses low variant" "$path" "variant: low"
+}
+
+assert_sol_medium_agent() {
+  name=$1
+  path="$AGENT_DIR/$name.md"
+  assert_file "agent $name exists" "$path"
+  assert_contains "agent $name uses sol model" "$path" "model: datax_openai/gpt-5.6-sol"
+  assert_contains "agent $name uses medium variant" "$path" "variant: medium"
 }
 
 assert_file "active MR agent exists" "$AGENT"
@@ -109,19 +120,24 @@ for agent in \
   docker-developer \
   golang-developer \
   react-native-expo-developer \
-  typescript-developer \
-  mr-loop-mastermind \
-  patch \
-  teach
+  typescript-developer
 do
   assert_terra_low_agent "$agent"
 done
 
+for agent in \
+  mr-loop-mastermind \
+  patch \
+  teach
+do
+  assert_sol_medium_agent "$agent"
+done
+
 assert_contains "build uses terra low" "$CONFIG" '"build": {'
-if jq -e '.agent.build.model == "datax_openai/gpt-5.6-terra" and .agent.build.variant == "low" and .agent.plan.model == "datax_openai/gpt-5.6-terra" and .agent.plan.variant == "low" and .agent.patch.model == "datax_openai/gpt-5.6-terra" and .agent.patch.variant == "low" and .agent.teach.model == "datax_openai/gpt-5.6-terra" and .agent.teach.variant == "low"' "$CONFIG" >/dev/null; then
-  pass "inline agents use terra low"
+if jq -e '.agent.build.model == "datax_openai/gpt-5.6-terra" and .agent.build.variant == "low" and .agent.plan.model == "datax_openai/gpt-5.6-sol" and .agent.plan.variant == "medium" and .agent.patch.model == "datax_openai/gpt-5.6-sol" and .agent.patch.variant == "medium" and .agent.teach.model == "datax_openai/gpt-5.6-sol" and .agent.teach.variant == "medium"' "$CONFIG" >/dev/null; then
+  pass "inline agents use role-based models"
 else
-  fail "inline agents use terra low"
+  fail "inline agents use role-based models"
 fi
 
 for exec_agent in \
