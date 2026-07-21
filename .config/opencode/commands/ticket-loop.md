@@ -15,5 +15,8 @@ Interpret the arguments as:
 /ticket-loop <LINEAR-ID> [--approve-plan] [--until mergeable|merged]
 ```
 
-Require explicit plan approval unless `--approve-plan` is present. Default `--until` to
+Before any implementation, inspect the relevant repository code and present an evidence-backed,
+newcomer-friendly overview of the affected system or feature, followed by the implementation plan.
+Require explicit plan approval unless `--approve-plan` is present; approval covers the complete
+briefing. Even with the flag, show the briefing before implementation. Default `--until` to
 `mergeable`. Linear is read-only for this workflow.

@@ -75,9 +75,12 @@ mutation. Default `--until` to `mergeable`. Default plan policy is explicit user
 
 Create `/tmp/ticket-loop-<linear-id>/` and maintain:
 
-- `state.json`: workflow version, state, ticket read timestamp, approved plan revision, repository,
-  branches, base SHA, HEAD SHA, repair count, MR identity, requested terminal state, and next action.
+- `state.json`: workflow version, state, ticket read timestamp, approved system-overview and plan
+  revisions, repository, branches, base SHA, HEAD SHA, repair count, MR identity, requested terminal
+  state, and next action.
 - `requirements.md`: ticket snapshot, clarifications, assumptions, edge cases, and acceptance criteria.
+- `system-overview.md`: versioned, newcomer-friendly explanation of the affected system or feature,
+  its relevant components, runtime flow, boundaries, current behavior, and ticket-specific change.
 - `plan.md`: versioned Mission-format plan with one commit message per Foreman unit.
 - `progress.md`: each unit's status, commit SHA, QA verdict, and result.
 - `implementation-notes.md`: chronological decisions, rejected alternatives, STOP reports, and scope changes.
@@ -93,12 +96,28 @@ do not silently continue stale or contradictory state.
    target branch and immutable base SHA. Create or switch to the ticket feature branch only through
    safe, non-discarding operations; stop if existing local work or branch identity conflicts.
 2. `clarify`: load `mission` and use its acquisition and structuring rules in planning-only mode.
-   Inspect repository instructions and relevant code before finalizing requirements. Ask concise
-   questions for material ambiguity; do not invent product behavior.
-3. `plan_approval`: write the versioned plan and present it. Without `--approve-plan`, wait for an
-   explicit user approval. With the flag, record autonomous approval and proceed. Any later material
-   requirement or scope change invalidates approval and requires a new plan revision; autonomous
-   reapproval is allowed only when the original invocation included `--approve-plan`.
+   Inspect repository instructions, relevant code, tests, configuration, and adjacent call sites
+   before finalizing requirements. Ask concise questions for material ambiguity; do not invent
+   product behavior. Ticket-loop owns the presentation and approval gate rather than delegating it
+   to Mission.
+3. `plan_approval`: write versioned `system-overview.md` and `plan.md`, then present one
+   pre-implementation briefing in this order:
+   - **Affected system overview**: assume the user is new to the codebase. In plain language explain
+     what the system or feature does and why it exists; the relevant components and each one's
+     responsibility, citing concrete repository paths; the end-to-end runtime, data, or control flow;
+     external boundaries and dependencies; current behavior versus the ticket's intended behavior;
+     scope boundaries; and the main constraints, risks, and test seams. Keep it concise and useful,
+     not a file dump. Clearly distinguish repository-verified facts, ticket requirements, and any
+     assumptions or open questions.
+   - **Implementation plan**: present the Mission-format phases and Foreman units, expected files,
+     dependencies, commit messages, and validation for each unit.
+   - **Approval**: without `--approve-plan`, ask one explicit approval question only after both
+     sections are visible, then wait. With the flag, still show both sections before recording
+     autonomous approval and proceeding. No implementation worker may start before the complete
+     briefing is presented and approval is recorded.
+   Any later material requirement, system understanding, or scope change invalidates approval and
+   requires revised overview and plan versions to be presented. Autonomous reapproval is allowed
+   only when the original invocation included `--approve-plan`.
 4. `foreman_execution`: load `foreman`. Execute plan units serially. Use `ticket-loop-worker` for
    every implementation and fix so execution consistently runs on `gpt-5.6-terra` with medium
    reasoning. Require exactly one normal commit per unit,

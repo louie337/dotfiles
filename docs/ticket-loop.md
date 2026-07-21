@@ -9,13 +9,16 @@ The slash command is `.config/opencode/commands/ticket-loop.md` and selects the
 /ticket-loop <LINEAR-ID> [--approve-plan] [--until mergeable|merged]
 ```
 
-Plan approval is interactive by default. `--approve-plan` explicitly authorizes autonomous plan
-approval. `--until` defaults to `mergeable`.
+Approval is interactive by default. Before asking, ticket-loop explains the affected system or
+feature for someone new to the codebase and then presents the implementation plan. `--approve-plan`
+explicitly authorizes autonomous approval, but does not skip that briefing. `--until` defaults to
+`mergeable`.
 
 ## Workflow
 
 ```text
-Linear read -> requirements -> Mission-format plan -> approval -> Foreman commits and commit QA
+Linear read -> requirements and code inspection -> affected-system overview -> Mission-format plan
+  -> approval -> Foreman commits and commit QA
   -> whole-branch integration PM -> normal push -> find/create MR -> MR loop
 ```
 
@@ -26,6 +29,24 @@ Mission contributes requirement acquisition and decomposition. In ticket-loop it
 planning-only mode and does not execute parallel workers. Foreman executes the approved plan using
 OpenCode task subagents, one mutating worker at a time, followed by a fresh adversarial QA worker for
 each exact commit. Foreman never launches tmux, `claude -p`, or another agent process.
+
+## Pre-implementation Briefing
+
+Before approval or implementation, the mastermind inspects the relevant code, tests,
+configuration, and call sites. It presents an evidence-backed overview that assumes no prior
+codebase knowledge and covers:
+
+- What the affected system or feature does and why it exists.
+- The relevant components, their responsibilities, and concrete repository paths.
+- The end-to-end runtime, data, or control flow and external dependencies.
+- Current behavior, the ticket's intended change, and what is outside scope.
+- Important terminology, constraints, risks, and test seams.
+
+Verified repository behavior, ticket requirements, and assumptions or open questions are identified
+separately. The Mission-format implementation plan follows the overview. Interactive approval is
+requested only after both are visible. `--approve-plan` records approval automatically only after
+showing the same briefing. A material change to the requirements, system understanding, or scope
+invalidates approval and requires revised overview and plan versions.
 
 Planning, orchestration, commit QA, and integration review use `gpt-5.6-sol`. Implementation and fix
 workers use `gpt-5.6-terra` with the `medium` reasoning variant to reduce execution latency.
@@ -48,8 +69,8 @@ control to `mr-loop-mastermind` with the exact MR URL and requested terminal con
 ## Durable State
 
 Resumable state lives under `/tmp/ticket-loop-<linear-id>/` in `state.json`, `requirements.md`,
-`plan.md`, `progress.md`, `implementation-notes.md`, and `reports/`. SHA or identity changes invalidate
-worker reports and must be reconciled before mutation.
+`system-overview.md`, `plan.md`, `progress.md`, `implementation-notes.md`, and `reports/`. SHA or
+identity changes invalidate worker reports and must be reconciled before mutation.
 
 ## Safety
 
