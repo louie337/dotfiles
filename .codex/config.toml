@@ -14,7 +14,6 @@ max_threads = 6
 max_depth = 1
 
 [tui]
-vim_mode_default = true
 notifications = true
 notification_method = "auto"
 notification_condition = "always"
