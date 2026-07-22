@@ -4,7 +4,9 @@ model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-writable_roots = ["/Users/louie/Documents/subanana/subanana-main/.git"]
+writable_roots = [
+    "/Users/louie/Documents/subanana/subanana-main",
+]
 
 [features]
 apps = false
