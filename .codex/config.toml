@@ -1,6 +1,6 @@
 model_provider = "datax-codex-lb"
-model = "gpt-5.6-luna"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"
 
 [features]
 apps = false
@@ -13,7 +13,7 @@ max_depth = 1
 vim_mode_default = true
 notifications = true
 notification_method = "auto"
-notification_condition = "unfocused"
+notification_condition = "always"
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
