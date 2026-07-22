@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ticket Loop"
+  short_description: "Implement a ticket through MR readiness"
+  default_prompt: "Use $ticket-loop with a Linear issue ID to brief, plan, implement, validate, publish, and advance its merge request."

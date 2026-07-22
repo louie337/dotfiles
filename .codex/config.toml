@@ -2,6 +2,19 @@ model_provider = "datax-codex-lb"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "low"
 
+[agents]
+max_threads = 6
+max_depth = 1
+
+[tui]
+notifications = true
+notification_method = "auto"
+notification_condition = "unfocused"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+"gpt-5.6-sol" = 4
+
 [model_providers.datax-codex-lb]
 name = "OpenAI"  # required — enables remote /responses/compact
 apps = false
@@ -17,9 +30,32 @@ trust_level = "trusted"
 [projects."/Users/louie/dotfiles"]
 trust_level = "trusted"
 
-[tui.model_availability_nux]
-"gpt-5.5" = 4
-"gpt-5.6-sol" = 1
+[projects."/Users/louie/Documents/subanana/subanana-main"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/local-vpn-proxy"]
+trust_level = "trusted"
+
+[mcp_servers.linear]
+url = "https://mcp.linear.app/mcp"
+
+[mcp_servers.artifact-drop]
+command = "node"
+args = ["/Users/louie/Documents/subanana/artifact-drop/server.mjs"]
+env_vars = ["ARTIFACT_DROP_TOKEN"]
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--auto-connect"]
+enabled = false
+
+[mcp_servers.subanana-data-analytics]
+url = "https://mcp.subanana.com"
+bearer_token_env_var = "MCP_SHARED_KEY"
+
+[mcp_servers.subanana-data-analytics-dev]
+url = "https://dev-mcp.subanana.com"
+bearer_token_env_var = "MCP_SHARED_KEY_DEV"
 
 [notice.model_migrations]
 "gpt-5.4-mini" = "gpt-5.6-luna"

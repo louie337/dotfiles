@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patch"
+  short_description: "Apply a focused evidence-backed code fix"
+  default_prompt: "Use $patch to diagnose and implement the smallest verified fix for the current issue."

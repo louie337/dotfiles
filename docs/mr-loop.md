@@ -2,17 +2,23 @@
 
 ## Source Of Truth
 
-The active MR loop is the OpenCode standalone/all-mode agent at
-`.config/opencode/agents/mr-loop-mastermind.md`. It is the sole state-machine,
-scheduler, mutation owner, and final-output authority.
+The active MR loop is the Codex skill at `.agents/skills/mr-loop/SKILL.md`. Invoke
+it as `$mr-loop` with an MR URL and optional `mergeable` or `merged` target. The
+root Codex thread owns the state machine, scheduling, mutations, and final claims.
 
-The slash-command entry point is `.config/opencode/commands/mr-loop.md`.
-It only forwards arguments, documents the default, and selects the active agent.
-The ticket implementation workflow may also invoke this same agent as an OpenCode
-subagent after it creates an MR; MR-loop retains sole ownership of its remote state
-machine and safety policy during that control transfer.
+Its compact canonical transition map is
+`.agents/skills/mr-loop/references/state-machine.md`. Read-only investigation is
+delegated to the custom agents under `.codex/agents/`:
 
-Reusable procedures live in `.config/opencode/skills/mr-loop-*/SKILL.md`:
+- `mr-loop-review-investigator`
+- `mr-loop-conflict-investigator`
+- `mr-loop-ci-investigator`
+
+The previous OpenCode definitions remain temporarily under `.config/opencode/`
+as migration reference and rollback material; they are no longer authoritative.
+The historical controller is `.config/opencode/agents/mr-loop-mastermind.md`, and
+its historical supporting source set is `.config/opencode/skills/mr-loop-*/SKILL.md`.
+Their reusable procedure split was:
 
 - `mr-loop-evidence`: immutable evidence envelopes, policy IDs, worker result
   contracts, and stale-result rejection.
@@ -33,14 +39,16 @@ Reusable procedures live in `.config/opencode/skills/mr-loop-*/SKILL.md`:
 - `mr-loop-linear-context`: exact Linear lookup from `SUB-[0-9]+` source branches
   and domain conflict precedence.
 
-The executable policy contract is `tests/mr-loop-test.sh`. Structured conflict
+The Codex migration contract is `tests/codex-migration-test.sh`. The legacy
+OpenCode policy contract remains `tests/mr-loop-test.sh`. Structured conflict
 transition cases are in `tests/fixtures/mr-loop-conflict-scenarios.json`, and
 proportional review dispositions are in
 `tests/fixtures/mr-loop-review-triage-scenarios.json`.
 
-The dotfiles repository is installed with Stow, so files under
-`~/.config/opencode/` are links to these source-controlled definitions. Edit the
-repository files, not copied or generated installation paths. Older documents
+The dotfiles repository is installed with Stow, so `~/.codex/config.toml`,
+`~/.codex/AGENTS.md`, `~/.codex/agents/`, and `~/.agents/skills/` resolve to these
+source-controlled definitions. Edit repository files, not generated installation
+paths. Older documents
 under `docs/superpowers/` describe the removed `.local/bin/mr-loop` shell
 supervisor and are retained only as historical records.
 
@@ -215,8 +223,14 @@ fallbacks for explicit reproduction or interactive debugging requests.
 
 ## Testing Note
 
-Run the path-specific executable policy contract after changing the agent,
-command, skills, worker agents, or this documentation:
+Run the Codex migration contract after changing the skill, custom agents,
+configuration, or this documentation:
+
+```sh
+sh tests/codex-migration-test.sh
+```
+
+When changing retained OpenCode rollback material, also run its legacy contract:
 
 ```sh
 sh tests/mr-loop-test.sh

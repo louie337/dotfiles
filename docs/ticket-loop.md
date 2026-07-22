@@ -2,11 +2,12 @@
 
 ## Entry Point
 
-The slash command is `.config/opencode/commands/ticket-loop.md` and selects the
-`.config/opencode/agents/ticket-loop-mastermind.md` primary agent.
+The active entry point is the Codex skill at `.agents/skills/ticket-loop/SKILL.md`.
+Invoke it explicitly as `$ticket-loop`; the root thread remains the controller.
+The old OpenCode command and mastermind remain only as migration reference.
 
 ```text
-/ticket-loop <LINEAR-ID> [--approve-plan] [--until mergeable|merged]
+$ticket-loop <LINEAR-ID> [--approve-plan] [--until mergeable|merged]
 ```
 
 Approval is interactive by default. Before asking, ticket-loop explains the affected system or
@@ -26,9 +27,10 @@ Linear supplies requirements only. Ticket-loop never comments on, edits, transit
 otherwise updates Linear.
 
 Mission contributes requirement acquisition and decomposition. In ticket-loop it runs in
-planning-only mode and does not execute parallel workers. Foreman executes the approved plan using
-OpenCode task subagents, one mutating worker at a time, followed by a fresh adversarial QA worker for
-each exact commit. Foreman never launches tmux, `claude -p`, or another agent process.
+planning-only mode and does not execute parallel workers. Codex executes the approved plan using
+the `ticket-loop-worker` custom agent one work unit at a time, followed by a fresh
+`ticket-loop-commit-qa` agent for each exact commit. Subagents are spawned through Codex's native
+multi-agent runtime, never through tmux or a nested CLI process.
 
 ## Pre-implementation Briefing
 
@@ -48,8 +50,9 @@ requested only after both are visible. `--approve-plan` records approval automat
 showing the same briefing. A material change to the requirements, system understanding, or scope
 invalidates approval and requires revised overview and plan versions.
 
-Planning, orchestration, commit QA, and integration review use `gpt-5.6-sol`. Implementation and fix
-workers use `gpt-5.6-terra` with the `medium` reasoning variant to reduce execution latency.
+Planning and orchestration stay in the root session. Implementation workers use `gpt-5.6-terra`
+with low reasoning; independent commit QA and integration review use `gpt-5.6-terra` with medium
+reasoning.
 
 ## Verification Policy
 
@@ -105,7 +108,13 @@ Ticket-loop prohibits reset, clean, stash, local rebase, amend, force-push, disc
 concurrent mutating workers. Its MR phase uses the canonical `mr-loop-mastermind`; see
 `docs/mr-loop.md` for remote synchronization, repair, CI, and merge safeguards.
 
-Run the policy contracts after changing ticket-loop, Mission, Foreman, or their agents:
+Run the Codex migration contract after changing ticket-loop or its agents:
+
+```sh
+sh tests/codex-migration-test.sh
+```
+
+When changing retained OpenCode rollback material, also run:
 
 ```sh
 sh tests/ticket-loop-test.sh

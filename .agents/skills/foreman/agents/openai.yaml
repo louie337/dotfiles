@@ -1,0 +1,4 @@
+interface:
+  display_name: "Foreman"
+  short_description: "Execute plans as independently reviewed commits"
+  default_prompt: "Use $foreman to execute this approved plan as serialized commits with independent QA."

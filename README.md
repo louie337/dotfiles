@@ -30,6 +30,20 @@ stow .
 - Be aware of potential conflicts with existing configurations.
 - Report any issues or suggest improvements on the GitHub repository.
 
+## Codex
+
+Global Codex configuration lives in `.codex/`, reusable skills in `.agents/skills/`, and Codex
+custom agents in `.codex/agents/`. The active end-to-end workflows are `$ticket-loop` and
+`$mr-loop`; `$mission` and `$foreman` provide general parallel and serialized plan execution.
+OpenCode definitions under `.config/opencode/` are retained temporarily as migration reference and
+rollback material.
+
+Validate the Codex-managed files with:
+
+```sh
+sh tests/codex-migration-test.sh
+```
+
 ## Resources
 - stow man page: https://www.gnu.org/software/stow/manual/
 - Enjoy using my dotfiles!

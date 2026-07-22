@@ -1,0 +1,59 @@
+# Preserve local work and shared history. Explicitly requested exceptional workflows must use a
+# separately reviewed rules override rather than silently bypassing these defaults.
+prefix_rule(
+    pattern = ["git", "reset"],
+    decision = "forbidden",
+    justification = "Preserve local work; use a forward fix or an explicitly reviewed override.",
+    match = [["git", "reset", "--hard", "HEAD"]],
+)
+
+prefix_rule(
+    pattern = ["git", "clean"],
+    decision = "forbidden",
+    justification = "Do not delete untracked work; inspect and remove exact files explicitly.",
+    match = [["git", "clean", "-fd"]],
+)
+
+prefix_rule(
+    pattern = ["git", "stash"],
+    decision = "forbidden",
+    justification = "Do not hide user work as agent workflow state.",
+    match = [["git", "stash", "push"]],
+)
+
+prefix_rule(
+    pattern = ["git", "rebase"],
+    decision = "forbidden",
+    justification = "Avoid local history rewriting; prefer remote rebase or a normal merge workflow.",
+    match = [["git", "rebase", "main"]],
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "--amend"],
+    decision = "forbidden",
+    justification = "Create a new normal commit instead of rewriting an existing commit.",
+    match = [["git", "commit", "--amend", "--no-edit"]],
+    not_match = [["git", "commit", "-m", "fix"]],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease", "-f"]],
+    decision = "forbidden",
+    justification = "Use a normal push; do not rewrite the remote branch.",
+    match = [["git", "push", "--force", "origin", "HEAD"]],
+    not_match = [["git", "push", "origin", "HEAD"]],
+)
+
+prefix_rule(
+    pattern = [["sudo", "su"]],
+    decision = "forbidden",
+    justification = "Do not elevate the agent to an unrestricted system identity.",
+    match = [["sudo", "apt", "update"], ["su", "root"]],
+)
+
+prefix_rule(
+    pattern = [["dd", "kubectl", "tofu"]],
+    decision = "forbidden",
+    justification = "This global agent configuration does not authorize raw disk or infrastructure mutation.",
+    match = [["dd", "if=/dev/zero"], ["kubectl", "apply", "-f", "x.yaml"], ["tofu", "apply"]],
+)

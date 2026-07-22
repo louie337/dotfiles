@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mission"
+  short_description: "Execute large plans with parallel Codex agents"
+  default_prompt: "Use $mission to decompose and execute this implementation plan with dependency-aware Codex subagents."

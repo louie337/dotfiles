@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teach"
+  short_description: "Explain software with concise progressive depth"
+  default_prompt: "Use $teach to explain this code or concept with a concrete example and progressive detail."

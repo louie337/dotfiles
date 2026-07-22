@@ -1,0 +1,4 @@
+interface:
+  display_name: "MR Loop"
+  short_description: "Drive a GitLab MR safely to mergeability"
+  default_prompt: "Use $mr-loop with an MR URL and target state to inspect, repair, verify, and advance the merge request."
