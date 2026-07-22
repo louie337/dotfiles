@@ -1,6 +1,20 @@
 # Preserve local work and shared history. Explicitly requested exceptional workflows must use a
 # separately reviewed rules override rather than silently bypassing these defaults.
 prefix_rule(
+    pattern = ["rm"],
+    decision = "forbidden",
+    justification = "Do not delete files with rm; use a scoped, recoverable alternative.",
+    match = [["rm", "-rf", "/tmp/example"]],
+)
+
+prefix_rule(
+    pattern = ["chmod"],
+    decision = "forbidden",
+    justification = "Do not change filesystem permissions from an agent session.",
+    match = [["chmod", "-R", "777", "/tmp/example"]],
+)
+
+prefix_rule(
     pattern = ["git", "reset"],
     decision = "forbidden",
     justification = "Preserve local work; use a forward fix or an explicitly reviewed override.",

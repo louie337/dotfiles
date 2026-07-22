@@ -26,6 +26,8 @@ assert_contains "artifact-drop MCP configured" "$CONFIG" "[mcp_servers.artifact-
 assert_contains "Chrome MCP retained disabled" "$CONFIG" "[mcp_servers.chrome-devtools]"
 assert_contains "subagent nesting is bounded" "$CONFIG" "max_depth = 1"
 assert_file "global execpolicy exists" "$ROOT/.codex/rules/global.rules"
+assert_contains "execpolicy forbids rm" "$ROOT/.codex/rules/global.rules" 'pattern = ["rm"]'
+assert_contains "execpolicy forbids chmod" "$ROOT/.codex/rules/global.rules" 'pattern = ["chmod"]'
 assert_contains "execpolicy forbids reset" "$ROOT/.codex/rules/global.rules" 'pattern = ["git", "reset"]'
 assert_contains "execpolicy forbids force push" "$ROOT/.codex/rules/global.rules" '"--force-with-lease"'
 
@@ -75,6 +77,18 @@ decision=$(codex execpolicy check --rules "$ROOT/.codex/rules/global.rules" -- g
 case "$decision" in
   *'"decision":"forbidden"'*|*'"decision": "forbidden"'*) pass "execpolicy blocks destructive reset" ;;
   *) fail "execpolicy blocks destructive reset" ;;
+esac
+
+decision=$(codex execpolicy check --rules "$ROOT/.codex/rules/global.rules" -- rm -rf /tmp/example)
+case "$decision" in
+  *'"decision":"forbidden"'*|*'"decision": "forbidden"'*) pass "execpolicy blocks rm" ;;
+  *) fail "execpolicy blocks rm" ;;
+esac
+
+decision=$(codex execpolicy check --rules "$ROOT/.codex/rules/global.rules" -- chmod -R 777 /tmp/example)
+case "$decision" in
+  *'"decision":"forbidden"'*|*'"decision": "forbidden"'*) pass "execpolicy blocks chmod" ;;
+  *) fail "execpolicy blocks chmod" ;;
 esac
 
 if [ "$failures" -ne 0 ]; then
