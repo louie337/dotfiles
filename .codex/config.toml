@@ -44,7 +44,7 @@ url = "https://mcp.linear.app/mcp"
 
 [mcp_servers.artifact-drop]
 command = "node"
-args = ["/Users/louie/Documents/subanana/artifact-drop/server.mjs"]
+args = ["/Users/louie/Documents/subanana/artifact-drop/mcp/server.mjs"]
 env_vars = ["ARTIFACT_DROP_TOKEN"]
 
 [mcp_servers.chrome-devtools]

@@ -27,7 +27,7 @@
       "type": "local",
       "command": [
         "node",
-        "/Users/louie/Documents/subanana/artifact-drop/server.mjs"
+        "/Users/louie/Documents/subanana/artifact-drop/mcp/server.mjs"
       ],
       "enabled": true,
       "env": {
