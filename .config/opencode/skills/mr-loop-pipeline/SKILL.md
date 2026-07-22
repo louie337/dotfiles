@@ -29,6 +29,11 @@ creating verification pipelines or hiding polling inside shell loops.
 - Never create a no-op or verification-only commit, push unchanged code, or
   create/update an MR solely to make CI run. Pipelines must arise from the normal
   push of actual synchronized repair code or existing GitLab workflow behavior.
+- A path-selected helper-MR pipeline is not evidence of equivalent required
+  coverage. If the user explicitly authorizes a separate helper MR, map and prove
+  every required check affected by its metadata change before merge; otherwise
+  report the selection/coverage gap and do not merge it. Target-owned failures do
+  not by themselves justify a helper MR.
 - Retry only positively identified transient infrastructure failures, only after
   the canonical pipeline is terminal, and only after the serialization gate proves
   no relevant pipeline is active.

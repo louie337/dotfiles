@@ -50,6 +50,22 @@ target ref immediately before acting.
 Auth, permission, network, unknown, or non-conflict rebase failures do not
 authorize local integration.
 
+## Pre-Synchronization Causal Metadata Exception
+
+`INV-NO-PRESYNC-REPAIR` still prohibits unrelated repair before the gate opens.
+`INV-PRESYNC-CAUSAL-METADATA-REPAIR` permits only validation-enabling repository
+metadata proven under `mr-loop-conflict-analysis` and verified under
+`mr-loop-conflict-integration`. It is part of the existing exact merge attempt and
+its single ordinary two-parent commit, not a separate repair phase, branch, MR,
+commit, or push.
+
+A target-owned validation failure does not automatically require a separate MR.
+Use one only when the user explicitly requests it or the repair cannot safely
+belong to the current integration commit. Never merge a helper MR merely because
+its path-selected MR pipeline passes; before an explicitly authorized helper MR
+is merged, prove coverage equivalent to all required checks affected by the
+repair or report the coverage gap and do not merge it.
+
 ## Local Target Synchronization
 
 Local target synchronization is optional. MR comparison and conflict integration

@@ -76,6 +76,17 @@ integration is the sole editing exception and uses an isolated detached worktree
 focused verification, a preserved two-parent merge commit, one normal push, and a
 fresh startup after SHA convergence.
 
+`INV-PRESYNC-CAUSAL-METADATA-REPAIR` narrowly extends that integration attempt.
+When mandatory service-free validation fails solely on target-introduced content
+that documented vendor, generated, byte-identical, immutable, or canonical-source
+rules prohibit editing, the same merge commit may include the smallest exact-path
+metadata rule needed to validate the complete candidate. The loop must prove
+protected bytes unchanged, intended and unrelated path behavior, complete staged
+scope, and no product/runtime/security/deployment/schema decision. Broad
+validation weakening and unrelated cleanup fail closed. A target-owned failure
+does not automatically create a helper MR; an explicitly authorized helper MR
+cannot merge on path-selected CI alone without equivalent required coverage.
+
 Active required CI owns a hard recursive-poll deadline no later than 30 seconds
 after each complete graph snapshot. Optional workers and broad investigation
 cannot delay that poll.

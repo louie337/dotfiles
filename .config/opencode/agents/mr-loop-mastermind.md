@@ -218,11 +218,13 @@ For conflict fallback, persist `conflict_attempt_id`, `conflict_phase`,
 
 `resolved_uncommitted` is set only at the boundary defined in
 `mr-loop-conflict-integration`: after reviewed conflict paths and proven generated
-outputs are staged, unmerged entries and markers are gone, `git diff --check` and
-required service-free focused verification pass, resource-heavy verification is
-mapped to exact automatic GitLab jobs or a named coverage gap, and no unrelated
-staged or unstaged changes exist. This makes recovery distinguish a fully
-resolved but still abortable attempt from an unresolved merge.
+outputs and any proven validation-enabling metadata repair are staged, unmerged
+entries and markers are gone, the original mandatory validation and required
+service-free focused verification pass, protected target bytes and intended plus
+unintended metadata behavior are proven, resource-heavy verification is mapped to
+exact automatic GitLab jobs or a named coverage gap, and the staged-path allowlist
+contains no unrelated changes. This makes recovery distinguish a fully resolved
+but still abortable attempt from an unresolved merge.
 
 ## Synchronization Gate
 
@@ -232,6 +234,19 @@ verification, reply to or resolve repair discussions, run CI as evidence of the
 merge candidate, or claim findings final. Read-only investigation is allowed only
 as provisional evidence. Safe merge-conflict resolution is the only editing
 exception.
+
+`INV-PRESYNC-CAUSAL-METADATA-REPAIR`: safe merge-conflict integration may include
+one or more narrowly scoped repository metadata paths in its same ordinary
+two-parent merge commit when the exact merge is otherwise clean or deterministic,
+a mandatory service-free validation fails solely on target-introduced protected
+content, the documented immutable/generated/vendor/canonical-source contract
+prohibits direct edits, and exact path/category metadata is the smallest
+non-behavioral fix. Require original-validation, intended/unintended attribute,
+protected-byte, staged-allowlist, repository-rule, documentation, and all other
+service-free check evidence before commit. Broad weakening, unrelated defects,
+safe direct content repair, unproven contracts, or runtime/product/security/
+deployment/schema effects require human input. This is causal conflict
+integration, not ordinary pre-sync repair or permission for a helper MR.
 
 Use `mr-loop-synchronization` for the exact gate definition. The gate expires
 before every repair edit, commit, push, target merge, and CI or mergeability

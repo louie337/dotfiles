@@ -29,6 +29,13 @@ its reusable skills, and its read-only investigator subagents.
   are provisional and cannot produce edits, commits, pushes, replies, discussion
   resolution, CI evaluation, or success claims. Safe merge-conflict integration is
   the only editing exception because it opens the gate.
+- `INV-PRESYNC-CAUSAL-METADATA-REPAIR`: within that exact merge attempt only, a
+  repository metadata path may be treated as a proven causal integration path
+  when mandatory service-free validation fails solely on target-introduced
+  immutable, generated, vendored, byte-identical, or canonical-source content;
+  the path-scoped metadata rule is the smallest non-behavioral fix and preserves
+  validation for first-party and unrelated paths. This extends conflict
+  integration, not ordinary pre-synchronization repair.
 - `INV-CONFLICT-COMMIT-PRESERVED`: after a conflict merge commit exists, never
   abort, amend, delete, reset, rebase, rewrite, or hide it; preserve it under
   `refs/mr-loop/conflicts/<conflict-attempt-id>` on concurrency or push

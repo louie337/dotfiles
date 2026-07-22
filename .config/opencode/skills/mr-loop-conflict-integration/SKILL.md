@@ -52,10 +52,18 @@ unmerged paths, conflict types, and merge-created changes.
 Set `conflict_phase=resolved_uncommitted` only after all of these are true:
 
 - every reviewed conflict path and proven regenerated output is staged;
+- every proven validation-enabling metadata repair is staged;
 - `git ls-files -u` is empty;
 - no unmerged status entries remain;
 - conflict marker checks pass;
-- `git diff --check` passes;
+- the original mandatory validation, including `git diff --check` when
+  applicable, passes against the complete merge candidate;
+- `git check-attr` or the configuration's equivalent proves both intended
+  affected-path behavior and unintended first-party/unrelated-path behavior;
+- every protected target path is byte-identical to its blob at the exact target
+  SHA;
+- staged paths are exactly the recorded merge manifest, reviewed conflict paths,
+  proven generated outputs, and proven causal metadata repairs;
 - no unrelated staged or unstaged changes exist;
 - required service-free path-specific rules, canonical generation, and focused
   verification have completed successfully or are proven not applicable;
@@ -87,6 +95,10 @@ Create exactly one conventional merge commit such as
 `chore(merge): integrate <target-branch>`. Its body must include
 `Target-SHA: <exact-target-sha>` and `Conflicts-Resolved-By: MR agent loop`.
 Verify exactly two parents in order: expected source SHA then exact target SHA.
+Any proven validation-enabling metadata repair belongs in this same ordinary
+two-parent commit on the existing MR branch. Do not create a helper branch or MR
+unless the user explicitly requests one or evidence proves the repair cannot
+safely belong to this integration commit.
 Set `conflict_phase=committed_unpushed`, record the merge SHA, and preserve it:
 
 ```sh
@@ -115,10 +127,19 @@ guarded cleanup and restart at `startup` from a fresh same-SHA snapshot.
 
 Persist JSON at `/tmp/mr-loop-state-<conflict-attempt-id>.json`, never in a
 Git worktree. Record phase, source SHA, target SHA, conflicted paths and types,
-per-path evidence, generated paths, rule dispatch, verification, merge SHA,
+per-path evidence, generated paths, causal metadata paths, rule dispatch,
+verification, merge SHA,
 pending automatic CI jobs or evidence, proven remote coverage gaps, any approved
 targeted local fallback, preservation ref, pushed SHA, cleanup state, and residual
 risks.
+
+For each causal metadata repair, the decision log must identify the failing
+validation; target-owned paths causing it; the documented immutable/generated/
+vendor/canonical-source contract and why direct edits are prohibited; metadata
+path and exact scoped rule; proof that unrelated paths retain original
+validation; and blob/hash proof that protected bytes equal the exact target SHA.
+Record the complete staged-path allowlist and all other mandatory service-free
+check results before commit.
 
 Before a merge commit exists, abort an isolated attempt only when ownership is
 fully proven. After a merge commit exists, never abort, delete, amend, reset,

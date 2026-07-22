@@ -184,6 +184,7 @@ assert_contains "agent states skills do not override state" "$AGENT" "Skills pro
 assert_contains "agent retains primary mutation ownership" "$AGENT" "INV-PRIMARY-MUTATION-OWNER"
 assert_contains "agent retains no history rewrite invariant" "$AGENT" "INV-NO-HISTORY-REWRITE"
 assert_contains "agent retains pre-sync repair invariant" "$AGENT" "INV-NO-PRESYNC-REPAIR"
+assert_contains "agent defines causal metadata exception" "$AGENT" "INV-PRESYNC-CAUSAL-METADATA-REPAIR"
 assert_contains "agent retains deadline invariant" "$AGENT" "INV-PIPELINE-DEADLINE-FIRST"
 assert_contains "agent retains permission override" "$AGENT" "override generic skill"
 assert_contains "agent delegates only execution scopes" "$AGENT" "Subagents are execution-only helpers"
@@ -208,10 +209,13 @@ assert_contains "sync permits guarded target pull" "$SKILL_DIR/mr-loop-synchroni
 assert_contains "conflict analysis preserves both parents" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "Preserve non-overlapping behavior from both parents"
 assert_contains "conflict analysis handles add-add" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "add/add conflicts containing"
 assert_contains "conflict analysis detects generated files" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "SQLC output, protobuf"
+assert_contains "conflict analysis scopes causal metadata" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "Validation-Enabling Metadata"
 assert_contains "conflict analysis separates mechanism from intent" "$SKILL_DIR/mr-loop-conflict-analysis/SKILL.md" "Conflict intent and mechanism availability are separate"
 assert_contains "conflict integration creates detached worktree" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git worktree add --detach /tmp/mr-loop-worktree-<conflict-attempt-id>'
 assert_contains "conflict integration merges exact target" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git merge --no-ff --no-commit <exact-target-sha>'
 assert_contains "conflict integration defines resolved boundary" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'Set `conflict_phase=resolved_uncommitted` only after'
+assert_contains "conflict integration verifies metadata attributes" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" '`git check-attr`'
+assert_contains "conflict integration keeps metadata in merge commit" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" "two-parent commit on the existing MR branch"
 assert_contains "conflict integration preserves merge ref" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'refs/mr-loop/conflicts/<conflict-attempt-id>'
 assert_contains "conflict integration pushes detached head" "$SKILL_DIR/mr-loop-conflict-integration/SKILL.md" 'git push origin HEAD:<source-branch>'
 assert_contains "review repair batches discussions" "$SKILL_DIR/mr-loop-review-repair/SKILL.md" "Do not commit or push after each discussion"
@@ -247,6 +251,7 @@ assert_contains "pipeline recursively fetches bridges" "$SKILL_DIR/mr-loop-pipel
 assert_contains "pipeline checks jobs before aggregate" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" "Before aggregate pipeline status"
 assert_contains "pipeline forbids shell polling loops" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" 'Never delegate waiting to a shell `while`'
 assert_contains "pipeline serializes mutations" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" "perform exactly one mutation"
+assert_contains "pipeline rejects helper path-only coverage" "$SKILL_DIR/mr-loop-pipeline/SKILL.md" "path-selected helper-MR pipeline"
 assert_contains "linear context requires exact lookup" "$SKILL_DIR/mr-loop-linear-context/SKILL.md" "Fetch that exact issue"
 assert_contains "linear context defaults target behavior" "$SKILL_DIR/mr-loop-linear-context/SKILL.md" "target behavior wins"
 assert_contains "linear context checks authorization tests" "$SKILL_DIR/mr-loop-linear-context/SKILL.md" "including authorization boundaries"
@@ -278,14 +283,18 @@ assert_contains "docs distinguish historical supervisor" "$DOC" 'removed `.local
 assert_contains "docs record policy test" "$DOC" 'sh tests/mr-loop-test.sh'
 
 if jq -e '
-  length == 19 and
-  ([.[].scenario] | unique | length) == 19 and
+  length == 23 and
+  ([.[].scenario] | unique | length) == 23 and
   all(.[]; (.from | type == "string") and (.event | type == "string") and (.guards | type == "array") and (.actions | type == "array") and (.to | type == "string") and (.forbidden | type == "array")) and
   (map(select(.scenario == "gitlab_rebase_succeeds" and .to == "startup" and (.forbidden | index("local_merge")))) | length) == 1 and
   (map(select(.scenario == "gitlab_rebase_conflicts" and .to == "safe_merge_conflict_resolution" and (.forbidden | index("local_rebase")))) | length) == 1 and
   (map(select(.scenario == "clear_content_conflict" and .to == "resolved_uncommitted" and (.actions | index("set_resolved_uncommitted")))) | length) == 1 and
   (map(select(.scenario == "compatible_add_add_conflict" and .to == "resolved_uncommitted" and (.actions | index("set_resolved_uncommitted")))) | length) == 1 and
   (map(select(.scenario == "generated_file_conflict" and .to == "resolved_uncommitted" and (.actions | index("stage_sources_and_generated_outputs")))) | length) == 1 and
+  (map(select(.scenario == "path_scoped_vendor_whitespace_metadata" and .to == "resolved_uncommitted" and (.actions | index("stage_causal_metadata_with_merge")) and (.forbidden | index("create_helper_mr")))) | length) == 1 and
+  (map(select(.scenario == "repository_wide_whitespace_disable_denied" and .to == "manual_action_required" and (.forbidden | index("stage_metadata")))) | length) == 1 and
+  (map(select(.scenario == "unrelated_first_party_lint_disable_denied" and .to == "manual_action_required" and (.guards | index("unrelated_validation_weakened")))) | length) == 1 and
+  (map(select(.scenario == "runtime_config_validation_bypass_denied" and .to == "manual_action_required" and (.forbidden | index("stage_runtime_config")))) | length) == 1 and
   (map(select(.scenario == "resolved_uncommitted_commits" and .from == "resolved_uncommitted" and .to == "committed_unpushed" and (.actions | index("preserve_merge_ref")))) | length) == 1 and
   (map(select(.scenario == "target_changes_before_commit" and .from == "resolved_uncommitted" and .to == "startup" and (.forbidden | index("push")))) | length) == 1 and
   (map(select(.scenario == "source_changes_before_commit" and .from == "resolved_uncommitted" and .to == "startup_or_blocked_remote_changed")) | length) == 1 and

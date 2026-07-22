@@ -45,6 +45,42 @@
     "forbidden": ["unsupported_generated_hand_edit", "commit_before_generator"]
   },
   {
+    "scenario": "path_scoped_vendor_whitespace_metadata",
+    "from": "unresolved_merge",
+    "event": "mandatory_validation_fails_only_on_target_vendor_bytes",
+    "guards": ["merge_otherwise_clean_or_deterministic", "vendor_contract_proven", "direct_edit_prohibited", "metadata_smallest_fix", "exact_path_and_category_scope", "unrelated_validation_preserved", "target_bytes_identical", "non_behavioral"],
+    "actions": ["stage_causal_metadata_with_merge", "record_metadata_decision", "set_resolved_uncommitted"],
+    "to": "resolved_uncommitted",
+    "forbidden": ["edit_vendor_bytes", "create_helper_mr", "separate_commit", "broad_validation_exemption"]
+  },
+  {
+    "scenario": "repository_wide_whitespace_disable_denied",
+    "from": "unresolved_merge",
+    "event": "metadata_rule_broadly_weakens_validation",
+    "guards": ["scope_not_narrow"],
+    "actions": ["report_manual_action_required"],
+    "to": "manual_action_required",
+    "forbidden": ["stage_metadata", "commit", "push"]
+  },
+  {
+    "scenario": "unrelated_first_party_lint_disable_denied",
+    "from": "unresolved_merge",
+    "event": "metadata_rule_exempts_unrelated_first_party_code",
+    "guards": ["unrelated_validation_weakened"],
+    "actions": ["report_manual_action_required"],
+    "to": "manual_action_required",
+    "forbidden": ["stage_metadata", "commit", "push"]
+  },
+  {
+    "scenario": "runtime_config_validation_bypass_denied",
+    "from": "unresolved_merge",
+    "event": "runtime_configuration_changed_to_pass_test",
+    "guards": ["runtime_or_product_behavior_affected"],
+    "actions": ["report_manual_action_required"],
+    "to": "manual_action_required",
+    "forbidden": ["stage_runtime_config", "commit", "push"]
+  },
+  {
     "scenario": "resolved_uncommitted_commits",
     "from": "resolved_uncommitted",
     "event": "pre_commit_guards_passed",

@@ -11,14 +11,48 @@ cleanup.
 
 ## Conflict Scope
 
-- Only paths Git reports as unmerged are conflict-repair paths.
+- Paths Git reports as unmerged are conflict-repair paths.
 - Additional changed paths are allowed only when they are canonical generated
-  outputs causally regenerated from a conflicted source definition.
+  outputs causally regenerated from a conflicted source definition or one proven
+  validation-enabling metadata path under
+  `INV-PRESYNC-CAUSAL-METADATA-REPAIR`.
 - Non-conflicting target changes remain part of the eventual merge but must not be
   edited as repairs.
 - A path outside the recorded merge manifest, initial unmerged set, or proven
-  generated-output set is unrelated or concurrent work and must not be staged or
-  committed.
+  generated-output or causal-metadata set is unrelated or concurrent work and
+  must not be staged or committed.
+
+## Validation-Enabling Metadata
+
+Treat metadata such as `.gitattributes`, `.gitignore`, formatter configuration,
+or lint configuration as a causal integration path even when Git did not mark it
+unmerged only when all evidence proves:
+
+- the exact ordinary source/target merge is otherwise content-clean or has only
+  deterministic conflict resolutions;
+- one mandatory service-free validation fails solely on target-introduced paths;
+- repository rules document those paths as immutable, generated, vendored,
+  byte-identical, or maintained from a canonical source, so editing their content
+  is prohibited;
+- the metadata change is the smallest correct fix, scoped to the exact affected
+  paths and validation category, while first-party and unrelated paths retain the
+  original validation;
+- protected bytes remain identical to their blobs at `<exact-target-sha>`; and
+- the rule makes no product, runtime, deployment, schema, or security decision
+  and satisfies applicable repository rules and documentation requirements.
+
+Fail closed and request human input if the contract is unproven, direct repair is
+safe and appropriate, the exemption is broad or spans unrelated target defects,
+or behavior is affected. Target ownership alone does not require a helper MR and
+does not authorize arbitrary cleanup.
+
+Examples:
+
+- Allowed: a path-scoped `.gitattributes` whitespace exemption for pinned
+  upstream vendor files whose bytes remain identical to the target SHA.
+- Denied: repository-wide `-whitespace`.
+- Denied: disabling a linter for unrelated first-party code.
+- Denied: changing runtime configuration to make a failing test pass.
 
 ## Deterministic Resolution Evidence
 
