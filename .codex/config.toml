@@ -1,6 +1,10 @@
 model_provider = "datax-codex-lb"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "low"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = ["/Users/louie/Documents/subanana/subanana-main/.git"]
 
 [features]
 apps = false
@@ -21,7 +25,6 @@ notification_condition = "always"
 
 [model_providers.datax-codex-lb]
 name = "OpenAI"  # required — enables remote /responses/compact
-apps = false
 base_url = "https://sg.datax.io/backend-api/codex"
 wire_api = "responses"
 env_key = "DATAX_OPENAI_API_KEY"
@@ -38,6 +41,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/louie/Documents/local-vpn-proxy"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/doj/doj-jafpars"]
 trust_level = "trusted"
 
 [mcp_servers.linear]
