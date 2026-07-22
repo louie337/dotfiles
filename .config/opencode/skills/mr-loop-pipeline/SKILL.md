@@ -62,14 +62,18 @@ For each poll:
 4. Before aggregate pipeline status, search every current job and bridge for
    `failed` or `canceled`. Required, verification-required mapped, or
    merge-blocking failures immediately preempt waiting, fetch the exact node
-   record and trace, classify the failure, and enter local repair in the same
-   iteration. `allow_failure` does not waive mapped verification evidence.
+   record and trace, classify the failure, and, once deterministic and repairable,
+   begin local repair in the same iteration. Do not wait for unrelated active jobs
+   or an automatic retry when the existing exact-SHA evidence is sufficient.
+   `allow_failure` does not waive mapped verification evidence.
 5. A terminal failed or canceled pipeline with no exposed required failed job is
    immediate investigation evidence too.
-6. Only when no graph-wide required or verification-required node failed may
-   active states drive waiting. If any such node remains active, update
+6. Active states schedule continued polling but do not block safe actionable
+   local repair. If any required or verification-required node remains active,
+   update
    `last_recursive_pipeline_poll_at`, set `next_pipeline_poll_deadline` no later
-   than 30 seconds later, and retain `next_state=recursive_pipeline_poll`.
+   than 30 seconds later, and retain `next_state=recursive_pipeline_poll` while
+   continuing bounded local work between polls.
 7. For each mapped occurrence, only `success` passes. Active states continue
    polling. `failed` or `canceled` enters trace classification and repair or the
    guarded transient-infrastructure retry path. `manual`, `skipped`, and every
@@ -100,13 +104,35 @@ is the primary's highest-priority non-atomic transition.
 - Do not launch optional subagents or broad investigation that may outlast the
   remaining interval.
 - Never wait for optional subagents while required CI is active.
+- Never sleep or poll early merely to consume time while safe actionable local
+  repair remains. Continue bounded repair work and poll no later than the deadline.
 - If suspension or a tool call misses a deadline, record expected and actual
   resume time, then poll immediately before optional work.
 
+## Work Allowed During Active CI
+
+Pipeline serialization applies only to remote or pipeline-producing mutations.
+While any relevant pipeline is active, the primary may fetch traces and
+discussions, inspect exact-SHA code, classify failures, edit locally, add tests
+and required documentation, run service-free focused checks, and maintain an
+uncommitted repair batch. Known failures may also be assigned concurrently to
+strictly read-only investigators using the `mr-loop-evidence` handoff template.
+
+While any relevant pipeline is active, do not push, retry or cancel a job or
+pipeline, request rebase, merge, post to or resolve any discussion, including
+discussion actions dependent on unpushed changes, or perform any other
+pipeline-producing mutation. Local work must yield at bounded safe checkpoints so
+the complete recursive graph is polled no later than
+`next_pipeline_poll_deadline`.
+
 ## Pipeline Serialization Gate
 
-Before every normal push, transient-infrastructure retry, GitLab-side rebase, or
-other pipeline-producing mutation:
+Immediately before commit and before every normal push,
+transient-infrastructure retry, cancellation, GitLab-side rebase, merge, or other
+remote or pipeline-producing mutation, refresh MR identity, exact target SHA,
+all discussions, and the complete recursive graph. Fold every newly discovered
+actionable exact-SHA failure or discussion into the uncommitted repair batch and
+repeat this refresh after the added local work. Then:
 
 1. Re-fetch MR identity and current SHA.
 2. Enumerate every pipeline for the MR source branch and exact current SHA,
@@ -115,7 +141,8 @@ other pipeline-producing mutation:
 3. Treat `created`, `waiting_for_resource`, `preparing`, `pending`, `running`, and
    `scheduled` as active. If any relevant pipeline is active, do not mutate; run a
    recursive poll immediately.
-4. Repeat until every relevant pipeline is terminal.
+4. Repeat until every relevant pipeline is terminal, continuing safe actionable
+   local repair between bounded polls rather than sleeping.
 5. Immediately before mutation, fetch pipelines once more. If active CI appeared,
    close the gate and resume polling. Otherwise perform exactly one mutation and
    wait for its resulting canonical pipeline to become terminal before another.
@@ -139,6 +166,9 @@ stacks, production data, or shared customer data.
 ## Known-Failure Cancellation
 
 Cancel only wasted CI for a SHA whose required failure has already been inspected
-and classified as deterministic code failure. Revalidate identity, MR, pipeline,
-and jobs before cancellation. Never cancel pipelines for manual deployment states,
-unknown failures, unrelated refs, or a SHA that might still become mergeable.
+and classified as deterministic code failure, and only after every relevant
+pipeline is terminal. Revalidate identity, MR, pipeline, and jobs before
+cancellation. Never cancel pipelines for manual deployment states, unknown
+failures, unrelated refs, or a SHA that might still become mergeable. Cancellation
+is one serialized remote mutation and is never permitted while relevant CI is
+active.

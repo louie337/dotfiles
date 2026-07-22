@@ -22,6 +22,14 @@ its reusable skills, and its read-only investigator subagents.
   SHA, or target SHA changes before the primary acts on it.
 - `INV-PIPELINE-DEADLINE-FIRST`: active required CI owns the next deadline; no
   optional work or subagent result can delay the primary's due recursive poll.
+- `INV-ACTIVE-CI-LOCAL-REPAIR`: once exact-SHA evidence proves a deterministic,
+  repairable failure, begin local repair immediately. Active CI serializes only
+  remote or pipeline-producing mutations; it does not block trace or discussion
+  fetches, exact-SHA inspection, classification, local edits, tests or required
+  documentation, service-free focused checks, or an uncommitted repair batch.
+- `INV-NO-IDLE-WITH-ACTIONABLE-WORK`: never sleep merely because relevant CI or
+  an automatic retry is active while safe actionable local repair remains. Poll
+  recursively at bounded checkpoints no later than `next_pipeline_poll_deadline`.
 - `INV-ONE-PIPELINE-MUTATION`: before a push, GitLab rebase, retry, cancellation,
   or merge-producing action, every relevant pipeline must be terminal; perform one
   mutation, then wait for its canonical pipeline before another.
@@ -98,6 +106,29 @@ Read-only workers return concise evidence, not patches:
 
 Do not return edited file content unless the primary explicitly requested a small
 snippet for review. Do not run mutating commands.
+
+## Reusable Investigator Handoff
+
+Use this template for a known exact-SHA failure while CI remains active:
+
+```text
+Read-only investigator assignment
+
+Immutable envelope: <paste the complete assignment envelope>
+Known failure: <pipeline/job/discussion ID and exact-SHA evidence>
+Question: <one narrow classification or repair question>
+Poll deadline: <next_pipeline_poll_deadline>
+
+Analyze concurrently and return only evidence under the Worker Result Contract.
+You may fetch traces/discussions and inspect exact-SHA code. Never edit files,
+stage, commit, push, retry or cancel CI, request rebase, post or resolve a
+discussion, merge, change refs, or perform any other mutation. Stop in time for
+the primary to meet the poll deadline; return partial evidence if necessary.
+```
+
+Workers may analyze known failures concurrently with active CI and the primary's
+local repair. They remain strictly read-only; only the primary may maintain the
+uncommitted repair batch.
 
 ## Parallel Dispatch Rules
 

@@ -19,6 +19,22 @@ or code areas in parallel using the assignment envelope from `mr-loop-evidence`.
 Their findings are advisory and expire when source SHA, target SHA, or identity
 changes.
 
+Once an exact-SHA CI or review failure is classified as deterministic and
+repairable, begin the local repair immediately. Do not wait for unrelated active
+jobs or automatic retries when existing evidence is sufficient. During active CI,
+continue fetching evidence, inspecting and editing exact-SHA code, adding tests or
+required documentation, running service-free focused checks, and maintaining one
+uncommitted repair batch. Yield at bounded safe checkpoints for recursive polling
+no later than `next_pipeline_poll_deadline`; never sleep while safe actionable
+repair work remains.
+
+Active CI forbids remote side effects: do not push, retry or cancel CI, request
+rebase, merge, post to or resolve any discussion, including discussion actions
+dependent on unpushed changes, or perform another pipeline-producing mutation.
+Read-only investigators may analyze known failures concurrently under the
+`mr-loop-evidence` handoff contract, but must never mutate files, Git state, or
+GitLab.
+
 ## Agent-Review Finding Triage
 
 This section is the canonical classification policy for findings emitted by the
@@ -183,9 +199,15 @@ Do not commit or push after each discussion.
 7. After processing the current set, fetch all discussions again and add newly
    arrived actionable feedback to the same local batch until one fresh fetch has
    none.
-8. Reopen the synchronization gate before finalizing the batch. If the target
+8. Immediately before commit and push, refresh MR identity, exact target SHA, all
+   discussions, and the complete recursive pipeline graph. Fold newly discovered
+   actionable failures into the same uncommitted batch, then refresh again. If any
+   relevant pipeline remains active, continue bounded local work and polling but
+   do not commit, push, retry or cancel CI, request rebase, write discussions, or
+   merge.
+9. Reopen the synchronization gate before finalizing the batch. If the target
    advanced, restart synchronization without pushing.
-9. Return side-effect intents to the primary. This skill does not equate a reply
+10. Return side-effect intents to the primary. This skill does not equate a reply
    or resolution with a completed agent-review disposition.
 
 ## Autonomous Engineering Decisions
