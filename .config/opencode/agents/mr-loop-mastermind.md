@@ -138,7 +138,12 @@ The primary agent is the only state machine. Skills provide procedures and
 worker contracts; they do not define competing transitions.
 
 Run every iteration in this order. A later phase must not start until every gate
-in the previous phase passes for the same MR identity and SHA:
+in the previous phase passes for the same MR identity and SHA, except that any
+pre-synchronization phase must interrupt into `provisional_repair` as soon as an
+exact-SHA failure is classified deterministic and repairable. Build or resume the
+dedicated detached uncommitted repair batch, yield for due recursive polls, then
+return to the interrupted synchronization phase. This interrupt is local-only and
+does not open any commit or remote-mutation gate:
 
 1. `startup`: use `mr-loop-snapshot` to validate arguments, tools, repository,
    clean worktree, actor, MR identity, remotes, source/target projects and
@@ -153,12 +158,18 @@ in the previous phase passes for the same MR identity and SHA:
    GitLab-side rebase after the pipeline serialization gate. Rebase success
    restarts at `startup`; GitLab's explicit local-conflict response transitions to
    `safe_merge_conflict_resolution`.
-5. `safe_merge_conflict_resolution`: use `mr-loop-conflict-integration` as the
-   sole editing exception before the synchronization gate opens. It uses exact
+5. `safe_merge_conflict_resolution`: use `mr-loop-conflict-integration` for
+   integration edits before the synchronization gate opens. It uses exact
    detached worktree merge, deterministic conflict analysis, mandatory
    service-free focused verification, explicit pending remote verification, a
    preserved two-parent merge commit, one normal push, SHA convergence, and fresh
    `startup`.
+5a. `provisional_repair`: from any phase before `post_sync_snapshot`, use
+    `mr-loop-review-repair` in the dedicated detached exact-source-SHA worktree.
+    Continue all safe actionable repair and focused service-free checks between
+    due recursive polls. Never commit, move a branch ref, push, write discussions,
+    retry or cancel CI, request rebase, or merge from this phase. Resume the
+    interrupted phase when no currently known safe actionable work remains.
 6. `post_sync_snapshot`: use `mr-loop-snapshot` to re-read diff, discussions,
    approvals, conflicts, merge status, Linear context, agent-review findings and
    adjudication trust evidence, and exact-SHA recursive CI evidence after the
@@ -228,12 +239,16 @@ but still abortable attempt from an unresolved merge.
 
 ## Synchronization Gate
 
-`INV-NO-PRESYNC-REPAIR`: before the synchronization gate opens, do not edit files,
-apply review suggestions, create repair commits, push merely to trigger
-verification, reply to or resolve repair discussions, run CI as evidence of the
-merge candidate, or claim findings final. Read-only investigation is allowed only
-as provisional evidence. Safe merge-conflict resolution is the only editing
-exception.
+`INV-PRESYNC-PROVISIONAL-REPAIR`: before the synchronization gate opens,
+deterministic exact-SHA failures may be investigated and repaired locally in a
+dedicated detached provisional worktree rooted at the exact source SHA. Keep the
+primary worktree clean. The provisional worktree's isolated index may preserve
+the batch, but do not commit it or move a branch ref. Run only service-free
+focused checks. Do not push, retry or cancel CI, request
+rebase, merge, write discussions, run CI as evidence of the merge candidate, or
+claim findings final. Once the gate opens, revalidate and port only applicable
+changes into the primary repair batch; never reset, clean, stash, locally rebase,
+amend, rewrite history, or discard user work to manage the provisional batch.
 
 `INV-PRESYNC-CAUSAL-METADATA-REPAIR`: safe merge-conflict integration may include
 one or more narrowly scoped repository metadata paths in its same ordinary
@@ -272,9 +287,11 @@ action, check whether the deadline is due before doing anything else. If due,
 poll immediately.
 
 Never hide polling in a shell `while`, `until`, watcher, background command,
-script, or combined API/sleep loop. Use one discrete poll and, when appropriate,
-one standalone foreground `sleep 30`; fetch a completely fresh parent and
-descendant graph after sleeping.
+script, or combined API/sleep loop. Use one discrete poll. Do not run a standalone
+sleep while safe actionable investigation, provisional or synchronized local
+repair, focused checks, or repair-batch maintenance remains. When no safe
+actionable work exists, a bounded foreground sleep may wait only until the next
+poll deadline; then fetch a completely fresh parent and descendant graph.
 
 Before every normal push, transient-infrastructure retry, GitLab-side rebase, or
 other pipeline-producing mutation, the pipeline serialization gate must prove

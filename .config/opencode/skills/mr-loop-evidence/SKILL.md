@@ -33,10 +33,15 @@ its reusable skills, and its read-only investigator subagents.
 - `INV-ONE-PIPELINE-MUTATION`: before a push, GitLab rebase, retry, cancellation,
   or merge-producing action, every relevant pipeline must be terminal; perform one
   mutation, then wait for its canonical pipeline before another.
-- `INV-NO-PRESYNC-REPAIR`: before the synchronization gate opens, repair findings
-  are provisional and cannot produce edits, commits, pushes, replies, discussion
-  resolution, CI evaluation, or success claims. Safe merge-conflict integration is
-  the only editing exception because it opens the gate.
+- `INV-PRESYNC-PROVISIONAL-REPAIR`: before the synchronization gate opens,
+  exact-SHA deterministic repair findings remain provisional but may produce
+  local edits and service-free focused checks only in a dedicated detached repair
+  worktree rooted at the exact source SHA. Keep the primary worktree clean for
+  synchronization. The isolated worktree index may preserve the batch, but do not
+  commit, move a branch ref, push, reply, resolve discussions, treat provisional
+  checks as final CI evaluation, or make success claims. After the gate opens,
+  revalidate and port the smallest still-applicable batch without reset, clean,
+  stash, local rebase, amend, or history rewrite.
 - `INV-PRESYNC-CAUSAL-METADATA-REPAIR`: within that exact merge attempt only, a
   repository metadata path may be treated as a proven causal integration path
   when mandatory service-free validation fails solely on target-introduced

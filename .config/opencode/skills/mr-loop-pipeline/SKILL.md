@@ -117,6 +117,10 @@ discussions, inspect exact-SHA code, classify failures, edit locally, add tests
 and required documentation, run service-free focused checks, and maintain an
 uncommitted repair batch. Known failures may also be assigned concurrently to
 strictly read-only investigators using the `mr-loop-evidence` handoff template.
+If the synchronization gate is not open, perform those edits only in the
+dedicated detached provisional repair worktree defined by `mr-loop-evidence`;
+do not classify the absence of a synchronized primary worktree as a reason to
+sleep.
 
 While any relevant pipeline is active, do not push, retry or cancel a job or
 pipeline, request rebase, merge, post to or resolve any discussion, including

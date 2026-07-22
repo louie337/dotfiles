@@ -5,9 +5,12 @@ description: Use for GitLab MR loop exact-SHA finding triage, proportional repai
 
 # MR Loop Review Repair
 
-This skill applies only after the synchronization gate opens. Findings collected
-before synchronization are provisional and must be revalidated against the fresh
-post-sync diff before editing.
+Before the synchronization gate opens, this skill may build a provisional local
+repair batch only in a dedicated detached worktree rooted at the exact source SHA.
+Keep the primary worktree clean; the isolated index may preserve the batch, but do
+not commit it or move a branch ref. Treat every finding and check as provisional.
+After synchronization, revalidate against the fresh post-sync diff and port only
+the still-applicable changes into the primary worktree before commit or push.
 
 ## Review Priorities
 

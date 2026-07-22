@@ -54,10 +54,14 @@ not authorize edits or GitLab writes.
 
 ## Loop Snapshot
 
-Collect the complete snapshot only after the synchronization gate opens. Before
-that, collect only identity, source/target refs, rebase/conflict/convergence
-state, push authority, target tip, worktree inventory, and conflict-attempt state
-needed to open the gate or resume safe conflict integration.
+Collect the complete read-only snapshot whenever exact-SHA failures need
+classification or provisional local repair, including before the synchronization
+gate opens. Before the gate opens, all review, discussion, diff, and CI findings
+remain provisional and authorize no GitLab write, commit, push, rebase, merge, or
+success claim. Also collect identity, source/target refs,
+rebase/conflict/convergence state, push authority, target tip, worktree inventory,
+and conflict-attempt state needed to open the gate or resume safe conflict
+integration.
 
 The complete snapshot includes:
 

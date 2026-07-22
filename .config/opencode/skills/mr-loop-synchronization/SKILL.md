@@ -50,9 +50,26 @@ target ref immediately before acting.
 Auth, permission, network, unknown, or non-conflict rebase failures do not
 authorize local integration.
 
+## Pre-Synchronization Local Repair
+
+Before the gate opens, deterministic exact-SHA failures may be repaired
+provisionally only in a dedicated detached worktree rooted at the exact source
+SHA. This worktree must not occupy the source or target branch and must remain
+uncommitted; its isolated index may preserve the batch. It keeps the primary
+source worktree clean so source convergence and a later GitLab-side rebase remain
+possible. Never sleep merely because repair is provisional while safe actionable
+work remains.
+
+After the gate opens, treat the provisional batch as stale evidence: inspect its
+diff, revalidate each change against the synchronized source and exact target,
+and port only still-applicable changes into the primary repair batch. Remove the
+provisional worktree only after its useful diff is ported or explicitly proven
+obsolete, without reset, clean, stash, local rebase, amend, or discarded user
+work. No provisional edit permits commit, push, discussion writes, retry,
+cancellation, rebase, or merge while relevant CI is active.
+
 ## Pre-Synchronization Causal Metadata Exception
 
-`INV-NO-PRESYNC-REPAIR` still prohibits unrelated repair before the gate opens.
 `INV-PRESYNC-CAUSAL-METADATA-REPAIR` permits only validation-enabling repository
 metadata proven under `mr-loop-conflict-analysis` and verified under
 `mr-loop-conflict-integration`. It is part of the existing exact merge attempt and
