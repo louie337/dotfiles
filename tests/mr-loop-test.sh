@@ -92,7 +92,7 @@ assert_worker() {
 }
 
 assert_not_contains "mastermind is not execution model" "$AGENT" "model: datax_openai/gpt-5.6-terra"
-assert_not_contains "mastermind is not low reasoning" "$AGENT" "variant: low"
+assert_contains "mastermind uses low reasoning" "$AGENT" "variant: low"
 
 assert_terra_low_agent() {
   name=$1
@@ -102,12 +102,12 @@ assert_terra_low_agent() {
   assert_contains "agent $name uses low variant" "$path" "variant: low"
 }
 
-assert_sol_max_agent() {
+assert_sol_low_agent() {
   name=$1
   path="$AGENT_DIR/$name.md"
   assert_file "agent $name exists" "$path"
   assert_contains "agent $name uses sol model" "$path" "model: datax_openai/gpt-5.6-sol"
-  assert_contains "agent $name uses max variant" "$path" "variant: max"
+  assert_contains "agent $name uses low variant" "$path" "variant: low"
 }
 
 assert_file "active MR agent exists" "$AGENT"
@@ -130,11 +130,11 @@ done
 for agent in \
   mr-loop-mastermind
 do
-  assert_sol_max_agent "$agent"
+  assert_sol_low_agent "$agent"
 done
 
 assert_contains "build is configured" "$CONFIG" '"build": {'
-if jq -e '.agent.build.model == "datax_openai/gpt-5.6-sol" and .agent.build.variant == "max" and .agent.plan.model == "datax_openai/gpt-5.6-sol" and .agent.plan.variant == "max" and .agent.patch.model == "datax_openai/gpt-5.6-terra" and .agent.patch.variant == "low" and .agent.teach.model == "datax_openai/gpt-5.6-terra" and .agent.teach.variant == "low"' "$CONFIG" >/dev/null; then
+if jq -e '.agent.build.model == "datax_openai/gpt-5.6-sol" and .agent.build.variant == "low" and .agent.plan.model == "datax_openai/gpt-5.6-sol" and .agent.plan.variant == "low" and .agent.patch.model == "datax_openai/gpt-5.6-terra" and .agent.patch.variant == "low" and .agent.teach.model == "datax_openai/gpt-5.6-terra" and .agent.teach.variant == "low"' "$CONFIG" >/dev/null; then
   pass "inline agents use role-based models"
 else
   fail "inline agents use role-based models"

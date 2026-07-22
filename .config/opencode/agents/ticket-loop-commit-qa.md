@@ -2,7 +2,7 @@
 description: Hidden adversarial QA worker for one exact Foreman commit in ticket-loop.
 mode: subagent
 model: datax_openai/gpt-5.6-sol
-variant: max
+variant: low
 hidden: true
 permission:
   edit: deny

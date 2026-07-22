@@ -49,11 +49,11 @@
   "agent": {
     "build": {
       "model": "datax_openai/gpt-5.6-sol",
-      "variant": "max"
+      "variant": "low"
     },
     "plan": {
       "model": "datax_openai/gpt-5.6-sol",
-      "variant": "max",
+      "variant": "low",
       "color": "#FF6B6B",
       "permission": {
         "edit": "deny"

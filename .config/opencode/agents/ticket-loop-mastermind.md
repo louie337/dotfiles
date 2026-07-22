@@ -2,7 +2,7 @@
 description: Orchestrates a Linear ticket from clarified requirements through Foreman implementation, service-free local review, MR publication, and the MR loop.
 mode: primary
 model: datax_openai/gpt-5.6-sol
-variant: max
+variant: low
 color: "#0F766E"
 permission:
   edit: allow

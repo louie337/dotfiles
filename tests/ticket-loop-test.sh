@@ -50,6 +50,7 @@ assert_contains "mastermind creates MR automatically" "$MASTER" "otherwise creat
 assert_contains "mastermind transfers to MR loop" "$MASTER" "invoke \`mr-loop-mastermind\`"
 assert_contains "mastermind allows MR loop task" "$MASTER" "mr-loop-mastermind: allow"
 assert_contains "mastermind planning uses sol" "$MASTER" "model: datax_openai/gpt-5.6-sol"
+assert_contains "mastermind uses low reasoning" "$MASTER" "variant: low"
 assert_contains "mastermind routes execution to generic worker" "$MASTER" "Use \`ticket-loop-worker\` for"
 assert_contains "mastermind denies rebase" "$MASTER" '"git rebase *": deny'
 assert_contains "mastermind denies force push" "$MASTER" '"git push *--force*": deny'
@@ -70,10 +71,12 @@ assert_contains "implementation worker uses medium reasoning" "$WORKER" "variant
 assert_contains "implementation worker cannot push" "$WORKER" '"git push*": deny'
 assert_contains "commit QA is read-only" "$QA" "edit: deny"
 assert_contains "commit QA uses sol" "$QA" "model: datax_openai/gpt-5.6-sol"
+assert_contains "commit QA uses low reasoning" "$QA" "variant: low"
 assert_contains "commit QA has exact verdicts" "$QA" "VERDICT: PASS"
 assert_contains "integration PM is hidden" "$INTEGRATION" "hidden: true"
 assert_contains "integration PM is read-only" "$INTEGRATION" "edit: deny"
 assert_contains "integration PM uses sol" "$INTEGRATION" "model: datax_openai/gpt-5.6-sol"
+assert_contains "integration PM uses low reasoning" "$INTEGRATION" "variant: low"
 assert_contains "integration PM detects stale SHA" "$INTEGRATION" "VERDICT: STALE"
 assert_contains "integration PM cannot publish" "$INTEGRATION" "never"
 

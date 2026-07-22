@@ -2,7 +2,7 @@
 description: Mastermind for the glab-driven GitLab MR repair loop until the MR is mergeable or merged.
 mode: all
 model: datax_openai/gpt-5.6-sol
-variant: max
+variant: low
 color: "#7C3AED"
 permission:
   edit: allow
