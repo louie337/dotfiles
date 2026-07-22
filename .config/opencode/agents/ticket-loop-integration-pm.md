@@ -1,7 +1,7 @@
 ---
 description: Hidden read-only PM that evaluates an exact local branch against its Linear ticket and approved plan before publication.
 mode: subagent
-model: datax_openai/gpt-5.6-sol
+model: datax_openai/gpt-5.6-terra
 variant: low
 hidden: true
 permission:
