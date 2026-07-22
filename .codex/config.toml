@@ -1,5 +1,5 @@
 model_provider = "datax-codex-lb"
-model = "gpt-5.4-mini"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "low"
 
 [model_providers.datax-codex-lb]
@@ -14,5 +14,12 @@ requires_openai_auth = true # required for codex app
 [projects."/Users/louie/Documents/emsd/tv-meels-sss/main"]
 trust_level = "trusted"
 
+[projects."/Users/louie/dotfiles"]
+trust_level = "trusted"
+
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+"gpt-5.6-sol" = 1
+
+[notice.model_migrations]
+"gpt-5.4-mini" = "gpt-5.6-luna"
