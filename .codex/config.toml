@@ -19,6 +19,8 @@ max_depth = 1
 notifications = true
 notification_method = "auto"
 notification_condition = "always"
+status_line = ["model-with-reasoning", "current-dir", "git-branch", "pull-request-number", "run-state", "permissions", "approval-mode", "context-remaining", "used-tokens", "task-progress"]
+status_line_use_colors = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
