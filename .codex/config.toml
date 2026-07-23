@@ -1,0 +1,38 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Portable preferences migrated from ~/.codex/config.toml.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+
+[sandbox_workspace_write]
+# OpenCode previously allowed shell commands by default, including networked tools.
+network_access = true
+
+[tui]
+status_line = ["model-with-reasoning", "project-name", "run-state", "permissions", "approval-mode", "context-remaining", "five-hour-limit", "weekly-limit", "used-tokens", "task-progress"]
+status_line_use_colors = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+"gpt-5.6-sol" = 4
+
+[features]
+js_repl = false
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest"]
+enabled = true
+startup_timeout_sec = 60
+
+[mcp_servers.mobile-mcp]
+command = "npx"
+args = ["-y", "@mobilenext/mobile-mcp@latest"]
+enabled = true
+startup_timeout_sec = 60
+
+[projects."/Users/louie/dotfiles"]
+trust_level = "trusted"
