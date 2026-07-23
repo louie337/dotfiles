@@ -258,6 +258,7 @@ ocv() {
 
 # NOTE: Codex Setup
 alias codexv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 codex"
+alias cdv="codexv"
 
 # NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
