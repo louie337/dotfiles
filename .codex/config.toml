@@ -2,10 +2,13 @@ model_provider = "datax-codex-lb"
 model = "gpt-5.6-sol"
 model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
+approvals_reviewer = "auto_review"
 
 [sandbox_workspace_write]
 writable_roots = [
     "/Users/louie/Documents/subanana/subanana-main",
+    "/Users/louie/Documents/subanana/subanana-devops-main",
+    "/Users/louie/Library/Application Support/glab-cli",
 ]
 
 [features]
@@ -47,6 +50,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/louie/Documents/doj/doj-jafpars"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/subanana/subanana-devops-main"]
 trust_level = "trusted"
 
 [mcp_servers.linear]
