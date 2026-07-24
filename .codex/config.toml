@@ -76,5 +76,8 @@ bearer_token_env_var = "MCP_SHARED_KEY"
 url = "https://dev-mcp.subanana.com"
 bearer_token_env_var = "MCP_SHARED_KEY_DEV"
 
+[mcp_servers.posthog]
+url = "https://mcp.posthog.com/mcp"
+
 [notice.model_migrations]
 "gpt-5.4-mini" = "gpt-5.6-luna"
