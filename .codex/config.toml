@@ -1,12 +1,13 @@
 model_provider = "datax-codex-lb"
-model = "gpt-5.6-sol"
-model_reasoning_effort = "low"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
 
 [sandbox_workspace_write]
 writable_roots = [
     "/Users/louie/Documents/subanana/subanana-main",
+    "/Users/louie/Documents/subanana/subanana-main/.agents",
     "/Users/louie/Documents/subanana/subanana-devops-main",
     "/Users/louie/Library/Application Support/glab-cli",
 ]
@@ -22,7 +23,7 @@ max_depth = 1
 notifications = true
 notification_method = "auto"
 notification_condition = "always"
-status_line = ["model-with-reasoning", "current-dir", "git-branch", "pull-request-number", "run-state", "permissions", "approval-mode", "context-remaining", "used-tokens", "task-progress"]
+status_line = ["model-with-reasoning", "git-branch", "pull-request-number", "run-state", "permissions", "approval-mode", "context-remaining", "used-tokens", "task-progress"]
 status_line_use_colors = true
 
 [tui.model_availability_nux]
@@ -66,7 +67,6 @@ env_vars = ["ARTIFACT_DROP_TOKEN"]
 [mcp_servers.chrome-devtools]
 command = "npx"
 args = ["-y", "chrome-devtools-mcp@latest", "--auto-connect"]
-enabled = false
 
 [mcp_servers.subanana-data-analytics]
 url = "https://mcp.subanana.com"
