@@ -76,6 +76,10 @@ bearer_token_env_var = "MCP_SHARED_KEY"
 url = "https://dev-mcp.subanana.com"
 bearer_token_env_var = "MCP_SHARED_KEY_DEV"
 
+[mcp_servers.subanana-mr]
+url = "https://mcp.mr.subanana.com/mcp"
+bearer_token_env_var = "MCP_SHARED_KEY_MR"
+
 [mcp_servers.posthog]
 url = "https://mcp.posthog.com/mcp"
 
