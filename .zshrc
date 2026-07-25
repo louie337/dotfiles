@@ -274,9 +274,12 @@ if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)
 # NOTE: Lazygit
 export LG_CONFIG_FILE=$HOME/.config/lazygit/config.yml
 
-# opencode
+# NOTE: opencode
 export PATH=$HOME/.opencode/bin:$PATH
 export PATH=$PATH:$HOME/.maestro/bin
 
-# GVM
+# NOTE: Age key
+export SOPS_AGE_KEY_FILE=$HOME/.ssh/age-key
+
+# NOTE: GVM
 [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
