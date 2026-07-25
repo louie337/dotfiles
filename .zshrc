@@ -244,20 +244,33 @@ fi
 alias claude="~/.claude/local/claude"
 
 # NOTE: OpenCode Setup
+opencode() {
+  load-nvm || return 1
+  PATH="${NVM_BIN}:$PATH" command opencode "$@"
+}
+
 oc() {
-  load-nvm
-  local node_bin="$(dirname "$(command -v node)")"
-  PATH="$node_bin:$PATH" opencode "$@"
+  opencode "$@"
 }
 
 ocv() {
-  load-nvm
-  local node_bin="$(dirname "$(command -v node)")"
-  PATH="$node_bin:$PATH" HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 opencode "$@"
+  HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 \
+    https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1 \
+    opencode "$@"
 }
 
 # NOTE: Codex Setup
-alias codexv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 codex"
+codex() {
+  load-nvm || return 1
+  PATH="${NVM_BIN}:$PATH" command codex "$@"
+}
+
+codexv() {
+  HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 \
+    https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1 \
+    codex "$@"
+}
+alias cdx="codex"
 alias cdv="codexv"
 
 # NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
