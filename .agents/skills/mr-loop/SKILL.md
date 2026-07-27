@@ -11,7 +11,9 @@ Delegate bounded read-only investigations to the `mr-loop-review-investigator`,
 state transition, user decision, and final claim in the root thread.
 
 Read [references/state-machine.md](references/state-machine.md) before the first mutation or when
-resuming an interrupted loop.
+resuming an interrupted loop. Before triaging review findings, read
+[Proportional Review Triage](../../../docs/mr-loop.md#proportional-review-triage) and follow its
+suppression syntax, authorization checks, and post-write verification.
 
 ## Parse the request
 
@@ -46,7 +48,12 @@ persistence toward the target, not broader authorization.
 3. Resolve source/target drift through GitLab-side rebase when safe and supported. Restart from a
    fresh snapshot after convergence.
 4. Triage current findings into must-fix, suppress-with-reason, already-fixed-or-stale, or
-   needs-human-decision. A resolved thread alone is not a disposition.
+   needs-human-decision. Classify an irrelevant, non-critical, or subjective comment as
+   `suppress-with-reason` when exact-diff and repository-rule evidence proves that leaving the code
+   unchanged carries no material risk; do not edit code merely to satisfy it. Apply and verify the
+   documented canonical suppression rather than only resolving its discussion thread. Never
+   suppress a valid error, a material risk, or an uncertain product or safety decision. A resolved
+   thread alone is not a disposition.
 5. Batch compatible local repairs, add focused tests, and run service-free checks. Keep an active CI
    polling deadline; do useful local work between discrete polls.
 6. Commit and normally push one coherent repair batch only after revalidating identity, SHAs,

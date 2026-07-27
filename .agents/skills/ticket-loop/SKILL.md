@@ -50,7 +50,13 @@ only after a PASS against the unchanged exact HEAD.
 
 Create the MR with the approved scope, evidence, pending automatic checks, and known deferrals.
 Revalidate the remote source SHA after pushing. Then invoke `$mr-loop` with the MR URL and requested
-target. Do not claim ticket completion merely because an MR exists.
+target. During MR review triage, suppress irrelevant, non-critical, or subjective findings when the
+exact diff and repository rules prove that leaving the code unchanged carries no material risk; do
+not implement them merely to satisfy a comment. Follow
+[Proportional Review Triage](../../../docs/mr-loop.md#proportional-review-triage) for the canonical
+suppression comment, authorization, and verification lifecycle. Never suppress valid errors,
+material risks, or uncertain product or safety decisions. Do not claim ticket completion merely
+because an MR exists.
 
 ## Stop conditions
 
