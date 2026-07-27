@@ -1,8 +1,9 @@
 model_provider = "datax-codex-lb"
-model = "gpt-5.6-luna"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
+plan_mode_reasoning_effort = "max"
 
 [sandbox_workspace_write]
 writable_roots = [
@@ -54,6 +55,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/louie/Documents/subanana/subanana-devops-main"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/fsd/fsd-walkie-talkie"]
 trust_level = "trusted"
 
 [mcp_servers.linear]
