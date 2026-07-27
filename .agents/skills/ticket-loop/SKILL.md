@@ -26,6 +26,12 @@ pause, never the briefing.
 ## Execute
 
 - Freeze an approved plan revision and immutable base SHA.
+- Only when the resulting MR requires infrastructure changes, create the corresponding devops
+  worktree from `/Users/louie/Documents/subanana/subanana-devops-main` with the exact implementation
+  branch name that will become the MR source branch. Use
+  `wt -C /Users/louie/Documents/subanana/subanana-devops-main switch --create <source-branch>` when
+  the devops branch is new, or omit `--create` when it already exists. Do not create this worktree
+  for an MR that does not require infrastructure changes.
 - Assign exactly one coherent work unit with expected parent SHA, allowed scope, acceptance evidence,
   checks, and commit message.
 - Allow one mutating worker at a time in the shared branch. Never parallelize shared-worktree edits.

@@ -38,6 +38,11 @@ persistence toward the target, not broader authorization.
 1. Snapshot local Git state, remotes, GitLab identity, MR metadata, exact source/target SHAs,
    discussions, review findings, mergeability, and recursively expanded pipeline state.
 2. Inspect applicable repository instructions, changed-path rules, and exact CI path selection.
+   Only when the MR requires infrastructure changes, create the corresponding devops worktree from
+   `/Users/louie/Documents/subanana/subanana-devops-main` with the exact MR source-branch name:
+   use `wt -C /Users/louie/Documents/subanana/subanana-devops-main switch --create <source-branch>`
+   when the devops branch is new, or omit `--create` when it already exists. Do not create this
+   worktree for an MR that does not require infrastructure changes.
 3. Resolve source/target drift through GitLab-side rebase when safe and supported. Restart from a
    fresh snapshot after convergence.
 4. Triage current findings into must-fix, suppress-with-reason, already-fixed-or-stale, or
