@@ -31,6 +31,10 @@ persistence toward the target, not broader authorization.
 - Keep Linear read-only. Use a matching ticket only as requirement evidence.
 - Perform one pipeline-producing or merge-affecting mutation at a time, then rediscover canonical
   state before another.
+- Keep commits small and atomic: put one logical concern in each independently reviewable and
+  verifiable commit. Split unrelated repairs into separate commits, keep required tests and
+  documentation with the change they verify, and never combine independent concerns into one
+  omnibus commit or fragment one tightly coupled change artificially.
 - Do not create no-op commits, helper MRs, or pipelines merely to obtain CI evidence.
 - Prefer existing automatic CI for service-heavy verification. Do not start local infrastructure
   without explicit user approval and isolated test resources.
@@ -54,8 +58,8 @@ persistence toward the target, not broader authorization.
    documented canonical suppression rather than only resolving its discussion thread. Never
    suppress a valid error, a material risk, or an uncertain product or safety decision. A resolved
    thread alone is not a disposition.
-5. Batch compatible local repairs, add focused tests, and run service-free checks. Keep an active CI
-   polling deadline; do useful local work between discrete polls.
+5. Form small atomic repair batches, add focused tests, and run service-free checks. Keep an active
+   CI polling deadline; do useful local work between discrete polls.
 6. Commit and normally push one coherent repair batch only after revalidating identity, SHAs,
    authorization, worktree scope, and pipeline serialization.
 7. For merge conflicts, use one detached loop-owned worktree and one ordinary two-parent merge

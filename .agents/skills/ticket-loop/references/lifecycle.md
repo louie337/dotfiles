@@ -2,7 +2,8 @@
 
 1. `acquire`: validate issue ID and read the exact Linear issue without mutation.
 2. `brief`: inspect the affected repository and explain current behavior and constraints.
-3. `plan`: produce commit-sized units and verification mapping; obtain or consume approval.
+3. `plan`: produce small atomic commit-sized units and verification mapping; obtain or consume
+   approval.
 4. `implement_unit`: assign one worker against an expected parent SHA.
 5. `commit_qa`: independently verify the exact resulting commit.
 6. `repair_unit`: assign focused corrections as new commits, then repeat QA.

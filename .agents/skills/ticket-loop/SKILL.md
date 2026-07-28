@@ -34,6 +34,10 @@ pause, never the briefing.
   for an MR that does not require infrastructure changes.
 - Assign exactly one coherent work unit with expected parent SHA, allowed scope, acceptance evidence,
   checks, and commit message.
+- Make each work unit one small atomic commit containing a single logical concern that is
+  independently reviewable and verifiable. Split unrelated changes into separate commits, keep
+  required tests and documentation with the change they verify, and never combine independent
+  concerns into one omnibus commit or fragment one tightly coupled change artificially.
 - Allow one mutating worker at a time in the shared branch. Never parallelize shared-worktree edits.
 - Revalidate the returned commit SHA and inspect its complete diff.
 - Have a fresh QA agent independently review every exact commit. Repair failures through a new

@@ -6,7 +6,7 @@ Use these canonical states and always return to `snapshot` after a mutation or i
 2. `synchronize`: converge source with exact target through the safest supported remote operation.
 3. `collect_review`: inspect current diff, rules, reports, and unresolved discussions.
 4. `triage`: classify each finding and identify decision boundaries.
-5. `repair`: create one coherent local batch with focused tests and service-free checks.
+5. `repair`: create one small atomic local batch with focused tests and service-free checks.
 6. `publish_repair`: revalidate, commit, and normally push exactly one batch.
 7. `await_pipeline`: poll the bound pipeline and recursive graph in discrete foreground steps.
 8. `investigate_ci`: classify exact-SHA failures and route deterministic repairs back to `repair`.
