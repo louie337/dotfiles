@@ -60,6 +60,9 @@ trust_level = "trusted"
 [projects."/Users/louie/Documents/fsd/fsd-walkie-talkie"]
 trust_level = "trusted"
 
+[projects."/Users/louie/Documents/dh/dh-form-2"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
