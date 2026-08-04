@@ -1,5 +1,27 @@
 {
+  "lastChangelogVersion": "0.83.0",
+  "theme": "dark/dark",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "low"
+  "defaultThinkingLevel": "medium",
+  "packages": [
+    "npm:@tintinweb/pi-subagents",
+    "npm:@vigolium/piolium",
+    "npm:pi-mcp-adapter",
+    "npm:pi-web-access",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:context-mode",
+    "npm:pi-lens",
+    "npm:@narumitw/pi-goal",
+    "npm:pi-powerline-footer",
+    "npm:pi-zentui",
+    "npm:pi-fabric"
+  ],
+  "images": {
+    "blockImages": false
+  },
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "treeFilterMode": "default"
 }
