@@ -1,3 +1,5 @@
 node_modules
+.pi/agent/*
+!.pi/agent/settings.json
 .config/tmuxinator/*
 !.config/tmuxinator/workbench.yml

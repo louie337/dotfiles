@@ -1,13 +1,14 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
 # Portable preferences migrated from ~/.codex/config.toml.
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 
 notify = ["/Users/louie/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
+plan_mode_reasoning_effort = "max"
 
 [sandbox_workspace_write]
 # OpenCode previously allowed shell commands by default, including networked tools.
@@ -40,6 +41,12 @@ startup_timeout_sec = 60
 trust_level = "trusted"
 
 [projects."/Users/louie/Documents/projects/cv/main"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/projects/cns-rsvp"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/tmp"]
 trust_level = "trusted"
 
 [desktop]
