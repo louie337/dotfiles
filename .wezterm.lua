@@ -110,7 +110,8 @@ config.keys = {
 	{
 		key = "Enter",
 		mods = "SHIFT",
-		action = wezterm.action({ SendString = "\x1b\r" }),
+		-- Preserve Shift+Enter through tmux for Pi's newline binding.
+		action = wezterm.action.SendString("\x1b[13;2u"),
 	},
 }
 
