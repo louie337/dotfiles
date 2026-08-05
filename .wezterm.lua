@@ -12,6 +12,9 @@ config.hide_tab_bar_if_only_one_tab = true
 config.window_decorations = "RESIZE"
 config.window_padding = { bottom = 0 }
 
+-- Preserve modifier information for terminal applications such as Pi.
+config.enable_kitty_keyboard = true
+
 local softLayer = {
 	source = {
 		Gradient = {
@@ -107,7 +110,11 @@ config.keys = {
 		mods = "CTRL",
 		action = wezterm.action.EmitEvent("cycle-background"),
 	},
-	{ key = "Enter", mods = "SHIFT", action = wezterm.action({ SendString = "\x1b\r" }) },
+	{
+		key = "Enter",
+		mods = "ALT",
+		action = wezterm.action.SendString("\x1b[13;3u"),
+	},
 }
 
 return config
