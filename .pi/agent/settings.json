@@ -15,7 +15,8 @@
     "npm:@narumitw/pi-goal",
     "npm:pi-powerline-footer",
     "npm:pi-zentui",
-    "npm:pi-fabric"
+    "npm:pi-fabric",
+    "npm:@narumitw/pi-codex-usage"
   ],
   "images": {
     "blockImages": false
