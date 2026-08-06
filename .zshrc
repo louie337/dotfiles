@@ -92,7 +92,6 @@ ZVM_INIT_MODE=sourcing
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
   git
-  autoupdate
   you-should-use
   zsh-vi-mode
   zsh-docker-aliases
