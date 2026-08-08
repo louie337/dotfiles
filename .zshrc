@@ -258,7 +258,7 @@ ocv() {
 # NOTE: Codex Setup
 codex() {
   load-nvm || return 1
-  PATH="${NVM_BIN}:$PATH" command codex "$@"
+  PATH="${NVM_BIN}:$PATH" command codex --yolo "$@"
 }
 
 codexv() {
