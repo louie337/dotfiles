@@ -317,5 +317,5 @@ source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 [[ -s "/home/louie.guest/.gvm/scripts/gvm" ]] && source "/home/louie.guest/.gvm/scripts/gvm"
 
-alias hermes="hermes --tui"
+alias hermes="hermes --yolo --tui"
 alias hms="hermes"
