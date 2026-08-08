@@ -316,3 +316,6 @@ source ~/powerlevel10k/powerlevel10k.zsh-theme
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 [[ -s "/home/louie.guest/.gvm/scripts/gvm" ]] && source "/home/louie.guest/.gvm/scripts/gvm"
+
+alias hermes="hermes --tui"
+alias hms="hermes"
