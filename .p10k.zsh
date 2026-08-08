@@ -383,18 +383,18 @@
 
     if (( $1 )); then
       # Styling for up-to-date Git status.
-      local       meta='%246F'  # grey foreground
-      local      clean='%76F'   # green foreground
-      local   modified='%178F'  # yellow foreground
-      local  untracked='%39F'   # blue foreground
-      local conflicted='%196F'  # red foreground
+      local       meta='%F{#8B8682}'  # Hermes status-bar dim
+      local      clean='%F{#4caf50}'  # Hermes success
+      local   modified='%F{#ffa726}'  # Hermes warning
+      local  untracked='%F{#FFBF00}'  # Hermes accent
+      local conflicted='%F{#ef5350}'  # Hermes error
     else
       # Styling for incomplete and stale Git status.
-      local       meta='%244F'  # grey foreground
-      local      clean='%244F'  # grey foreground
-      local   modified='%244F'  # grey foreground
-      local  untracked='%244F'  # grey foreground
-      local conflicted='%244F'  # grey foreground
+      local       meta='%F{#8B8682}'  # Hermes status-bar dim
+      local      clean='%F{#8B8682}'  # Hermes status-bar dim
+      local   modified='%F{#8B8682}'  # Hermes status-bar dim
+      local  untracked='%F{#8B8682}'  # Hermes status-bar dim
+      local conflicted='%F{#8B8682}'  # Hermes status-bar dim
     fi
 
     local res
@@ -1731,6 +1731,48 @@
   # can slow down prompt by 1-2 milliseconds, so it's better to keep it turned off unless you
   # really need it.
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
+
+  # Hermes default skin palette. Keep the shell status line aligned with the
+  # active Hermes CLI/TUI theme (hermes config get display.skin -> default).
+  # Use a softer slate highlight for P10k segments instead of near-black.
+  typeset -g POWERLEVEL9K_BACKGROUND='#303448'
+  typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_FOREGROUND='#8B8682'
+  typeset -g POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='%F{#8B8682}\u2571'
+  typeset -g POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR='%F{#8B8682}\u2571'
+
+  # Primary prompt segments.
+  typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND='#FFF8DC'
+  typeset -g POWERLEVEL9K_DIR_FOREGROUND='#FFF8DC'
+  typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND='#B8860B'
+  typeset -g POWERLEVEL9K_DIR_ANCHOR_FOREGROUND='#FFD700'
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND='#4caf50'
+  typeset -g POWERLEVEL9K_PROMPT_CHAR_ERROR_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND='#ef5350'
+
+  # Git status colors mirror Hermes success/warn/error/accent semantics.
+  typeset -g POWERLEVEL9K_VCS_CLEAN_FOREGROUND='#4caf50'
+  typeset -g POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND='#FFBF00'
+  typeset -g POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='#ffa726'
+  typeset -g POWERLEVEL9K_VCS_CONFLICTED_FOREGROUND='#ef5350'
+
+  # Right-hand status line segments.
+  typeset -g POWERLEVEL9K_STATUS_OK_FOREGROUND='#4caf50'
+  typeset -g POWERLEVEL9K_STATUS_OK_PIPE_FOREGROUND='#4caf50'
+  typeset -g POWERLEVEL9K_STATUS_ERROR_FOREGROUND='#ef5350'
+  typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_FOREGROUND='#ef5350'
+  typeset -g POWERLEVEL9K_STATUS_ERROR_PIPE_FOREGROUND='#ef5350'
+  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND='#C0C0C0'
+  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND='#FFBF00'
+  typeset -g POWERLEVEL9K_TIME_FOREGROUND='#FFD700'
+  typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_CONTEXT_ROOT_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_VIRTUALENV_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_ANACONDA_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_PYENV_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_GOENV_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_NODENV_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_NVM_FOREGROUND='#DAA520'
+  typeset -g POWERLEVEL9K_NODEENV_FOREGROUND='#DAA520'
 
   # If p10k is already loaded, reload configuration.
   # This works even with POWERLEVEL9K_DISABLE_HOT_RELOAD=true.
