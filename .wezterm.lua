@@ -107,12 +107,6 @@ config.keys = {
 		mods = "CTRL",
 		action = wezterm.action.EmitEvent("cycle-background"),
 	},
-	{
-		key = "Enter",
-		mods = "SHIFT",
-		-- Preserve Shift+Enter through tmux for Pi's newline binding.
-		action = wezterm.action.SendString("\x1b[13;2u"),
-	},
 }
 
 return config
