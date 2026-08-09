@@ -313,3 +313,8 @@ export PATH=$PATH:$HOME/.maestro/bin
 
 # GVM
 [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
+# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+fpath=(/Users/louie/.docker/completions $fpath)
+autoload -Uz compinit
+compinit
+# End of Docker CLI completions
