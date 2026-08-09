@@ -176,7 +176,6 @@ export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
 export JAVA_HOME="/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home" # Update at 2023
 
 # NOTE: Docker Setup
-export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 # NOTE: Nvim Setup
 export NVM_DIR="$HOME/.nvm"
