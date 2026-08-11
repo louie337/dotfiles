@@ -316,5 +316,8 @@ source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 [[ -s "/home/louie.guest/.gvm/scripts/gvm" ]] && source "/home/louie.guest/.gvm/scripts/gvm"
 
+# NOTE: DevLab aliases
 alias hermes="hermes --yolo --tui"
 alias hms="hermes"
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
