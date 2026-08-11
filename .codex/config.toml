@@ -49,6 +49,9 @@ trust_level = "trusted"
 [projects."/Users/louie/Documents/tmp"]
 trust_level = "trusted"
 
+[projects."/Users/louie/Documents/projects/dev-lab"]
+trust_level = "trusted"
+
 [desktop]
 followUpQueueMode = "queue"
 
