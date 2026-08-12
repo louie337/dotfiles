@@ -318,3 +318,6 @@ fpath=(/Users/louie/.docker/completions $fpath)
 autoload -Uz compinit
 compinit
 # End of Docker CLI completions
+
+# bun completions
+[ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
