@@ -3,6 +3,8 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 CONFIG="$ROOT/.codex/config.toml"
+OPENCODE_CONFIG="$ROOT/.config/opencode/opencode.json"
+PI_MCP_CONFIG="$ROOT/.pi/agent/mcp.json"
 AGENTS_DIR="$ROOT/.codex/agents"
 SKILLS_DIR="$ROOT/.agents/skills"
 
@@ -60,17 +62,34 @@ for agent in mr-loop-review-investigator mr-loop-conflict-investigator mr-loop-c
   assert_contains "read-only agent $agent is sandboxed" "$AGENTS_DIR/$agent.toml" 'sandbox_mode = "read-only"'
 done
 
-python3 - "$CONFIG" "$AGENTS_DIR" <<'PY'
+python3 - "$CONFIG" "$OPENCODE_CONFIG" "$PI_MCP_CONFIG" "$AGENTS_DIR" <<'PY'
 import glob
+import json
 import os
 import sys
 import tomllib
 
-files = [sys.argv[1], *glob.glob(os.path.join(sys.argv[2], "*.toml"))]
+config_path, opencode_path, pi_path, agents_dir = sys.argv[1:]
+files = [config_path, *glob.glob(os.path.join(agents_dir, "*.toml"))]
 for path in files:
     with open(path, "rb") as stream:
         tomllib.load(stream)
 print(f"ok - parsed {len(files)} Codex TOML files")
+
+with open(config_path, "rb") as stream:
+    codex_mcp = set(tomllib.load(stream).get("mcp_servers", {}))
+with open(opencode_path, encoding="utf-8") as stream:
+    opencode_mcp = set(json.load(stream).get("mcp", {}))
+with open(pi_path, encoding="utf-8") as stream:
+    pi_mcp = json.load(stream)
+
+if codex_mcp != opencode_mcp:
+    missing = sorted(codex_mcp - opencode_mcp)
+    extra = sorted(opencode_mcp - codex_mcp)
+    raise SystemExit(f"Codex/OpenCode MCP sets differ: missing={missing}, extra={extra}")
+if "codex" not in pi_mcp.get("imports", []):
+    raise SystemExit("Pi MCP config must import the shared Codex MCP set")
+print(f"ok - {len(codex_mcp)} MCP servers are shared across Codex, OpenCode, and Pi")
 PY
 
 decision=$(codex execpolicy check --rules "$ROOT/.codex/rules/global.rules" -- git reset --hard HEAD)
