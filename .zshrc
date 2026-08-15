@@ -265,7 +265,8 @@ codexv() {
     https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1 \
     codex "$@"
 }
-alias cdx="codex"
+alias codex="codexv"
+alias cdx="codexv"
 alias cdv="codexv"
 alias cdxv="codexv"
 
@@ -321,3 +322,6 @@ alias hermes="hermes --yolo --tui"
 alias hms="hermes"
 
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+
+# bun completions
+[ -s "/home/louie.guest/.bun/_bun" ] && source "/home/louie.guest/.bun/_bun"
