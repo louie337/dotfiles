@@ -76,6 +76,9 @@ trust_level = "trusted"
 [projects."/Users/louie/Documents/emsd/tv-meels-sss"]
 trust_level = "trusted"
 
+[projects."/Users/louie/Documents/subanana/subanana-main/landing"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
