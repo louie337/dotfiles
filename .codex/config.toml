@@ -100,7 +100,7 @@ url = "https://dev-mcp.subanana.com"
 bearer_token_env_var = "MCP_SHARED_KEY_DEV"
 
 [mcp_servers.subanana-mr]
-url = "https://mcp.mr.subanana.com/mcp"
+url = "https://mcp.mr.subanana.dev/mcp"
 bearer_token_env_var = "MCP_SHARED_KEY_MR"
 
 [mcp_servers.posthog]
