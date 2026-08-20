@@ -40,6 +40,13 @@ for skill in mr-loop ticket-loop mission foreman patch teach; do
   assert_file "skill $skill has UI metadata" "$SKILLS_DIR/$skill/agents/openai.yaml"
 done
 
+assert_contains "mr-loop bootstraps a missing MR" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "When the local branch has no open MR"
+assert_contains "mr-loop state machine includes MR bootstrap" \
+  "$SKILLS_DIR/mr-loop/references/state-machine.md" '`bootstrap_mr`'
+assert_contains "mr-loop bootstrap rechecks MR uniqueness" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "create one MR only after proving"
+
 for agent in \
   docker-developer \
   golang-developer \

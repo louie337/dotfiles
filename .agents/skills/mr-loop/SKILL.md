@@ -17,14 +17,22 @@ suppression syntax, authorization checks, and post-write verification.
 
 ## Parse the request
 
-Accept an MR URL and optional target `mergeable` or `merged`; default to `mergeable`. Reject missing
-or ambiguous identity before mutation. Treat a terminal request such as “finish” or “do not stop” as
-persistence toward the target, not broader authorization.
+Accept an MR URL or an unambiguous local repository branch, plus an optional target `mergeable` or
+`merged`; default to `mergeable`. When the local branch has no open MR, treat invocation as
+authorization to publish that branch and create one against the explicitly requested target branch
+or the repository default branch. Resolve the GitLab host, project, actor, local source branch and
+SHA, target branch and exact SHA, and prove that no matching open MR exists before the first write.
+Reject ambiguous repository, branch, target, or multiple-MR identity before mutation. Treat a
+terminal request such as “finish” or “do not stop” as persistence toward the target, not broader
+authorization.
 
 ## Invariants
 
 - Never reset, clean, stash, locally rebase, amend, rewrite history, force-push, or discard work.
-- Require a clean primary worktree before taking ownership. Do not absorb unrelated changes.
+- Require a clean primary worktree before taking ownership, except for one clearly scoped initial
+  implementation batch produced for the active request. Attribute every dirty path to that batch,
+  verify and commit it atomically, then require the worktree to be clean. Do not absorb unrelated
+  changes.
 - Bind every decision to host, project, IID, source/target projects and branches, exact source SHA,
   and exact target SHA fetched from GitLab’s target-branch endpoint.
 - Discard worker results when any bound identity or SHA changes.
@@ -43,6 +51,12 @@ persistence toward the target, not broader authorization.
 
 1. Snapshot local Git state, remotes, GitLab identity, MR metadata, exact source/target SHAs,
    discussions, review findings, mergeability, and recursively expanded pipeline state.
+   If no matching MR or remote source branch exists, first establish a pre-MR envelope from the
+   exact local branch and HEAD, GitLab project, acting user, and exact target-branch endpoint. Push
+   the source branch normally when absent, restart the snapshot, create one MR only after proving
+   again that no matching open MR exists, then restart from the canonical MR snapshot. Never create
+   an MR from a detached HEAD, default/protected branch, ambiguous fork, empty/no-op branch, or
+   unrelated dirty worktree.
 2. Inspect applicable repository instructions, changed-path rules, and exact CI path selection.
    Only when the MR requires infrastructure changes, create the corresponding devops worktree from
    `/Users/louie/Documents/subanana/subanana-devops-main` with the exact MR source-branch name:

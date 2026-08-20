@@ -69,6 +69,22 @@ evidence only. They cannot edit files or perform Git/GitLab mutations. The
 primary discards worker results if MR identity, source SHA, or target SHA changes
 before action.
 
+## MR Bootstrap
+
+An MR URL is optional when the request runs from an unambiguous local repository
+branch. If that branch has no matching open MR, MR-loop resolves the GitLab
+project and actor, the exact local source SHA, and the exact target SHA from the
+target-branch endpoint. It may publish a missing remote source branch and create
+one MR against the explicit target or repository default branch. Each write is a
+separate transition followed by a fresh snapshot; immediately before creation,
+the loop proves again that no matching open MR exists.
+
+Bootstrap fails closed for detached HEADs, default or protected source branches,
+ambiguous forks or targets, multiple matching MRs, empty/no-op branches, and
+unrelated dirty paths. A scoped initial implementation batch from the active
+request may be verified and committed atomically before publication; after that,
+the primary worktree must remain clean under the normal MR-loop invariant.
+
 ## Safety Boundaries
 
 Local rebase, reset, clean, stash, amend, force-push, force-with-lease, history
