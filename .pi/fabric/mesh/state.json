@@ -1,0 +1,76 @@
+{
+  "format": 1,
+  "entries": {
+    "topology/hosts/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454": {
+      "key": "topology/hosts/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454",
+      "value": {
+        "format": 1,
+        "id": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "rootId": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "identity": {
+          "id": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+          "name": "main",
+          "kind": "main",
+          "sessionId": "01a012a7-fe12-780b-a98a-7a1546c6e2bb"
+        },
+        "startedAt": 1787019396383,
+        "updatedAt": 1787042743761,
+        "expiresAt": 1787042758761
+      },
+      "version": 3451,
+      "updatedAt": 1787042743762,
+      "updatedBy": {
+        "id": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a012a7-fe12-780b-a98a-7a1546c6e2bb"
+      }
+    },
+    "topology/participants/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454": {
+      "key": "topology/participants/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454",
+      "value": {
+        "format": 1,
+        "id": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "kind": "root",
+        "rootId": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "ownerHostId": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "ownerIdentityId": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "name": "main",
+        "status": "idle",
+        "runner": "pi",
+        "transport": "host",
+        "capabilities": [],
+        "cwd": "/Users/louie/dotfiles",
+        "sessionId": "01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "model": "datax_openai/gpt-5.6-sol",
+        "thinking": "medium",
+        "startedAt": 1787019396383,
+        "updatedAt": 1787042743761,
+        "pendingMessages": false,
+        "controlProtocol": "v1"
+      },
+      "version": 3451,
+      "updatedAt": 1787042743765,
+      "updatedBy": {
+        "id": "session:01a012a7-fe12-780b-a98a-7a1546c6e2bb",
+        "name": "main",
+        "kind": "main",
+        "sessionId": "01a012a7-fe12-780b-a98a-7a1546c6e2bb"
+      }
+    }
+  },
+  "versions": {
+    "topology/hosts/e90f80646e34a672cddcdd0d8d3ea1c93e1a2b4c12fa55690ef83154e921bb9a": 4,
+    "sessions/01a012a7-7b62-7445-8720-139a590cb991": 3,
+    "topology/participants/e90f80646e34a672cddcdd0d8d3ea1c93e1a2b4c12fa55690ef83154e921bb9a": 4,
+    "topology/hosts/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454": 3451,
+    "sessions/01a012a7-fe12-780b-a98a-7a1546c6e2bb": 3450,
+    "topology/participants/f19e32ae4772622298f37652ffdd225f2f716c17370c1ff1c0abcfb1723ca454": 3451
+  },
+  "tombstoneOrder": [
+    "sessions/01a012a7-7b62-7445-8720-139a590cb991",
+    "topology/participants/e90f80646e34a672cddcdd0d8d3ea1c93e1a2b4c12fa55690ef83154e921bb9a",
+    "topology/hosts/e90f80646e34a672cddcdd0d8d3ea1c93e1a2b4c12fa55690ef83154e921bb9a",
+    "sessions/01a012a7-fe12-780b-a98a-7a1546c6e2bb"
+  ]
+}

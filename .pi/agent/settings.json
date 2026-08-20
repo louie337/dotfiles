@@ -1,7 +1,7 @@
 {
   "lastChangelogVersion": "0.83.0",
   "theme": "dark/dark",
-  "defaultProvider": "datax_openai",
+  "defaultProvider": "subanana",
   "defaultModel": "gpt-5.6-sol",
   "packages": [
     "npm:@tintinweb/pi-subagents",
