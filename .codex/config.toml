@@ -37,14 +37,14 @@ base_url = "https://sg.datax.io/backend-api/codex"
 wire_api = "responses"
 env_key = "DATAX_OPENAI_API_KEY"
 supports_websockets = true
-requires_openai_auth = true # required for codex app
+requires_openai_auth = false
 
 [model_providers.subanana]
 name = "Subanana"
 base_url = "https://llmapi.subanana.dev/"
 wire_api = "responses"
 env_key = "SUBANANA_OPENAI_API_KEY"
-requires_openai_auth = true
+requires_openai_auth = false
 
 [projects."/Users/louie/Documents/emsd/tv-meels-sss/main"]
 trust_level = "trusted"
