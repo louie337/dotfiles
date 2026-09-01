@@ -83,7 +83,29 @@ Bootstrap fails closed for detached HEADs, default or protected source branches,
 ambiguous forks or targets, multiple matching MRs, empty/no-op branches, and
 unrelated dirty paths. A scoped initial implementation batch from the active
 request may be verified and committed atomically before publication; after that,
-the primary worktree must remain clean under the normal MR-loop invariant.
+every loop-owned worktree must remain clean under the normal MR-loop invariant.
+
+## Paired Subanana Repositories
+
+For a Subanana app MR, the exact source-branch name is also the pair key for
+`/Users/louie/Documents/subanana/subanana-main` and
+`/Users/louie/Documents/subanana/subanana-devops-main`. MR-loop reuses an existing
+same-named app worktree or creates it when missing. It creates the same-named
+DevOps worktree only when ticket, diff, code, or repository-rule evidence proves
+that the app change requires an actual infrastructure diff.
+
+The loop discovers the paired DevOps MR by exact project, source branch, and
+target. It reuses one exact match. When none exists, it creates the DevOps MR only
+after the infrastructure implementation has a verified non-empty diff against
+the exact DevOps target, the same-named branch is committed and normally pushed,
+and MR uniqueness is rechecked. An app MR, shared ticket, deployment need, or CI
+need alone never justifies a DevOps worktree, branch, or MR. Empty paired MRs are
+prohibited.
+
+Both MRs retain independent project, IID, source/target SHA, pipeline, review,
+and authorization evidence. Mutations are serialized across the pair and trigger
+a fresh paired snapshot. `mergeable` requires both MRs when infrastructure is in
+scope. An app-only request to merge does not authorize merging the DevOps MR.
 
 ## Safety Boundaries
 

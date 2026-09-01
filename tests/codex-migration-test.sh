@@ -46,6 +46,20 @@ assert_contains "mr-loop state machine includes MR bootstrap" \
   "$SKILLS_DIR/mr-loop/references/state-machine.md" '`bootstrap_mr`'
 assert_contains "mr-loop bootstrap rechecks MR uniqueness" "$SKILLS_DIR/mr-loop/SKILL.md" \
   "create one MR only after proving"
+assert_contains "mr-loop pairs exact source branch names" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "use exactly the same source-branch name as the app MR"
+assert_contains "mr-loop creates missing app worktree" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  'wt -C /Users/louie/Documents/subanana/subanana-main switch --create <source-branch>'
+assert_contains "mr-loop gates DevOps artifacts on infrastructure" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "changes are not required, do not create a DevOps worktree, branch, or MR"
+assert_contains "mr-loop requires non-empty DevOps diff" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "verified, non-empty diff against the exact DevOps target"
+assert_contains "mr-loop bootstraps paired DevOps MR" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "create exactly one DevOps MR"
+assert_contains "mr-loop state machine includes paired DevOps bootstrap" \
+  "$SKILLS_DIR/mr-loop/references/state-machine.md" '`bootstrap_devops_mr`'
+assert_contains "mr-loop gates pair mergeability" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "require every required MR in the pair"
 
 assert_contains "test-loop uses MR deploy environments first" "$SKILLS_DIR/test-loop/SKILL.md" \
   "MR deploy environment (preferred)"
