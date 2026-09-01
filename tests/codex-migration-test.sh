@@ -33,7 +33,7 @@ assert_contains "execpolicy forbids chmod" "$ROOT/.codex/rules/global.rules" 'pa
 assert_contains "execpolicy forbids reset" "$ROOT/.codex/rules/global.rules" 'pattern = ["git", "reset"]'
 assert_contains "execpolicy forbids force push" "$ROOT/.codex/rules/global.rules" '"--force-with-lease"'
 
-for skill in mr-loop ticket-loop mission foreman patch teach; do
+for skill in mr-loop ticket-loop test-loop mission foreman patch teach; do
   path="$SKILLS_DIR/$skill/SKILL.md"
   assert_file "skill $skill exists" "$path"
   assert_contains "skill $skill has matching name" "$path" "name: $skill"
@@ -46,6 +46,21 @@ assert_contains "mr-loop state machine includes MR bootstrap" \
   "$SKILLS_DIR/mr-loop/references/state-machine.md" '`bootstrap_mr`'
 assert_contains "mr-loop bootstrap rechecks MR uniqueness" "$SKILLS_DIR/mr-loop/SKILL.md" \
   "create one MR only after proving"
+
+assert_contains "test-loop uses MR deploy environments first" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "MR deploy environment (preferred)"
+assert_contains "test-loop has the consumer dev fallback" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "https://dev-plus.subanana.com/"
+assert_contains "test-loop gates production" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "after the user explicitly approves production testing"
+assert_contains "test-loop names staff profile" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Chrome MCP `Development` profile'
+assert_contains "test-loop names free profile" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Chrome MCP `louielee.learn@gmail.com` profile'
+assert_contains "test-loop names paid profile" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Chrome MCP `louielee.dev@gmail.com` profile'
+assert_contains "test-loop names Subanana profile" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Chrome MCP `Subanana` profile'
 
 for agent in \
   docker-developer \

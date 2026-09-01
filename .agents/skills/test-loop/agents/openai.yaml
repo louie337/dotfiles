@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Loop"
+  short_description: "Run Subanana e2e checks safely"
+  default_prompt: "Use $test-loop to run the requested Subanana browser end-to-end scenarios and report exact environment, profile, and evidence."
