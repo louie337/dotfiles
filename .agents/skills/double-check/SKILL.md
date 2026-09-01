@@ -13,10 +13,11 @@ unless the user separately requests that work.
 
 1. Read the repository's applicable `AGENTS.md` files and snapshot the repository identity,
    current branch, `HEAD`, staged and unstaged changes, and untracked paths.
-2. Extract the case-insensitive `SUB-[0-9]+` key from the current branch name and normalize it to
-   uppercase. Do not infer the issue from commit messages, nearby branches, or a title search. If
-   the branch contains no key or more than one distinct key, stop and ask for the exact issue ID;
-   do not guess.
+2. Scan the current branch name from left to right for case-insensitive `SUB-[0-9]+` keys. Use the
+   first occurrence as the primary issue ID and normalize it to uppercase; if later occurrences
+   contain different issue IDs, ignore them for primary-ticket resolution. Do not infer the issue
+   from commit messages, nearby branches, or a title search. If the branch contains no key, stop
+   and ask for the exact issue ID; do not guess.
 3. Fetch that exact issue through Linear MCP. Keep Linear strictly read-only. If the issue cannot
    be fetched or belongs to an unexpected workspace/project, report the identity problem before
    evaluating scope.

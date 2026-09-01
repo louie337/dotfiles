@@ -83,7 +83,9 @@ assert_contains "test-loop names Subanana profile" "$SKILLS_DIR/test-loop/SKILL.
   'Chrome MCP `Subanana` profile'
 
 assert_contains "double-check resolves ticket from branch" "$SKILLS_DIR/double-check/SKILL.md" \
-  'Extract the case-insensitive `SUB-[0-9]+` key from the current branch name'
+  'case-insensitive `SUB-[0-9]+` keys'
+assert_contains "double-check uses first branch ticket" "$SKILLS_DIR/double-check/SKILL.md" \
+  "first occurrence as the primary issue ID"
 assert_contains "double-check uses Linear MCP" "$SKILLS_DIR/double-check/SKILL.md" \
   "Fetch that exact issue through Linear MCP"
 assert_contains "double-check inspects related scope" "$SKILLS_DIR/double-check/SKILL.md" \
