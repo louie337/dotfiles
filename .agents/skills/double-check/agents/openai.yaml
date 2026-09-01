@@ -1,0 +1,10 @@
+interface:
+  display_name: "Double Check"
+  short_description: "Audit Subanana branches against Linear scope"
+  default_prompt: "Use $double-check to compare the current Subanana branch with its Linear ticket and report scope alignment, verification, and follow-up gaps."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "linear"
+      description: "Read the branch ticket and its related Linear issue context"
