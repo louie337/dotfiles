@@ -38,7 +38,10 @@ Use the first applicable option below and record the resolved base URL before te
    MR SHA and confirm its `dev:ci-deploy:mr` job exists and has succeeded. A missing, manual,
    skipped, canceled, failed, pending, or running job does not establish a ready MR environment;
    do not proceed with MR-environment testing until the exact-SHA job succeeds. Do not play or
-   retry this job unless the user separately authorizes that GitLab mutation.
+   retry this job unless the user separately authorizes that GitLab mutation. You may mutate the data
+   inside MR environment freely as they are disposable with docker compose volume. Changes will not 
+   affect real data.
+
 2. **Dev fallback:** use `https://dev-plus.subanana.com/` for the consumer app or
    `https://dev-staff-app.subanana.com/` for the staff app. Before asking the user to run a dev
    deployment, inspect the relevant pipeline and prove `services:all:deploy:dev` is runnable for
@@ -48,11 +51,14 @@ Use the first applicable option below and record the resolved base URL before te
    retry, or otherwise run `services:all:deploy:dev` yourself, whether through GitLab UI, API, CLI,
    MCP, or another agent. After the user reports running it, re-fetch the exact job and require a
    successful result before starting dev-environment testing; do not infer success from the user's
-   message alone.
+   message alone. You may mutate the data inside DEV environment with caution as we store mostly
+   testing data in the database.
+
 3. **Production:** use `https://plus.subanana.com/` or `https://staff-app.subanana.com/` only
    after the user explicitly approves production testing in this conversation. A general request
    to test, an MR URL, or prior approval for dev does not authorize production access. If approval
-   is missing, stop before opening production and report the blocker.
+   is missing, stop before opening production and report the blocker. You should never mutate any 
+   data in prod without explicit approval.
 
 Do not silently substitute dev for an MR deploy when the MR URL is discoverable but unavailable:
 record why the MR environment cannot be used, then use the dev fallback if that remains in scope.
