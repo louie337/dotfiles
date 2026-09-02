@@ -30,7 +30,7 @@ create commits, or mutate GitLab/MR state unless the user separately asks for th
 
 Use the first applicable option below and record the resolved base URL before testing:
 
-1. **MR deploy environment (preferred):** use the deploy URL published in the MR's comments when
+1. **MR deploy environment (highly preferred):** use the deploy URL published in the MR's comments when
    it is available, reachable, and clearly associated with the current MR. Prefer the app or staff
    deploy URL matching the scenario. Check that it is HTTPS and, when deployment metadata is
    available, that it represents the current MR SHA; a stale or unrelated preview is not evidence
@@ -62,8 +62,8 @@ delete data, or otherwise cause material side effects.
 
 ## Select the Chrome MCP profile
 
-Use the Chrome MCP `Development` profile for scenarios requiring Staff access; it has
-`louie.lee@datax.io` logged in.
+Use the Chrome MCP `Development` profile for usual scenarios (highly preferred if the scope is allowed); it has
+`louie.lee@datax.io` logged in as both user and staff.
 
 Use the Chrome MCP `louielee.learn@gmail.com` profile for scenarios requiring a FREE user; it has
 `louielee.learn@gmail.com` logged in.
