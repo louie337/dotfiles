@@ -89,7 +89,11 @@ env_vars = ["ARTIFACT_DROP_TOKEN"]
 
 [mcp_servers.chrome-devtools]
 command = "npx"
-args = ["-y", "chrome-devtools-mcp@latest", "--auto-connect"]
+# Attach to the running Chrome instance only.  Supplying the real user-data
+# directory makes chrome-devtools-mcp read its DevToolsActivePort instead of
+# falling back to its own ~/.cache/chrome-devtools-mcp profile. Keep the version
+# pinned so a future MCP release cannot silently change this fail-closed behavior.
+args = ["-y", "chrome-devtools-mcp@1.8.0", "--auto-connect", "--user-data-dir=/Users/louie/Library/Application Support/Google/Chrome"]
 
 [mcp_servers.subanana-data-analytics]
 url = "https://mcp.subanana.com"

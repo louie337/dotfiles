@@ -13,8 +13,9 @@
       "command": [
         "npx",
         "-y",
-        "chrome-devtools-mcp@latest",
-        "--auto-connect"
+        "chrome-devtools-mcp@1.8.0",
+        "--auto-connect",
+        "--user-data-dir=/Users/louie/Library/Application Support/Google/Chrome"
       ],
       "enabled": false
     },

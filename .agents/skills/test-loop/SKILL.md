@@ -30,7 +30,7 @@ create commits, or mutate GitLab/MR state unless the user separately asks for th
 
 Use the first applicable option below and record the resolved base URL before testing:
 
-1. **MR deploy environment (highly preferred):** use the deploy URL published in the MR's comments when
+1. **MR deploy environment (preferred):** use the deploy URL published in the MR's comments when
    it is available, reachable, and clearly associated with the current MR. Prefer the app or staff
    deploy URL matching the scenario. Check that it is HTTPS and, when deployment metadata is
    available, that it represents the current MR SHA; a stale or unrelated preview is not evidence
@@ -68,6 +68,20 @@ delete data, or otherwise cause material side effects.
 
 ## Select the Chrome MCP profile
 
+The configured `chrome-devtools` server is attach-only: it must connect to the already-running
+Chrome instance through `/Users/louie/Library/Application Support/Google/Chrome`. It must never
+launch the MCP-managed `~/.cache/chrome-devtools-mcp/chrome-profile` or any temporary/isolated
+browser. Before touching an app, call `list_pages` and select an existing page from the required
+Chrome window/profile. If the configured server cannot attach, the required profile is not already
+open, or the identity cannot be verified, stop and mark the scenario **blocked**. Do not work around
+this by starting another Chrome window, using a different MCP server, passing `--isolated`, or using
+`new_page` with `isolatedContext`. Never invoke `npx chrome-devtools-mcp`, `chrome-devtools start`,
+or another generic browser-MCP command from a shell as a fallback.
+
+If the MCP configuration was changed, restart the client or reconnect the `chrome-devtools` server
+before testing; a live MCP process keeps its old launch arguments until it is restarted. If the
+reconnect fails, leave the scenario blocked rather than retrying with a generic MCP command.
+
 Use the Chrome MCP `Development` profile for usual scenarios (highly preferred if the scope is allowed); it has
 `louie.lee@datax.io` logged in as both user and staff.
 
@@ -89,10 +103,16 @@ scenario into the smallest applicable checks and run each with its required prof
 profile and identity used. Never enter or request credentials; verify the active profile and
 account before exercising protected behavior.
 
+The profile names above are Chrome profiles, not MCP tool parameters. The MCP server cannot switch
+profiles after connecting; select a pre-opened page in the matching profile and verify the visible
+account identity. If the requested profile is not among the attached pages, the scenario is blocked.
+
 ## Execute and collect evidence
 
-Use Chrome MCP for all browser interaction. Reuse an already-open matching profile when possible,
-but confirm the origin, profile, and logged-in identity before each protected scenario. Keep the
+Use Chrome MCP for all browser interaction. Do not call `new_page`: navigate or reuse a pre-opened
+page only after selecting an existing page in the matching profile and verifying its identity. If
+the required page/profile is not already open, mark the scenario blocked. Confirm the origin,
+profile, and logged-in identity before each protected scenario. Keep the
 test sequence deterministic: reset to a known start state, perform only the listed actions, and
 capture the final URL plus visible success/error state. Use screenshots or other browser evidence
 when available, especially for failures and authorization checks. Avoid exposing tokens, cookies,

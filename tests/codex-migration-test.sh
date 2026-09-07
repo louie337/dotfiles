@@ -63,6 +63,24 @@ assert_contains "mr-loop gates pair mergeability" "$SKILLS_DIR/mr-loop/SKILL.md"
 
 assert_contains "test-loop uses MR deploy environments first" "$SKILLS_DIR/test-loop/SKILL.md" \
   "MR deploy environment (preferred)"
+assert_contains "test-loop requires attached Chrome" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "attach-only"
+assert_contains "test-loop blocks isolated browser fallback" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "Do not work around"
+assert_contains "test-loop blocks shell MCP fallback" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Never invoke `npx chrome-devtools-mcp`'
+assert_contains "test-loop forbids new tabs" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'Do not call `new_page`:'
+assert_contains "Chrome MCP pins the real Chrome data directory" "$CONFIG" \
+  "--user-data-dir=/Users/louie/Library/Application Support/Google/Chrome"
+assert_contains "Chrome MCP uses auto-connect" "$CONFIG" "--auto-connect"
+assert_contains "Chrome MCP version is pinned" "$CONFIG" "chrome-devtools-mcp@1.8.0"
+assert_contains "OpenCode Chrome MCP pins the real Chrome data directory" "$OPENCODE_CONFIG" \
+  "--user-data-dir=/Users/louie/Library/Application Support/Google/Chrome"
+assert_contains "OpenCode Chrome MCP uses auto-connect" "$OPENCODE_CONFIG" "--auto-connect"
+assert_contains "OpenCode Chrome MCP version is pinned" "$OPENCODE_CONFIG" "chrome-devtools-mcp@1.8.0"
+assert_contains "test-loop requires MCP reconnect after config changes" "$SKILLS_DIR/test-loop/SKILL.md" \
+  'reconnect the `chrome-devtools` server'
 assert_contains "test-loop has the consumer dev fallback" "$SKILLS_DIR/test-loop/SKILL.md" \
   "https://dev-plus.subanana.com/"
 assert_contains "test-loop gates MR preview on deploy job" "$SKILLS_DIR/test-loop/SKILL.md" \

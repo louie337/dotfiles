@@ -1,0 +1,7 @@
+interface:
+  display_name: "Session Monitoring"
+  short_description: "Monitor Codex CLI panes in tmux"
+  default_prompt: "Use $session-monitoring to watch selected tmux Codex sessions until they become idle."
+
+policy:
+  allow_implicit_invocation: true
