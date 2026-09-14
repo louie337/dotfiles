@@ -58,8 +58,16 @@ assert_contains "mr-loop bootstraps paired DevOps MR" "$SKILLS_DIR/mr-loop/SKILL
   "create exactly one DevOps MR"
 assert_contains "mr-loop state machine includes paired DevOps bootstrap" \
   "$SKILLS_DIR/mr-loop/references/state-machine.md" '`bootstrap_devops_mr`'
+assert_contains "mr-loop state machine tracks deployment MR count" \
+  "$SKILLS_DIR/mr-loop/references/state-machine.md" "deployment MR"
 assert_contains "mr-loop gates pair mergeability" "$SKILLS_DIR/mr-loop/SKILL.md" \
-  "require every required MR in the pair"
+  "require every required MR to have its current source SHA synchronized"
+assert_contains "mr-loop counts deployment MRs" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  'the deployment MR set: `1 MR`'
+assert_contains "mr-loop reports each MR URL" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "canonical GitLab URL as a Markdown link"
+assert_contains "mr-loop counts missing paired work" "$SKILLS_DIR/mr-loop/SKILL.md" \
+  "Count both required MRs"
 
 assert_contains "test-loop uses MR deploy environments first" "$SKILLS_DIR/test-loop/SKILL.md" \
   "MR deploy environment (preferred)"
@@ -116,6 +124,14 @@ assert_contains "double-check reports verification plan" "$SKILLS_DIR/double-che
   '**Verification plan**'
 assert_contains "double-check reports follow-up gaps" "$SKILLS_DIR/double-check/SKILL.md" \
   '**Missing parts and follow-up**'
+assert_contains "double-check counts deployment MRs" "$SKILLS_DIR/double-check/SKILL.md" \
+  "exact number of MRs required for complete deployment"
+assert_contains "double-check reports each MR URL" "$SKILLS_DIR/double-check/SKILL.md" \
+  "each existing MR's canonical web URL"
+assert_contains "double-check preserves paired count when missing" "$SKILLS_DIR/double-check/SKILL.md" \
+  "its absence does not reduce the required count"
+assert_contains "double-check reports unavailable MR URL" "$SKILLS_DIR/double-check/SKILL.md" \
+  'URL unavailable'
 
 for agent in \
   docker-developer \

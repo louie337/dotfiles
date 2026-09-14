@@ -1,6 +1,6 @@
 ---
 name: double-check
-description: Audit the current Subanana or Subanana DevOps branch against its Linear ticket and surrounding issue context, then report scope alignment, implementation intent, verification needs, and follow-up gaps. Use when the user asks to double-check, scope-check, or review the current implementation against its ticket without changing code.
+description: Audit the current Subanana or Subanana DevOps branch against its Linear ticket and surrounding issue context, then report scope alignment, implementation intent, verification needs, deployment MR count and links, and follow-up gaps. Use when the user asks to double-check, scope-check, or review the current implementation against its ticket without changing code.
 ---
 
 # Subanana implementation double-check
@@ -8,6 +8,8 @@ description: Audit the current Subanana or Subanana DevOps branch against its Li
 Perform a read-only scope audit. Use Linear MCP for ticket evidence and the local repository for
 implementation evidence. Do not edit code, mutate Git state, update Linear, or write to GitLab
 unless the user separately requests that work.
+When GitLab metadata is needed to identify merge requests or their URLs, load `gitlab-cli-skills`
+and `glab` first and use read-only queries only.
 
 ## Resolve the ticket from the branch
 
@@ -65,6 +67,35 @@ Do not judge scope from filenames or commit subjects alone. Trace enough data, c
 authorization flow to explain what behavior the implementation actually changes. Separate direct
 evidence from inference and call out implementation that appears unrelated to the ticket.
 
+## Determine deployment MR coverage
+
+After reviewing the ticket and implementation, explicitly determine how many merge requests are
+required for a complete deployment. Treat the Subanana APP and Subanana DevOps repositories as
+separate deployment units:
+
+- `1 MR` is required when exactly one repository is in deployment scope (APP-only or DevOps-only)
+  and ticket, diff, code, and repository rules provide no evidence that the other repository must
+  change.
+- `2 MRs` are required when the ticket, implementation, code, or repository rules require both the
+  APP change and an actual paired DevOps change, even when the DevOps diff or MR is not yet present.
+  The exact source-branch name is the pair key; do not count unrelated, helper, empty, or same-ticket
+  MRs on another branch. A verified, non-empty DevOps diff is required before its MR can be reused
+  or created, but its absence does not reduce the required count.
+
+Use read-only GitLab metadata when needed to resolve every relevant MR by exact project, source
+branch, target, and current SHA; if multiple matches remain, report the identity ambiguity instead
+of choosing one. If the two-MR classification applies while the current branch is
+in the DevOps repository, resolve and report its exact APP counterpart as well; do not report only
+the repository currently checked out. If the DevOps branch is a genuinely standalone one-MR change,
+state that no APP MR is required.
+When the current branch is in the APP repository, inspect an available same-named DevOps worktree or
+branch and its exact diff when deciding whether the paired MR is required; do not create one for this
+read-only audit. If that evidence is unavailable and the deployment count cannot be resolved from
+the ticket and repository rules, classify it as `cannot-determine` and explain the limitation.
+Record the required MR count, each existing MR's canonical web URL, and any required MR that is
+missing or inaccessible (including why its URL cannot be provided). This is an audit only: do not
+create, edit, merge, or otherwise mutate an MR.
+
 ## Evaluate scope alignment
 
 Create a compact requirement-to-implementation mapping. For each acceptance criterion or material
@@ -97,6 +128,13 @@ useful. Use these sections in order:
 4. **Missing parts and follow-up** — list only concrete gaps, unresolved decisions, dependencies,
    or verification still required. Name the owning issue when known. If none are found, say so and
    state any residual uncertainty rather than inventing work.
+5. **Deployment MRs** — state the exact number of MRs required for complete deployment (`1` MR in
+   the sole affected repository, or `2` APP + DevOps MRs). List every relevant MR with its
+   repository, IID, source/target, exact SHA or status, and canonical GitLab URL as a Markdown
+   link, with one entry per MR rather than one umbrella link. For an app-only change, explicitly
+   say that no DevOps MR is required; for a DevOps-only change, say that no APP MR is required. For
+   a paired change, list both URLs; if either MR is missing or its URL is inaccessible, include
+   `URL unavailable` with the reason and treat it as a follow-up/blocker.
 
 Include which Linear relationships were inspected and any inaccessible evidence. Do not repair
 gaps during this skill invocation; return actionable findings for the user or an implementation

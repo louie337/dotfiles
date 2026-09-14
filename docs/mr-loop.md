@@ -102,10 +102,22 @@ and MR uniqueness is rechecked. An app MR, shared ticket, deployment need, or CI
 need alone never justifies a DevOps worktree, branch, or MR. Empty paired MRs are
 prohibited.
 
-Both MRs retain independent project, IID, source/target SHA, pipeline, review,
-and authorization evidence. Mutations are serialized across the pair and trigger
-a fresh paired snapshot. `mergeable` requires both MRs when infrastructure is in
-scope. An app-only request to merge does not authorize merging the DevOps MR.
+The deployment set is one MR when only one repository is affected, or two MRs
+when complete deployment requires both the APP and a paired DevOps
+infrastructure change. Count both required MRs even when the DevOps diff or MR
+is not yet present; its verified non-empty diff is the gate before creation.
+Each required MR retains independent project, IID, source/target SHA,
+pipeline, review, authorization, and canonical web URL evidence. Mutations are
+serialized across the pair and trigger a fresh paired snapshot. `mergeable`
+requires every MR in the deployment set. An app-only request to merge does not
+authorize merging the DevOps MR.
+
+Every terminal summary states the exact deployment MR count and lists one
+canonical GitLab URL per relevant MR as a Markdown link. For an APP-only change,
+the summary states that no DevOps MR is required; for a DevOps-only change, it
+states that no APP MR is required. A missing or inaccessible required MR URL is
+reported as an identity gap; the loop does not claim complete deployment or
+mergeability until every required MR is accounted for.
 
 ## Safety Boundaries
 
