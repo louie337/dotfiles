@@ -256,7 +256,7 @@ alias ocv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_P
 # NOTE: Codex
 alias cdx="codex"
 alias cdr="codex resume"
-alias codexv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 codex"
+alias cdv="HTTPS_PROXY=$LOCAL_VPN_PROXY_URL HTTP_PROXY=$LOCAL_VPN_PROXY_URL NO_PROXY=localhost,127.0.0.1,::1 https_proxy=$LOCAL_VPN_PROXY_URL http_proxy=$LOCAL_VPN_PROXY_URL no_proxy=localhost,127.0.0.1,::1 codex"
 alias codex-auto="codex -a never -s workspace-write -c sandbox_workspace_write.network_access=true"
 
 # NOTE: VSCode Shell integrations (ref: https://code.visualstudio.com/docs/terminal/shell-integration)
