@@ -107,6 +107,8 @@ assert_contains "test-loop names paid profile" "$SKILLS_DIR/test-loop/SKILL.md" 
   'Chrome MCP `louielee.dev@gmail.com` profile'
 assert_contains "test-loop names Subanana profile" "$SKILLS_DIR/test-loop/SKILL.md" \
   'Chrome MCP `Subanana` profile'
+assert_contains "test-loop forbids unspecified Chrome profiles" "$SKILLS_DIR/test-loop/SKILL.md" \
+  "NEVER use any other profile"
 
 assert_contains "double-check resolves ticket from branch" "$SKILLS_DIR/double-check/SKILL.md" \
   'case-insensitive `SUB-[0-9]+` keys'

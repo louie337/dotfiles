@@ -26,10 +26,13 @@ notification_method = "auto"
 notification_condition = "always"
 status_line = ["model-with-reasoning", "git-branch", "pull-request-number", "run-state", "permissions", "approval-mode", "context-remaining", "used-tokens", "task-progress"]
 status_line_use_colors = true
+screen_reader_detection_done = true
+session_picker_view = "comfortable"
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 4
+gpt-6-astra = 4
 
 [model_providers.datax-codex-lb]
 name = "OpenAI"  # required — enables remote /responses/compact
@@ -88,6 +91,21 @@ trust_level = "trusted"
 [projects."/Users/louie/Documents/misc/hermes"]
 trust_level = "trusted"
 
+[projects."/Users/louie/Documents/fehd/fehd-rodent-detection/chat-history"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Documents/fehd/fehd-rodent-detection"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Desktop/FEHD_CAMERA_VIEW"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Desktop/FEHD_RENAME_SCRIPT"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Downloads/tmp"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
@@ -98,10 +116,6 @@ env_vars = ["ARTIFACT_DROP_TOKEN"]
 
 [mcp_servers.chrome-devtools]
 command = "npx"
-# Attach to the running Chrome instance only.  Supplying the real user-data
-# directory makes chrome-devtools-mcp read its DevToolsActivePort instead of
-# falling back to its own ~/.cache/chrome-devtools-mcp profile. Keep the version
-# pinned so a future MCP release cannot silently change this fail-closed behavior.
 args = ["-y", "chrome-devtools-mcp@1.8.0", "--auto-connect", "--user-data-dir=/Users/louie/Library/Application Support/Google/Chrome"]
 
 [mcp_servers.subanana-data-analytics]

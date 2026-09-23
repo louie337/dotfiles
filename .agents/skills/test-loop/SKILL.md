@@ -107,6 +107,11 @@ The profile names above are Chrome profiles, not MCP tool parameters. The MCP se
 profiles after connecting; select a pre-opened page in the matching profile and verify the visible
 account identity. If the requested profile is not among the attached pages, the scenario is blocked.
 
+Only use the Chrome profiles explicitly listed above. NEVER use any other profile, including a
+default, guest, personal, work, temporary, isolated, or otherwise "close enough" profile, even if
+it has a similar account or appears to reach the same environment. If the specified profile is not
+attached, mark the scenario **blocked** rather than falling back to another profile.
+
 ## Execute and collect evidence
 
 Use Chrome MCP for all browser interaction. Do not call `new_page`: navigate or reuse a pre-opened
