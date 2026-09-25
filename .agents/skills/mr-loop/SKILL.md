@@ -33,6 +33,17 @@ branch, and MR are required only when the app change also requires an actual inf
 For a DevOps MR, reverse the primary/optional repository roles while retaining the exact same
 source-branch pair key; discover an APP counterpart only when the ticket and diff require an APP
 change too.
+
+The app's `services:all:deploy:dev` job uses that same branch name as its DevOps deployment
+selector. In an app pipeline it takes `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` (or
+`CI_COMMIT_REF_NAME`), clones the exact matching branch from
+`dogcoin/subanana/subanana-devops`, and applies that branch's `dev/subanana-autopilot`
+manifests/settings. If no matching DevOps branch exists, the job falls back to DevOps `master`.
+Thus same-named APP and DevOps source branches are required for a dev deployment to consume the
+corresponding DevOps MR branch; MR or ticket association alone is insufficient. When using a dev
+deploy as evidence, bind the resolved DevOps branch and head SHA and distinguish an exact paired
+branch deployment from a `master` fallback.
+
 Before mutating anything, determine how many MRs are required for complete deployment and record
 the deployment MR set: `1 MR` when only one repository is in scope (APP-only or DevOps-only), or
 `2 MRs` when the ticket, implementation, code, or repository rules require an APP change plus an

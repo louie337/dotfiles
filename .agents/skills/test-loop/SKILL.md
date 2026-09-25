@@ -54,6 +54,16 @@ Use the first applicable option below and record the resolved base URL before te
    message alone. You may mutate the data inside DEV environment with caution as we store mostly
    testing data in the database.
 
+   For an app pipeline, `services:all:deploy:dev` selects the DevOps checkout by exact source
+   branch name: it uses `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` (or `CI_COMMIT_REF_NAME`), clones
+   that branch from `dogcoin/subanana/subanana-devops`, and applies its
+   `dev/subanana-autopilot` manifests/settings. If that DevOps branch does not exist, CI falls
+   back to the DevOps `master` branch. Therefore paired APP and DevOps MRs must use the same
+   source-branch name for the dev deploy to use the corresponding DevOps MR branch. Before asking
+   the user to run the job with `glab`, verify that exact DevOps branch exists and record its head
+   SHA; a successful job that resolved `master` is not evidence that the paired DevOps settings
+   were deployed.
+
 3. **Production:** use `https://plus.subanana.com/` or `https://staff-app.subanana.com/` only
    after the user explicitly approves production testing in this conversation. A general request
    to test, an MR URL, or prior approval for dev does not authorize production access. If approval
