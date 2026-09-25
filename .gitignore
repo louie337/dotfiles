@@ -4,3 +4,6 @@ node_modules
 !.pi/agent/mcp.json
 .config/tmuxinator/*
 !.config/tmuxinator/workbench.yml
+
+/.codex/*
+!/.codex/config.toml
