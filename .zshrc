@@ -92,7 +92,6 @@ ZVM_INIT_MODE=sourcing
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
   git
-  you-should-use
   zsh-vi-mode
   zsh-docker-aliases
   zsh-autosuggestions
@@ -321,3 +320,5 @@ compinit
 
 # bun completions
 [ -s "/Users/louie/.bun/_bun" ] && source "/Users/louie/.bun/_bun"
+# nvm bash_completion
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
