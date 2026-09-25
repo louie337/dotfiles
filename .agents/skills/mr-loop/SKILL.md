@@ -132,6 +132,20 @@ MRs toward complete deployment.
    documented canonical suppression rather than only resolving its discussion thread. Never
    suppress a valid error, a material risk, or an uncertain product or safety decision. A resolved
    thread alone is not a disposition.
+
+   **Dependency-only merge fast path:** when the requested target is `merged` (or the user has
+   separately authorized merging), if the required MR set has exactly one unresolved discussion and
+   it is the canonical RULE-0015 discussion stating that the paired DevOps MR/branch must merge
+   first, and every other review, conflict, authorization, and exact-SHA CI gate is clear, treat it
+   as an ordering gate rather than a code repair. Revalidate the exact paired DevOps MR and its
+   independent merge authorization, merge the DevOps MR first, and restart from a fresh paired
+   snapshot. After the DevOps merge is observed, verify that the APP discussion is the stale
+   RULE-0015 gate and resolve it through GitLab (or confirm the repository synchronizer resolved it),
+   then restart from another fresh snapshot and immediately merge the APP MR after revalidating its
+   current SHA, authorization, and gates. Do not use this fast path for a non-canonical thread,
+   multiple unresolved findings, unknown paired-MR identity/state, missing authorization, or a
+   `mergeable`-only request.
+
 7. Form small atomic repair batches within one repository at a time, add focused tests, and run
    service-free checks. Keep an active CI polling deadline; do useful local work between discrete
    polls.
