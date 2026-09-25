@@ -28,7 +28,7 @@ ZVM_INIT_MODE=sourcing
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-# ZSH_THEME="powerlevel10k/powerlevel10k"
+ZSH_THEME="powerlevel10k/powerlevel10k"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -207,8 +207,6 @@ export PATH=$PATH:$HOME/.cargo/bin:
 # NOTE: This line will remove duplicate paths
 typeset -U PATH 
 
-# NOTE: Power10k setup (allow to run p10k command)
-source ~/powerlevel10k/powerlevel10k.zsh-theme
 # NOTE: To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
