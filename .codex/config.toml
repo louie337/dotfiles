@@ -1,6 +1,6 @@
 model_provider = "datax-codex-lb"
 model = "gpt-6-astra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
 plan_mode_reasoning_effort = "max"
@@ -33,6 +33,11 @@ session_picker_view = "comfortable"
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 4
 gpt-6-astra = 4
+
+[profiles.datax-sol-6-1]
+model_provider = "datax-codex-lb"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "low"
 
 [model_providers.datax-codex-lb]
 name = "OpenAI"  # required — enables remote /responses/compact
