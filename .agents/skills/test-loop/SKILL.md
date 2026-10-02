@@ -37,10 +37,13 @@ Use the first applicable option below and record the resolved base URL before te
    for the current change. Before opening the preview, inspect the pipeline for the exact current
    MR SHA and confirm its `dev:ci-deploy:mr` job exists and has succeeded. A missing, manual,
    skipped, canceled, failed, pending, or running job does not establish a ready MR environment;
-   do not proceed with MR-environment testing until the exact-SHA job succeeds. Do not play or
-   retry this job unless the user separately authorizes that GitLab mutation. You may mutate the data
-   inside MR environment freely as they are disposable with docker compose volume. Changes will not 
-   affect real data.
+   do not proceed with MR-environment testing until the exact-SHA job succeeds. If that MR deploy
+   fails, play its `dev:ci-deploy:mr:cleanup` job from the same pipeline without requesting
+   separate authorization, and confirm cleanup succeeds before another deploy attempt. If cleanup
+   is absent or fails, report that state and stop; do not clean up a different MR or environment.
+   Do not play or retry the deploy job unless the user separately authorizes that GitLab mutation.
+   You may mutate the data inside an MR environment freely because its Docker Compose volume is
+   disposable and changes do not affect real data.
 
 2. **Dev fallback:** use `https://dev-plus.subanana.com/` for the consumer app or
    `https://dev-staff-app.subanana.com/` for the staff app. Before asking the user to run a dev
