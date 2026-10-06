@@ -1,0 +1,3 @@
+interface:
+  display_name: "FEHD QA VIS PDF Patch"
+  short_description: "Patch QA camera-photo placeholders while preserving PDF styling"
