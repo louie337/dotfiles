@@ -6,6 +6,7 @@ approvals_reviewer = "auto_review"
 plan_mode_reasoning_effort = "max"
 
 [sandbox_workspace_write]
+network_access = true
 writable_roots = [
     "/Users/louie/Documents/subanana/subanana-main",
     "/Users/louie/Documents/subanana/subanana-main/.agents",
@@ -110,6 +111,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/louie/Downloads/tmp"]
+trust_level = "trusted"
+
+[projects."/Users/louie/Desktop/FEHD_SCREENING"]
 trust_level = "trusted"
 
 [mcp_servers.linear]
