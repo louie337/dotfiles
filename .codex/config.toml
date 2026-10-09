@@ -1,4 +1,4 @@
-model_provider = "datax-codex-lb"
+model_provider = "openai"
 model = "gpt-6.1-sol"
 model_reasoning_effort = "low"
 sandbox_mode = "workspace-write"
@@ -33,6 +33,7 @@ session_picker_view = "comfortable"
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 4
 gpt-6-astra = 4
+"gpt-6.1-sol" = 4
 
 [profiles.datax-sol-6-1]
 model_provider = "datax-codex-lb"
