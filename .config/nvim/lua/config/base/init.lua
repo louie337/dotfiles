@@ -26,7 +26,7 @@ opt.relativenumber = true
 opt.scrolloff = 4
 opt.sidescrolloff = 8
 -- NOTE: No need to share clipboard since I am using builtin system clipboard access
-opt.clipboard = "unnamedplus"
+-- opt.clipboard = "unnamedplus"
 opt.confirm = true     -- Confirm to save changes before exiting modified buffer
 opt.cursorline = false -- Enable highlighting of the current line
 opt.ignorecase = true  -- Ignore case
