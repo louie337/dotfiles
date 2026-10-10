@@ -1,6 +1,6 @@
 model_provider = "openai"
 model = "gpt-6-sol"
-model_reasoning_effort = "max"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
 plan_mode_reasoning_effort = "max"
@@ -131,17 +131,14 @@ args = ["-y", "chrome-devtools-mcp@1.8.0", "--auto-connect", "--user-data-dir=/U
 [mcp_servers.subanana-data-analytics]
 url = "https://mcp.subanana.com"
 bearer_token_env_var = "MCP_SHARED_KEY"
-enabled = false
 
 [mcp_servers.subanana-data-analytics-dev]
 url = "https://dev-mcp.subanana.com"
 bearer_token_env_var = "MCP_SHARED_KEY_DEV"
-enabled = false
 
 [mcp_servers.subanana-mr]
 url = "https://mcp.mr.subanana.dev/mcp"
 bearer_token_env_var = "MCP_SHARED_KEY_MR"
-enabled = false
 
 [mcp_servers.posthog]
 url = "https://mcp.posthog.com/mcp"
