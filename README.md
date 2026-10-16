@@ -45,6 +45,31 @@ Validate the Codex-managed files with:
 sh tests/codex-migration-test.sh
 ```
 
-## Resources
+## Shared OpenConnector MCP
+
+The local OpenConnector gateway runs from `/Users/louie/Documents/open-connector` with Docker Compose and exposes its MCP endpoint at `http://127.0.0.1:3456/mcp`.
+
+The shared topology is:
+
+- Codex: `.codex/config.toml` → `mcp_servers.openconnector`
+- OpenCode: `.config/opencode/opencode.json` → `mcp.openconnector`
+- Hermes: `~/.hermes/config.yaml` → `mcp_servers.openconnector`
+- Claude Code: user-scoped `openconnector` MCP server
+
+OpenConnector is a connector gateway for provider Actions; it does not proxy arbitrary MCP servers. Existing MCP servers therefore remain configured directly in each client, while provider credentials managed by OpenConnector are reused through the single `/mcp` endpoint.
+
+Start the gateway:
+
+```sh
+cd /Users/louie/Documents/open-connector
+docker compose up -d
+docker compose ps
+curl http://127.0.0.1:3456/health
+```
+
+Runtime secrets are stored in `/Users/louie/Documents/open-connector/.env` with mode `0600`; do not commit that file. Hermes receives the OpenConnector runtime token through `~/.hermes/.env` as `MCP_OPENCONNECTOR_API_KEY`.
+
+OpenConnector's MCP tools are `list_apps`, `list_connections`, `search_actions`, `get_action_guide`, and `execute_action`. Use `search_actions` and `get_action_guide` before executing provider Actions.
+
 - stow man page: https://www.gnu.org/software/stow/manual/
 - Enjoy using my dotfiles!
