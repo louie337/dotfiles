@@ -3,16 +3,17 @@ vim.g.mapleader = " " -- Make sure to set `mapleader` before lazy so your mappin
 vim.g.maplocalleader = " "
 -- Fix markdown indentation settings
 vim.g.markdown_recommended_style = 0
--- Allow OSC 52 passthrough for cross machine clipboard operations
+-- Use the system clipboard for both registers, including over SSH via OSC 52.
+-- Primary selection (OSC 52 p) is not portable across macOS terminals.
 vim.g.clipboard = {
   name = 'OSC 52',
   copy = {
     ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
-    ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+    ['*'] = require('vim.ui.clipboard.osc52').copy('+'),
   },
   paste = {
     ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
-    ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+    ['*'] = require('vim.ui.clipboard.osc52').paste('+'),
   },
 }
 
